@@ -1,0 +1,36 @@
+name: release
+
+# 태그(vX.Y.Z)를 달면 Helm 차트를 GHCR(OCI)에 올리고, 메이저 태그(v1 등)를 최신 릴리스로 옮긴다.
+# demo-app은 이 태그로 모듈(?ref=), 재사용 워크플로(@), 차트(--version)를 참조한다.
+on:
+  push:
+    tags: ["v*.*.*"]
+
+permissions:
+  contents: write
+  packages: write
+
+jobs:
+  charts:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: azure/setup-helm@v5
+      - name: 차트 패키징 · GHCR push
+        env:
+          VERSION: ${{ github.ref_name }}
+        run: |
+          ver="${VERSION#v}"
+          owner="$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')"
+          echo "${{ secrets.GITHUB_TOKEN }}" | helm registry login ghcr.io -u "${{ github.actor }}" --password-stdin
+          for c in app service-base platform-config; do
+            helm package "charts/$c" --version "$ver" --app-version "$ver" -d dist
+            helm push "dist/$c-$ver.tgz" "oci://ghcr.io/$owner/charts"
+          done
+      - name: "메이저 태그 이동 (v1 → 최신 v1.x.y)"
+        env:
+          VERSION: ${{ github.ref_name }}
+        run: |
+          major="${VERSION%%.*}"
+          git tag -f "$major"
+          git push -f origin "$major"

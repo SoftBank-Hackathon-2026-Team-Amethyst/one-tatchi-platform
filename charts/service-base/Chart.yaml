@@ -1,0 +1,5 @@
+apiVersion: v2
+name: service-base
+description: 서비스가 Deploy되기 전에 Terraform이 깔아 두는 네임스페이스와 시크릿 동기화
+type: application
+version: 0.1.0

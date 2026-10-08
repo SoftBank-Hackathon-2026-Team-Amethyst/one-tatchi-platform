@@ -1,0 +1,117 @@
+name: checks
+
+# 재사용 워크플로: 대상 레포의 PR · push마다 도는 컴플라이언스 검사.
+# 호출하는 쪽에서 끄거나 단계를 뺄 수 있는 입력은 두지 않는다.
+on:
+  workflow_call:
+    inputs:
+      python-dirs:
+        description: 'Python(uv) 프로젝트 경로 JSON 배열. 예: ["be"]'
+        type: string
+        default: "[]"
+      node-dirs:
+        description: 'Node(pnpm) 프로젝트 경로 JSON 배열. 예: ["fe"]'
+        type: string
+        default: "[]"
+      db-init:
+        description: 테스트 전에 Postgres에 적용할 SQL 파일 (없으면 건너뜀)
+        type: string
+        default: ""
+      scan-path:
+        description: 오픈소스 취약점 검사 경로
+        type: string
+        default: "."
+      iac-path:
+        description: IaC 규정 검사 경로 (없으면 건너뜀)
+        type: string
+        default: ""
+
+permissions:
+  contents: read
+
+jobs:
+  python:
+    if: inputs.python-dirs != '[]'
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        dir: ${{ fromJSON(inputs.python-dirs) }}
+    defaults:
+      run:
+        working-directory: ${{ matrix.dir }}
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: demo
+          POSTGRES_PASSWORD: demo
+          POSTGRES_DB: demo
+        ports: ["5432:5432"]
+        options: --health-cmd "pg_isready -U demo" --health-interval 2s --health-retries 15
+    env:
+      DATABASE_URL: postgresql+psycopg://demo:demo@localhost:5432/demo
+    steps:
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v10.2.0
+      - if: inputs.db-init != ''
+        working-directory: .
+        run: psql postgresql://demo:demo@localhost:5432/demo -f "${{ inputs.db-init }}"
+      - run: uv sync --frozen
+      - name: 정적분석 (ruff)
+        run: uv run ruff check
+      - name: 자동 테스트 (pytest)
+        run: uv run pytest
+
+  node:
+    if: inputs.node-dirs != '[]'
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        dir: ${{ fromJSON(inputs.node-dirs) }}
+    defaults:
+      run:
+        working-directory: ${{ matrix.dir }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+        with:
+          package_json_file: ${{ matrix.dir }}/package.json
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: ${{ matrix.dir }}/pnpm-lock.yaml
+      - run: pnpm install --frozen-lockfile
+      - name: 정적분석 (lint)
+        run: pnpm lint
+      - name: 빌드
+        run: pnpm build
+
+  vuln-scan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: 오픈소스 취약점 검사 (Trivy)
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          scan-type: fs
+          scan-ref: ${{ inputs.scan-path }}
+          scanners: vuln
+          severity: HIGH,CRITICAL
+          ignore-unfixed: true
+          exit-code: "1"
+
+  iac-scan:
+    if: inputs.iac-path != ''
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: IaC 규정 검사 (Trivy config)
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          scan-type: config
+          scan-ref: ${{ inputs.iac-path }}
+          severity: HIGH,CRITICAL
+          exit-code: "1"

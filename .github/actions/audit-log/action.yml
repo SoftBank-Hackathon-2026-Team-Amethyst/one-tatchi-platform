@@ -1,0 +1,48 @@
+name: audit-log
+description: 배포 파이프라인 작업 한 건을 감사 로그 버킷(Object Lock)에 JSON으로 남긴다.
+inputs:
+  action:
+    description: deploy | promote | abort | undo | infra-apply | destroy
+    required: true
+  target:
+    description: 대상 (서비스 이름, 스택 이름 등)
+    required: true
+  version:
+    description: 반영한 버전 (커밋 SHA 등)
+    default: ${{ github.sha }}
+  result:
+    description: success | failure | cancelled
+    required: true
+  requested-by:
+    description: 워크플로를 대신 실행시킨 주체 (예. Slack 사용자). 없으면 actor와 같다
+    required: false
+  bucket:
+    required: true
+runs:
+  using: composite
+  steps:
+    - shell: bash
+      env:
+        ACTION: ${{ inputs.action }}
+        TARGET: ${{ inputs.target }}
+        VERSION: ${{ inputs.version }}
+        RESULT: ${{ inputs.result }}
+        REQUESTED_BY: ${{ inputs.requested-by }}
+        BUCKET: ${{ inputs.bucket }}
+        RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}/attempts/${{ github.run_attempt }}
+      run: |
+        ts="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+        jq -n \
+          --arg ts "$ts" --arg action "$ACTION" --arg target "$TARGET" \
+          --arg version "$VERSION" --arg result "$RESULT" \
+          --arg actor "$GITHUB_ACTOR" --arg requested_by "${REQUESTED_BY:-$GITHUB_ACTOR}" \
+          --arg ref "$GITHUB_REF" \
+          --arg workflow "$GITHUB_WORKFLOW" --arg run_url "$RUN_URL" \
+          '{timestamp:$ts, action:$action, target:$target, version:$version, result:$result,
+            actor:$actor, requested_by:$requested_by, ref:$ref, workflow:$workflow, run_url:$run_url}' > record.json
+        key="deploys/$(date -u +%Y/%m/%d)/${ts}-${ACTION}-${TARGET}-${GITHUB_RUN_ID}.json"
+        # Object Lock 버킷은 체크섬이 있어야 쓸 수 있다.
+        aws s3api put-object --bucket "$BUCKET" --key "$key" --body record.json \
+          --checksum-algorithm SHA256 --content-type application/json >/dev/null
+        echo "audit log: s3://$BUCKET/$key"
+        cat record.json

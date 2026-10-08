@@ -1,0 +1,23 @@
+name: kube-access
+description: Deploy 역할로 AWS에 로그인하고 EKS kubeconfig와 kubectl argo rollouts 플러그인을 준비한다.
+inputs:
+  role-arn:
+    required: true
+  region:
+    required: true
+  cluster:
+    required: true
+runs:
+  using: composite
+  steps:
+    - uses: aws-actions/configure-aws-credentials@v6
+      with:
+        role-to-assume: ${{ inputs.role-arn }}
+        aws-region: ${{ inputs.region }}
+    - uses: azure/setup-helm@v5
+    - shell: bash
+      run: |
+        aws eks update-kubeconfig --name "${{ inputs.cluster }}" --region "${{ inputs.region }}"
+        curl -fsSLo /tmp/kubectl-argo-rollouts \
+          https://github.com/argoproj/argo-rollouts/releases/download/v1.10.0/kubectl-argo-rollouts-linux-amd64
+        sudo install -m 0755 /tmp/kubectl-argo-rollouts /usr/local/bin/kubectl-argo-rollouts

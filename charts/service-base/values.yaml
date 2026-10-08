@@ -1,0 +1,13 @@
+namespace: ""
+secretStore: cloud-secrets
+# null이면 DB 시크릿을 만들지 않는다.
+database: null
+#  secretName: demo-app-db
+#  remoteKey: <클라우드 시크릿 ID, username/password JSON>
+#  host: ...
+#  port: 5432
+#  name: demo
+# null이면 앱 시크릿을 만들지 않는다. 클라우드 시크릿(JSON)의 키가 그대로 환경변수 이름이 된다.
+secret: null
+#  secretName: slack-bot-env
+#  remoteKey: <클라우드 시크릿 ID>

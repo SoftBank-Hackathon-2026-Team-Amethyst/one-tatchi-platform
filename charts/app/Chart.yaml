@@ -1,0 +1,5 @@
+apiVersion: v2
+name: app
+description: 모든 서비스가 공유하는 App Chart. 릴리스 전략과 필수 보안 설정을 강제한다.
+type: application
+version: 0.1.0

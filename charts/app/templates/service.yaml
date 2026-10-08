@@ -1,0 +1,19 @@
+{{- $name := include "app.name" . -}}
+{{- $services := list $name -}}
+{{- if include "app.isBlueGreen" . }}{{ $services = append $services (printf "%s-preview" $name) }}{{ end -}}
+{{- range $services }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ . }}
+  labels:
+    {{- include "app.labels" $ | nindent 4 }}
+spec:
+  selector:
+    {{- include "app.selector" $ | nindent 4 }}
+  ports:
+    - name: http
+      port: {{ $.Values.service.port }}
+      targetPort: http
+{{- end }}

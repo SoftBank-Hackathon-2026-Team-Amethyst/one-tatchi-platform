@@ -1,0 +1,5 @@
+apiVersion: v2
+name: platform-config
+description: 클러스터 공통 설정 (ClusterSecretStore). Terraform이 설치한다.
+type: application
+version: 0.1.0

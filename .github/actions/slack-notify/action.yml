@@ -1,0 +1,86 @@
+name: slack-notify
+description: 배포 파이프라인 작업 결과를 Slack 채널에 올립니다. 토큰이나 채널이 없으면 건너뛰고, 실패해도 job을 실패시키지 않습니다.
+inputs:
+  token:
+    description: Slack 봇 토큰 (secrets.SLACK_BOT_TOKEN)
+    required: false
+  channel:
+    description: 채널 ID (vars.SLACK_CHANNEL_ID)
+    required: false
+  action:
+    description: deploy | promote | abort | undo | infra-apply | destroy
+    required: true
+  target:
+    description: 대상 (서비스 이름, 스택 이름 등)
+    required: true
+  version:
+    description: 반영한 버전 (커밋 SHA 등)
+    default: ${{ github.sha }}
+  result:
+    description: success | failure | cancelled
+    required: true
+  requested-by:
+    description: 워크플로를 대신 실행시킨 주체 (예. Slack 사용자)
+    required: false
+  details:
+    description: 본문 아래에 덧붙일 내용 (Slack mrkdwn)
+    required: false
+  buttons:
+    description: 붙일 조작 버튼. promote, abort, undo 중에서 공백으로 구분합니다. slack-bot이 받아 rollout 워크플로를 실행합니다.
+    required: false
+  service:
+    description: 버튼이 조작할 서비스 (all | be | fe)
+    default: all
+runs:
+  using: composite
+  steps:
+    - shell: bash
+      env:
+        TOKEN: ${{ inputs.token }}
+        CHANNEL: ${{ inputs.channel }}
+        ACTION: ${{ inputs.action }}
+        TARGET: ${{ inputs.target }}
+        VERSION: ${{ inputs.version }}
+        RESULT: ${{ inputs.result }}
+        REQUESTED_BY: ${{ inputs.requested-by }}
+        DETAILS: ${{ inputs.details }}
+        BUTTONS: ${{ inputs.buttons }}
+        SERVICE: ${{ inputs.service }}
+        RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}/attempts/${{ github.run_attempt }}
+      run: |
+        if [ -z "$TOKEN" ] || [ -z "$CHANNEL" ]; then
+          echo "Slack 설정(SLACK_BOT_TOKEN, SLACK_CHANNEL_ID)이 없어 알림을 건너뜁니다"
+          exit 0
+        fi
+        case "$RESULT" in
+          success) icon=":white_check_mark:" ;;
+          failure) icon=":x:" ;;
+          *)       icon=":warning:" ;;
+        esac
+        text="$icon *$ACTION* \`$TARGET\` @ \`${VERSION::7}\` ($RESULT)"
+        meta="${REQUESTED_BY:-$GITHUB_ACTOR} | <$RUN_URL|워크플로 실행 보기>"
+        # 버튼의 action_id(rollout_<action>)와 value(서비스)는 slack-bot/app/main.py와 맞춘 약속입니다.
+        payload="$(jq -n \
+          --arg channel "$CHANNEL" --arg text "$text" --arg details "$DETAILS" \
+          --arg meta "$meta" --arg buttons "$BUTTONS" --arg service "$SERVICE" '
+          def title: {promote: "승격", abort: "취소", undo: "되돌리기"}[.];
+          def plain: {type: "plain_text", text: .};
+          def button:
+            {type: "button", action_id: ("rollout_" + .), value: $service, text: (title | plain),
+             confirm: {title: ("확인" | plain), text: ("\($service) 서비스에 \(title) 요청을 보낼까요?" | plain),
+                       confirm: ("실행" | plain), deny: ("닫기" | plain)}}
+            + (if . == "promote" then {style: "primary"} elif . == "undo" then {style: "danger"} else {} end);
+          ($buttons | split(" ") | map(select(. != ""))) as $actions
+          | {channel: $channel, text: $text, blocks: (
+              [{type: "section", text: {type: "mrkdwn", text: $text}}]
+              + (if $details != "" then [{type: "section", text: {type: "mrkdwn", text: $details}}] else [] end)
+              + [{type: "context", elements: [{type: "mrkdwn", text: $meta}]}]
+              + (if ($actions | length) > 0 then [{type: "actions", elements: ($actions | map(button))}] else [] end)
+            )}')"
+        response="$(curl -sS -X POST https://slack.com/api/chat.postMessage \
+          -H "Authorization: Bearer $TOKEN" \
+          -H "Content-Type: application/json; charset=utf-8" \
+          -d "$payload" || true)"
+        if [ "$(jq -r '.ok' <<<"$response" 2>/dev/null)" != true ]; then
+          echo "::warning::Slack 알림 실패: $(jq -r '.error // "unknown"' <<<"$response" 2>/dev/null || echo "$response")"
+        fi

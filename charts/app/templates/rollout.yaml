@@ -1,0 +1,78 @@
+{{- include "app.validate" . -}}
+{{- $name := include "app.name" . -}}
+apiVersion: argoproj.io/v1alpha1
+kind: Rollout
+metadata:
+  name: {{ $name }}
+  labels:
+    {{- include "app.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.replicas }}
+  revisionHistoryLimit: 5
+  selector:
+    matchLabels:
+      {{- include "app.selector" . | nindent 6 }}
+  strategy:
+    {{- if include "app.isBlueGreen" . }}
+    blueGreen:
+      activeService: {{ $name }}
+      previewService: {{ $name }}-preview
+      autoPromotionEnabled: {{ .Values.blueGreen.autoPromotionEnabled }}
+      scaleDownDelaySeconds: {{ .Values.blueGreen.scaleDownDelaySeconds }}
+    {{- else }}
+    # steps 없는 canary = 일반 롤링 업데이트
+    canary: {}
+    {{- end }}
+  template:
+    metadata:
+      labels:
+        {{- include "app.labels" . | nindent 8 }}
+    spec:
+      automountServiceAccountToken: false
+      securityContext:
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: app
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          ports:
+            - name: http
+              containerPort: {{ .Values.containerPort }}
+          {{- with .Values.env }}
+          env:
+            {{- range $k, $v := . }}
+            - name: {{ $k }}
+              value: {{ $v | quote }}
+            {{- end }}
+          {{- end }}
+          {{- with .Values.envFromSecrets }}
+          envFrom:
+            {{- range . }}
+            - secretRef:
+                name: {{ . }}
+            {{- end }}
+          {{- end }}
+          readinessProbe:
+            httpGet:
+              path: {{ .Values.probe.path }}
+              port: http
+            initialDelaySeconds: {{ .Values.probe.initialDelaySeconds }}
+          livenessProbe:
+            httpGet:
+              path: {{ .Values.probe.path }}
+              port: http
+            initialDelaySeconds: {{ add .Values.probe.initialDelaySeconds 10 }}
+          resources:
+            {{- required "resources are required" .Values.resources | toYaml | nindent 12 }}
+          securityContext:
+            {{- include "app.securityContext" . | nindent 12 }}
+          volumeMounts:
+            {{- range $i, $path := .Values.writablePaths }}
+            - name: writable-{{ $i }}
+              mountPath: {{ $path }}
+            {{- end }}
+      volumes:
+        {{- range $i, $path := .Values.writablePaths }}
+        - name: writable-{{ $i }}
+          emptyDir: {}
+        {{- end }}

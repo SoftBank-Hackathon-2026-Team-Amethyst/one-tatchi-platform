@@ -1,0 +1,60 @@
+# 서비스는 이 파일의 값만 덮어쓴다. 템플릿은 고치지 않는다.
+
+image:
+  repository: ""
+  tag: ""
+
+replicas: 2
+containerPort: 8000
+
+# 릴리스 전략 인터페이스: blueGreen | rolling (canary는 아직 미구현)
+deployStrategy: blueGreen
+
+blueGreen:
+  # false면 green이 뜬 뒤 Promote를 기다린다. true면 준비되는 즉시 넘어간다.
+  autoPromotionEnabled: false
+  scaleDownDelaySeconds: 30
+
+env: {}
+# 환경변수로 통째로 주입할 Secret 이름 (예: Terraform이 만든 <서비스>-db)
+envFromSecrets: []
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 128Mi
+  limits:
+    memory: 256Mi
+
+probe:
+  path: /health
+  initialDelaySeconds: 5
+
+# readOnlyRootFilesystem이라 쓰기가 필요한 경로는 emptyDir로 마운트한다.
+writablePaths:
+  - /tmp
+
+service:
+  port: 80
+
+ingress:
+  enabled: false
+  className: alb
+  # 같은 group끼리 ALB 하나를 공유한다 (platform 스택 출력값 ingress_group)
+  group: ""
+  # 숫자가 작을수록 먼저 매칭된다. 좁은 경로일수록 작게.
+  order: 100
+  paths:
+    - /
+  healthcheckPath: /health
+  # blueGreen일 때 green을 이 포트로 미리 볼 수 있다.
+  previewPort: 8080
+
+migration:
+  enabled: false
+  image: postgres:17
+  # 접속 문자열이 든 Secret과 키 (psql 형식)
+  secretName: ""
+  urlKey: PG_URL
+  # --set-file migration.sql=<경로> 로 넣는다. 여러 번 실행해도 안전해야 한다.
+  sql: ""

@@ -1,0 +1,13 @@
+# 허용한 IaC 검사 예외. 항목마다 사유를 남기고, 운영 전환 시 다시 검토한다.
+
+# S3를 KMS 고객 관리 키(CMK) 대신 SSE-S3(AES256)로 암호화한다.
+# 해커톤 비용·복잡도 절감 목적. 운영 환경에서는 KMS 키로 바꾼다.
+AWS-0132
+
+# EKS API 엔드포인트를 공개한다. GitHub 호스티드 러너가 인터넷에서 helm/kubectl로 접근하기 때문이다.
+# 접근은 IAM 인증과 EKS access entry로만 허용된다. 운영 환경에서는 self-hosted 러너와 private 엔드포인트로 바꾼다.
+AWS-0040
+AWS-0041
+
+# 워커 노드 egress 전체 허용. 이미지 pull과 AWS API 호출에 필요하다.
+AWS-0104

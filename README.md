@@ -1,4 +1,6 @@
-# one-tatchi-platform
+# 완땃찌(원터치) 배포 대 출격!
+
+> `one-tatchi-platform`
 
 <p align="center">
   <img src="docs/assets/one-touch-deploy.png" alt="원터치 배포 버튼을 누르는 토끼" width="560">
@@ -33,13 +35,14 @@ one-tatchi-platform/
 │   ├── registry/       aws/ gcp/ onprem/
 │   ├── database/       aws/ gcp/ onprem/
 │   ├── ci_identity/    aws/ gcp/ onprem/
-│   └── observability/  aws/ gcp/ onprem/
+│   ├── observability/  aws/ gcp/ onprem/
+│   └── secret/         aws/ gcp/ onprem/
 ├── charts/
 │   ├── app/                    # App Chart: 릴리스 전략 + 보안 설정 강제. 태그 시 GHCR(OCI)에 배포
 │   ├── service-base/           # 서비스 네임스페이스 + DB 시크릿 동기화
 │   └── platform-config/        # 클러스터 공통 설정
 ├── .github/
-│   ├── workflows/              # 재사용 워크플로: checks · infra · deploy · report
+│   ├── workflows/              # 재사용: checks · infra · deploy / 이 레포용: ci · release
 │   └── actions/                # 공통 액션 (감사 로그, Slack 알림 등)
 ├── bootstrap/                  # state 버킷 · 감사 로그 버킷 · OIDC 역할 (최초 1회)
 ├── skills/                     # 에이전트 스킬 (/janto-deploy, /yolo-deploy, 분석기)
@@ -59,6 +62,16 @@ demo-app은 템플릿을 **태그로 고정해 참조**만 한다. 그래서 에
 | App Chart | `helm upgrade … oci://ghcr.io/softbank-hackathon-2026-team-amethyst/charts/app --version 1.0.0` |
 
 세 버전은 demo-app의 `.deploy/config.yaml` → `template_version` 하나로 맞춘다.
+
+## 재사용 워크플로
+
+| 워크플로 | 하는 일 |
+|---|---|
+| `checks.yml` | 정적분석(ruff · lint) · 테스트(pytest, Postgres) · 빌드 · 의존성 취약점(Trivy fs) · IaC 규정(Trivy config). 끄는 입력이 없다 |
+| `infra.yml` | Terraform fmt · validate · plan(PR 코멘트) / apply. 감사 로그 · Slack 알림 |
+| `deploy.yml` | 이미지 빌드(SHA 태그) → App Chart(OCI)로 `helm upgrade` → green이 Paused가 될 때까지 대기 → 주소 · 감사 로그 · Slack(promote/abort 버튼) |
+
+이 레포 자체는 `ci.yml`(모듈 validate · 차트 lint · IaC 검사)과 `release.yml`(태그 `vX.Y.Z` → 차트를 GHCR에 push, 메이저 태그 `v1` 이동)로 관리한다.
 
 ## 문서
 

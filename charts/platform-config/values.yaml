@@ -1,0 +1,4 @@
+secretStore:
+  name: cloud-secrets
+  # External Secrets provider 설정 그대로. 벤더별로 바뀌는 유일한 부분이다.
+  provider: {}

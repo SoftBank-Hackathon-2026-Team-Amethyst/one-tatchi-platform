@@ -1,0 +1,107 @@
+name: infra
+
+# 재사용 워크플로: 대상 레포의 Terraform 루트(infra/envs/<대상>)를 plan 또는 apply한다.
+# 루트는 이 레포의 modules/를 태그로 참조한다 (source = "git::…?ref=vX.Y.Z").
+on:
+  workflow_call:
+    inputs:
+      working-directory:
+        description: "Terraform 루트 경로. 예: infra/envs/aws"
+        type: string
+        required: true
+      mode:
+        description: "plan | apply"
+        type: string
+        required: true
+      cluster:
+        description: EKS 클러스터 이름 (apply 전 LB Controller webhook 자가 복구에 사용, 없으면 건너뜀)
+        type: string
+        default: ""
+      template-ref:
+        description: 공통 액션을 가져올 이 레포의 ref (보통 template_version과 같게)
+        type: string
+        default: v1
+    secrets:
+      SLACK_BOT_TOKEN:
+        required: false
+
+env:
+  TF_IN_AUTOMATION: "true"
+  TF_VERSION: "1.16.5"
+
+jobs:
+  terraform:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/checkout@v7
+        with:
+          repository: SoftBank-Hackathon-2026-Team-Amethyst/one-tatchi-platform
+          ref: ${{ inputs.template-ref }}
+          path: .platform
+      - uses: hashicorp/setup-terraform@v4
+        with:
+          terraform_version: ${{ env.TF_VERSION }}
+          terraform_wrapper: false
+      - uses: aws-actions/configure-aws-credentials@v6
+        with:
+          # plan은 읽기 전용 역할, apply는 반영 역할
+          role-to-assume: ${{ inputs.mode == 'apply' && vars.AWS_DEPLOY_ROLE_ARN || vars.AWS_PLAN_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION }}
+          role-duration-seconds: ${{ inputs.mode == 'apply' && 7200 || 3600 }}
+      - name: terraform init · validate
+        working-directory: ${{ inputs.working-directory }}
+        run: |
+          terraform fmt -check -recursive
+          terraform init -input=false -backend-config="bucket=${{ vars.TF_STATE_BUCKET }}"
+          terraform validate
+      - id: plan
+        if: inputs.mode == 'plan'
+        working-directory: ${{ inputs.working-directory }}
+        run: |
+          set -o pipefail
+          terraform plan -input=false -no-color -lock-timeout=5m | tee plan.txt
+      - name: plan 결과를 PR 코멘트로
+        if: inputs.mode == 'plan' && always() && steps.plan.outcome != 'skipped' && github.event_name == 'pull_request'
+        uses: actions/github-script@v9
+        env:
+          PLAN_FILE: ${{ inputs.working-directory }}/plan.txt
+          ROOT: ${{ inputs.working-directory }}
+          OUTCOME: ${{ steps.plan.outcome }}
+        with:
+          script: |
+            const fs = require('fs');
+            let plan = fs.existsSync(process.env.PLAN_FILE) ? fs.readFileSync(process.env.PLAN_FILE, 'utf8') : '(plan output missing)';
+            if (plan.length > 60000) plan = '...(truncated)\n' + plan.slice(-60000);
+            const body = `### terraform plan: \`${process.env.ROOT}\` (${process.env.OUTCOME})\n<details><summary>펼치기</summary>\n\n\`\`\`\n${plan}\n\`\`\`\n</details>`;
+            await github.rest.issues.createComment({ ...context.repo, issue_number: context.issue.number, body });
+      - name: LB Controller webhook 자가 복구
+        # LB Controller 파드가 준비되지 않은 상태에서 webhook만 남아 있으면 모든 Service 생성이 막힌다.
+        if: inputs.mode == 'apply' && inputs.cluster != ''
+        run: |
+          if ! aws eks describe-cluster --name "${{ inputs.cluster }}" >/dev/null 2>&1; then exit 0; fi
+          aws eks update-kubeconfig --name "${{ inputs.cluster }}"
+          eps="$(kubectl get endpoints aws-load-balancer-webhook-service -n kube-system -o jsonpath='{.subsets[*].addresses[*].ip}' 2>/dev/null || true)"
+          if [ -z "$eps" ] && kubectl get mutatingwebhookconfiguration aws-load-balancer-webhook >/dev/null 2>&1; then
+            kubectl delete mutatingwebhookconfiguration aws-load-balancer-webhook
+            kubectl delete validatingwebhookconfiguration aws-load-balancer-webhook --ignore-not-found
+          fi
+      - name: terraform apply
+        if: inputs.mode == 'apply'
+        working-directory: ${{ inputs.working-directory }}
+        run: terraform apply -input=false -auto-approve -lock-timeout=10m
+      - if: inputs.mode == 'apply' && always()
+        uses: ./.platform/.github/actions/audit-log
+        with:
+          action: infra-apply
+          target: ${{ inputs.working-directory }}
+          result: ${{ job.status }}
+          bucket: ${{ vars.AUDIT_LOG_BUCKET }}
+      - if: inputs.mode == 'apply' && always()
+        uses: ./.platform/.github/actions/slack-notify
+        with:
+          token: ${{ secrets.SLACK_BOT_TOKEN }}
+          channel: ${{ vars.SLACK_CHANNEL_ID }}
+          action: infra-apply
+          target: ${{ inputs.working-directory }}
+          result: ${{ job.status }}

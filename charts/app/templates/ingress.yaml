@@ -1,0 +1,37 @@
+{{- if .Values.ingress.enabled }}
+{{- $name := include "app.name" . -}}
+{{- $targets := list (dict "suffix" "" "service" $name "port" 80) -}}
+{{- if include "app.isBlueGreen" . }}
+{{- $targets = append $targets (dict "suffix" "-preview" "service" (printf "%s-preview" $name) "port" .Values.ingress.previewPort) -}}
+{{- end }}
+{{- range $t := $targets }}
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ $name }}{{ $t.suffix }}
+  labels:
+    {{- include "app.labels" $ | nindent 4 }}
+  annotations:
+    alb.ingress.kubernetes.io/scheme: internet-facing
+    alb.ingress.kubernetes.io/target-type: ip
+    alb.ingress.kubernetes.io/group.name: {{ required "ingress.group is required" $.Values.ingress.group }}
+    alb.ingress.kubernetes.io/group.order: {{ $.Values.ingress.order | quote }}
+    alb.ingress.kubernetes.io/listen-ports: {{ printf "[{\"HTTP\": %v}]" $t.port | squote }}
+    alb.ingress.kubernetes.io/healthcheck-path: {{ $.Values.ingress.healthcheckPath }}
+spec:
+  ingressClassName: {{ $.Values.ingress.className }}
+  rules:
+    - http:
+        paths:
+          {{- range $.Values.ingress.paths }}
+          - path: {{ . }}
+            pathType: Prefix
+            backend:
+              service:
+                name: {{ $t.service }}
+                port:
+                  name: http
+          {{- end }}
+{{- end }}
+{{- end }}
