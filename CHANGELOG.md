@@ -17,6 +17,10 @@
 - `cluster_addons/aws`: external-dns 애드온. 입력 `dns_zone_id`를 주면 설치한다(비우면 지금과 같음). `chart_versions.external_dns`는 선택
 - App Chart: `ingress.host`를 주면 HTTPS(443) + 80→443 리다이렉트, 미리보기 포트도 HTTPS. 비우면 지금과 같은 HTTP
 
+## v1.3.1
+
+- `image-push`(onprem): GHCR 인증을 `docker login` 대신 job 전용 설정 파일에 적는다. macOS self-hosted runner(launchd)에서 키체인 저장 실패로 push가 안 되던 문제
+
 ## v1.3.0
 
 온프레미스에서 환경별(test · prod) 외부 주소를 따로 연다. 기존 입력은 그대로 동작한다.
