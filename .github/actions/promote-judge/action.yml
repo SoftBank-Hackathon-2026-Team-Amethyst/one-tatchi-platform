@@ -1,0 +1,114 @@
+name: promote-judge
+description: >-
+  Paused 상태의 green에 smoke 요청을 보내 지표를 모으고, 규칙 판정과 Claude 판단으로 promote 또는 abort를 정한다.
+  판단에 실패하면 abort다. mode가 auto면 바로 실행하고, manual이면 근거와 버튼만 남긴다.
+  deploy.yml의 배포 job 안에서 kube-access 다음에 호출한다 (ADR 0002).
+inputs:
+  release:
+    description: 판단할 서비스(Rollout) 이름. green은 Service <release>-preview로 접근한다
+    required: true
+  namespace:
+    description: 서비스 네임스페이스 (test | prod)
+    required: true
+  target:
+    description: "배포 대상: aws | gcp | onprem (알림 · 감사 로그 표기용)"
+    required: true
+  environment:
+    description: test | prod (알림 · 감사 로그 표기용)
+    required: true
+  mode:
+    description: "auto: 판단대로 promote · abort 실행 (yolo) | manual: 실행하지 않고 근거와 버튼만 남김 (janto)"
+    default: manual
+  smoke-file:
+    description: smoke 요청 목록 파일 (대상 레포 기준 경로)
+    default: .deploy/smoke.yaml
+  window-seconds:
+    description: 관찰 창(초). 이 시간 동안 smoke 요청을 반복한다
+    default: "30"
+  request-timeout-seconds:
+    description: 요청 하나의 제한 시간(초). 넘으면 실패로 센다
+    default: "5"
+  max-error-rate:
+    description: 허용 에러율(%). 넘으면 규칙 판정 fail
+    default: "0"
+  max-p95-ms:
+    description: 허용 p95 응답 시간(ms). 넘으면 규칙 판정 fail
+    default: "2000"
+  max-restarts:
+    description: 관찰 중 허용하는 green 파드 재시작 수. 넘으면 규칙 판정 fail
+    default: "0"
+  model:
+    description: 판단에 쓸 Claude 모델
+    default: claude-opus-5-5
+  anthropic-api-key:
+    description: Claude API 키 (secrets.ANTHROPIC_API_KEY). 비어 있으면 AI 판단 없이 abort
+    default: ""
+  slack-token:
+    description: Slack 봇 토큰 (secrets.SLACK_BOT_TOKEN). 비어 있으면 알림을 건너뛴다
+    default: ""
+  slack-channel:
+    description: Slack 채널 ID (vars.SLACK_CHANNEL_ID)
+    default: ""
+  audit-bucket:
+    description: 감사 로그 버킷 (vars.AUDIT_LOG_BUCKET). 비어 있으면 감사 로그를 건너뛴다
+    default: ""
+outputs:
+  decision:
+    description: promote | abort
+    value: ${{ steps.judge.outputs.decision }}
+  reason:
+    description: 판단 근거 한두 문장
+    value: ${{ steps.judge.outputs.reason }}
+  report:
+    description: 지표 · 규칙 판정 · AI 판단을 담은 JSON 파일 경로
+    value: ${{ steps.judge.outputs.report }}
+runs:
+  using: composite
+  steps:
+    - id: smoke
+      name: smoke 요청 (green)
+      # 실패해도 다음 단계로 간다. 결과가 없거나 모자라면 judge가 abort로 처리한다.
+      continue-on-error: true
+      shell: bash
+      env:
+        WORK_DIR: ${{ runner.temp }}/promote-judge/${{ inputs.release }}
+        RELEASE: ${{ inputs.release }}
+        NAMESPACE: ${{ inputs.namespace }}
+        SMOKE_FILE: ${{ inputs.smoke-file }}
+        WINDOW_SECONDS: ${{ inputs.window-seconds }}
+        REQUEST_TIMEOUT_SECONDS: ${{ inputs.request-timeout-seconds }}
+      run: bash "$GITHUB_ACTION_PATH/smoke.sh"
+
+    - id: metrics
+      name: 지표 계산 · 규칙 판정
+      continue-on-error: true
+      shell: bash
+      env:
+        WORK_DIR: ${{ runner.temp }}/promote-judge/${{ inputs.release }}
+        RELEASE: ${{ inputs.release }}
+        NAMESPACE: ${{ inputs.namespace }}
+        MAX_ERROR_RATE: ${{ inputs.max-error-rate }}
+        MAX_P95_MS: ${{ inputs.max-p95-ms }}
+        MAX_RESTARTS: ${{ inputs.max-restarts }}
+      run: bash "$GITHUB_ACTION_PATH/metrics.sh"
+
+    - id: judge
+      name: AI 판단
+      shell: bash
+      env:
+        WORK_DIR: ${{ runner.temp }}/promote-judge/${{ inputs.release }}
+        RELEASE: ${{ inputs.release }}
+        MODEL: ${{ inputs.model }}
+        ANTHROPIC_API_KEY: ${{ inputs.anthropic-api-key }}
+      run: bash "$GITHUB_ACTION_PATH/judge.sh"
+
+    - id: act
+      name: ${{ inputs.mode == 'auto' && '판단 실행 (promote · abort)' || '판단 기록 (실행은 사람)' }}
+      shell: bash
+      env:
+        WORK_DIR: ${{ runner.temp }}/promote-judge/${{ inputs.release }}
+        RELEASE: ${{ inputs.release }}
+        NAMESPACE: ${{ inputs.namespace }}
+        MODE: ${{ inputs.mode }}
+        DECISION: ${{ steps.judge.outputs.decision }}
+      run: bash "$GITHUB_ACTION_PATH/act.sh"
