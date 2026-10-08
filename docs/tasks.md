@@ -229,13 +229,15 @@ Claude Code는 `/todo-task`, Codex는 `$todo-task`로 이 순서를 따르는 �
 **할 일**
 - [x] `modules/`: 기능 8개(secret 포함) 이동, aws는 사전 검증한 코드. 계약 정리 · 다듬기는 T24
 - [x] `charts/`: App Chart · service-base · platform-config, 태그 시 `helm push`로 `oci://ghcr.io/<org>/charts`에 배포(`release.yml`)
-- [ ] 첫 태그 `v1.0.0` 달기, GHCR 차트 패키지 public 전환
+- [x] 첫 태그 `v1.0.0` 달기 (`release.yml` 성공, 차트 3개 GHCR에 올라감)
+- [ ] GHCR 차트 패키지 3개 public 전환 (웹 UI에서만 가능)
 - [x] `.github/workflows/`: 재사용 워크플로 `checks.yml` · `infra.yml` · `deploy.yml`(`on: workflow_call`), 레포 자체 `ci.yml` · `release.yml`
 - [ ] 재사용 `report.yml`(yolo 배포 리포트, T10과 맞춤)
 - [x] `bootstrap/` 이동
 - [ ] `skills/` 이동 (T13과 맞춤)
 - [x] 릴리스 규칙: 시맨틱 버전 태그(v1.2.0), 변경 기록(`CHANGELOG.md`)
-- [ ] 보호: main은 리뷰 필수, 태그는 관리자만
+- [x] 태그 보호: `v*.*.*` 생성 · 수정 · 삭제는 관리자만 (룰셋 `release-tags`)
+- [ ] main 보호: PR 필수 · 필수 검사
 
 **완료 기준** v1.0.0 태그를 달면 차트가 GHCR에 올라가고, 재사용 워크플로를 외부 레포에서 호출할 수 있다.
 
