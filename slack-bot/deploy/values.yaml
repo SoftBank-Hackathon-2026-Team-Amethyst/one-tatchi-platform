@@ -1,0 +1,18 @@
+# App Chart(charts/app) 값. image.repository · image.tag는 배포 워크플로가 넣는다.
+image:
+  repository: ""
+
+containerPort: 8000
+# Socket Mode 연결은 하나면 충분하고, 미리 볼 트래픽이 없어서 Blue-Green을 쓰지 않는다.
+replicas: 1
+deployStrategy: rolling
+
+env:
+  GITHUB_REPOSITORY: SoftBank-Hackathon-2026-Team-Amethyst/demo-app
+
+# SLACK_BOT_TOKEN, SLACK_APP_TOKEN, GITHUB_APP_CLIENT_ID, GITHUB_APP_PRIVATE_KEY
+envFromSecrets:
+  - slack-bot-env
+
+probe:
+  path: /health

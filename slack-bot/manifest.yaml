@@ -1,0 +1,25 @@
+# Slack 앱 매니페스트. https://api.slack.com/apps 에서 "From a manifest"로 앱을 만들 때 붙여 넣습니다.
+display_information:
+  name: 원터치 배포
+  description: 배포 파이프라인 알림과 Blue-Green 조작
+features:
+  bot_user:
+    display_name: deploy-bot
+    always_online: true
+  slash_commands:
+    - command: /rollout
+      description: Blue-Green 승격, 취소, 되돌리기 (예: promote all@aws.test)
+      usage_hint: "promote|abort|undo <서비스|all>@<대상>.<환경>"
+      should_escape: false
+oauth_config:
+  scopes:
+    bot:
+      - chat:write
+      - chat:write.public
+      - commands
+settings:
+  interactivity:
+    is_enabled: true
+  socket_mode_enabled: true
+  org_deploy_enabled: false
+  token_rotation_enabled: false

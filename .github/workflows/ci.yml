@@ -1,6 +1,6 @@
 name: ci
 
-# 이 레포(템플릿) 자체 검사: Terraform 포맷 · 검증, Helm 차트 lint, IaC 규정 검사, scripts/ 테스트.
+# 이 레포(템플릿) 자체 검사: Terraform 포맷 · 검증, Helm 차트 lint, IaC 규정 검사, scripts/ · slack-bot 테스트.
 on:
   pull_request:
   push:
@@ -46,6 +46,19 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       - run: bash scripts/tests/run.sh
+
+  slack-bot:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: slack-bot
+    steps:
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v10.2.0
+      - run: uv sync --frozen
+      - run: uv run ruff check
+      - run: uv run ruff format --check
+      - run: uv run pytest
 
   iac-scan:
     runs-on: ubuntu-latest
