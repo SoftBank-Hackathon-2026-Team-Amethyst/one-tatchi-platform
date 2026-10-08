@@ -9,11 +9,21 @@
 - **구조**: 레포는 두 개다(둘 다 public). `one-tatchi-platform`(템플릿: Terraform 모듈, App Chart, 재사용 워크플로, bootstrap, 스킬)과 `demo-app`(대상 레포: 앱 코드와 에이전트 산출물).
 - 각 작업은 GitHub 이슈 하나에 대응한다(제목 · 체크리스트 · 완료 기준).
 
+## 작업 규칙
+
+1. 작업 전에 이 문서에서 **자기 이름**을 찾고, 맡은 작업의 **선행** 작업이 끝났는지 본다.
+2. 작업하면서 끝낸 할 일은 `- [ ]` → `- [x]`로 바꾸고, **코드 변경과 같은 커밋**에 넣는다.
+3. 커밋 메시지 앞에 작업 번호를 붙인다. 예: `[T3] k3d 클러스터 생성 스크립트 추가`
+4. 할 일이 다 끝나고 **완료 기준**을 만족하면 해당 GitHub 이슈를 닫는다(커밋이나 PR에 `Closes #이슈번호`).
+5. 할 일을 바꾸거나 새로 생기면 이 문서를 고친다. 진행 상황은 이 문서에만 적고 `plan.html`에는 적지 않는다.
+
+Claude Code는 `/todo-task`, Codex는 `$todo-task`로 이 순서를 따르는 스킬을 쓸 수 있다(`.claude/skills/todo-task`).
+
 ## 역할 분담
 
 **원가연** · 플랫폼 코어 (5개, P0 5개)
 - `T1` 레포 두 개와 bootstrap (P0)
-- `T3` 온프레미스 구현체 (로컬 WSL) (P0)
+- `T3` 온프레미스 구현체 (로컬 맥북) (P0)
 - `T5` test / prod 분리와 브랜치 흐름 (P0)
 - `T20` 템플릿 레포 구성과 릴리스 (P0)
 - `T21` 레포 간 참조 검증 (P0)
@@ -59,7 +69,7 @@
 | 정할 것 | 영향 받는 작업 | 현재 가정 |
 |---|---|---|
 | 도메인 이름과 DNS 관리 위치 | T2 | 도메인 1개 구매, 운영 `<도메인>` / 테스트 `yolo.<도메인>` |
-| 온프레미스 데모 머신 | T3 | 원가연 데스크탑 (WSL2) |
+| 온프레미스 데모 머신 | T3 | **결정: 원가연 맥북 (M2 · 16GB, k3d).** 시간이 남으면 리눅스 머신 |
 | 두 번째 클라우드 | T4 | GCP |
 | yolo의 main PR 생성 · 자동 머지 주체 | T8 | GHA 또는 에이전트 |
 | AI 승격 판단 기준값과 관찰 시간 | T7 | 에러율 0%, p95 기준값, 60초 관찰 |
@@ -217,10 +227,13 @@
 **목표** one-tatchi-platform에 기본 템플릿이 모이고, 태그 하나로 세 가지 참조 대상이 함께 배포된다.
 
 **할 일**
-- [ ] `modules/`: 기능 계약(입력 · 출력 이름) 정의. aws 구현은 T24
-- [ ] `charts/app`: App Chart. 태그를 달면 `helm push`로 `oci://ghcr.io/<org>/charts`에 배포, GHCR 패키지는 public으로
-- [ ] `.github/workflows/`: 재사용 워크플로 `checks.yml` · `infra.yml` · `deploy.yml` · `report.yml`(`on: workflow_call`, 입력: 대상·서비스·모드)
-- [ ] `bootstrap/`, `skills/` 이동
+- [x] `modules/`: 기능 8개(secret 포함) 이동, aws는 사전 검증한 코드. 계약 정리 · 다듬기는 T24
+- [x] `charts/`: App Chart · service-base · platform-config, 태그 시 `helm push`로 `oci://ghcr.io/<org>/charts`에 배포(`release.yml`)
+- [ ] 첫 태그 `v1.0.0` 달기, GHCR 차트 패키지 public 전환
+- [x] `.github/workflows/`: 재사용 워크플로 `checks.yml` · `infra.yml` · `deploy.yml`(`on: workflow_call`), 레포 자체 `ci.yml` · `release.yml`
+- [ ] 재사용 `report.yml`(yolo 배포 리포트, T10과 맞춤)
+- [x] `bootstrap/` 이동
+- [ ] `skills/` 이동 (T13과 맞춤)
 - [ ] 릴리스 규칙: 시맨틱 버전 태그(v1.2.0), 변경 기록(CHANGELOG)
 - [ ] 보호: main은 리뷰 필수, 태그는 관리자만
 
@@ -233,24 +246,27 @@
 
 앞 단계의 선행 작업이 끝나면 아래 작업을 동시에 진행한다.
 
-### [T3] 온프레미스 구현체 (로컬 WSL)
+### [T3] 온프레미스 구현체 (로컬 맥북)
 
-**어디에 필요** 테마의 "온프레미스(로컬)". 같은 앱이 집 PC에서도 뜬다는 이식성 장면에 쓴다.
+**어디에 필요** 테마의 "온프레미스(로컬)". 같은 앱이 내 노트북에서도 뜬다는 이식성 장면에 쓴다.
 
-**만들 것** 집 PC(WSL2)에 k3s · Tailscale Funnel · self-hosted runner 설치, `modules/*/onprem` Terraform 구현체(Helm Postgres 등), 같은 App Chart로 demo-app 배포.
+**만들 것** 맥북(M2 · 16GB)에 k3d(k3s) · Tailscale Funnel · self-hosted runner 설치, `modules/*/onprem` Terraform 구현체(Helm Postgres 등), 같은 App Chart로 demo-app 배포.
 
 - **우선순위** P0 · **영역** 레포 · 인프라 · **담당** 원가연
 - **선행** `T20` · **후속** `T17`, `T19` · **설계 문서** 6.4
 
-**목표** 같은 App Chart로 로컬 데스크탑에서도 게시판이 고정 주소로 뜬다.
+**목표** 같은 App Chart로 로컬 맥북에서도 게시판이 고정 주소로 뜬다.
 
 **할 일**
-- [ ] WSL2 systemd 활성화, `.wslconfig` 메모리, Windows 절전 해제
+- [ ] k3d(또는 OrbStack)로 k3s 클러스터 생성, Docker VM 메모리 6~8GB
+- [ ] 잠자기 방지(`caffeinate`), 전원 연결
 - [ ] k3s 설치(Traefik), Tailscale Funnel → 고정 HTTPS 주소
-- [ ] WSL 안에 self-hosted runner 설치(demo-app 레포, 라벨 `onprem`, push 이벤트 전용)
+- [ ] 맥북에 self-hosted runner 설치(demo-app 레포, 라벨 `onprem`, push 이벤트 전용)
 - [ ] platform의 `modules/*/onprem` 구현: cluster, database(Helm Postgres), registry(GHCR), secrets, observability(Prometheus)
 - [ ] runner가 GHCR 차트·이미지를 pull할 수 있는지 확인
+- [ ] 이미지를 멀티 아키텍처(`linux/amd64` + `linux/arm64`)로 빌드
 - [ ] App Chart로 demo-app 배포, 재부팅 후 자동 복구 확인
+- [ ] (시간이 남으면) 리눅스 머신에서 같은 절차 확인
 
 **완료 기준** Funnel 주소에서 게시판이 동작하고, 재부팅 후에도 자동으로 뜬다.
 
@@ -560,7 +576,7 @@
 **목표** 3분 안에 라이브 데모가 끝난다.
 
 **할 일**
-- [ ] 사전 점검: 클러스터, 도메인, WSL, Funnel, runner, GHCR 접근
+- [ ] 사전 점검: 클러스터, 도메인, 맥북 k3d, Funnel, runner, GHCR 접근
 - [ ] 데모용 HTML 변경 준비
 - [ ] 3분 타이머로 2회 이상
 - [ ] 실패 대비: 직전 상태로 되돌리는 방법

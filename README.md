@@ -73,6 +73,12 @@ demo-app은 템플릿을 **태그로 고정해 참조**만 한다. 그래서 에
 
 이 레포 자체는 `ci.yml`(모듈 validate · 차트 lint · IaC 검사)과 `release.yml`(태그 `vX.Y.Z` → 차트를 GHCR에 push, 메이저 태그 `v1` 이동)로 관리한다.
 
+## 팀원 작업 방법
+
+1. [`docs/tasks.md`](docs/tasks.md)에서 자기 이름과 맡은 작업을 찾는다.
+2. 작업하면서 끝낸 할 일을 `- [x]`로 체크해 코드와 같은 커밋에 넣는다. 커밋 메시지 앞에 `[T번호]`.
+3. Claude Code에서는 `/todo-task`, Codex에서는 `$todo-task`로 이 과정을 스킬로 진행할 수 있다.
+
 ## 문서
 
 - [설계 문서](docs/plan.html): 브라우저로 열어 본다 (다이어그램은 Mermaid로 그려진다)

@@ -181,7 +181,7 @@ footer { margin-top: 48px; padding-top: 16px; border-top: 1px solid var(--line);
     <tr><td>원터치</td><td>yolo는 스킬 실행 한 번으로 배포하고, 검사 실패도 AI가 스스로 고친다. 규제 대상이 아니면 운영까지 원터치, 규제 대상이면 운영 승격만 사람 승인 (6.1, 6.2)</td><td><span class="st done">설계 반영</span></td></tr>
     <tr><td>AI를 전적으로 활용</td><td>분석·생성, 검사 실패 자동 수정(yolo), 배포 후 승격·롤백 판단까지 AI가 한다 (6.3, 6.5)</td><td><span class="st done">설계 반영</span></td></tr>
     <tr><td>Google Cloud, AWS</td><td>AWS 구현·검증 완료. GCP는 같은 계약으로 구현한다 (6.4)</td><td><span class="st todo">진행 예정</span></td></tr>
-    <tr><td>온프레미스(로컬)</td><td>로컬 데스크탑(WSL2 + k3s)을 온프레미스로 쓰고 관리형 서비스 없이 구성한다 (6.4)</td><td><span class="st todo">진행 예정</span></td></tr>
+    <tr><td>온프레미스(로컬)</td><td>로컬 맥북(k3d로 k3s)을 온프레미스로 쓰고 관리형 서비스 없이 구성한다 (6.4)</td><td><span class="st todo">진행 예정</span></td></tr>
     <tr><td>쉽게</td><td>브리프 질문 몇 개와 자동 분석 (6.3)</td><td><span class="st done">충족</span></td></tr>
   </tbody>
 </table>
@@ -613,7 +613,7 @@ flowchart TB
   <thead><tr><th style="width:16%">기능 계약</th><th>AWS <span class="st done">구현</span></th><th>GCP <span class="st todo">예정</span></th><th>온프레미스 <span class="st todo">예정</span></th></tr></thead>
   <tbody>
     <tr><td>network</td><td>VPC, NAT</td><td>VPC, Cloud NAT</td><td>호스트 네트워크</td></tr>
-    <tr><td>cluster</td><td>EKS</td><td>GKE</td><td>k3s (WSL2)</td></tr>
+    <tr><td>cluster</td><td>EKS</td><td>GKE</td><td>k3s (맥북 · k3d)</td></tr>
     <tr><td>registry</td><td>ECR</td><td>Artifact Registry</td><td>GHCR</td></tr>
     <tr><td>database</td><td>RDS Postgres</td><td>Cloud SQL</td><td>클러스터 안 Postgres</td></tr>
     <tr><td>secrets</td><td>Secrets Manager + External Secrets</td><td>Secret Manager + External Secrets</td><td>k8s Secret</td></tr>
@@ -622,7 +622,7 @@ flowchart TB
     <tr><td>ci_identity</td><td>IAM OIDC 역할</td><td>Workload Identity Federation</td><td>self-hosted runner</td></tr>
   </tbody>
 </table>
-<p class="small">온프레미스 원칙: 관리형 서비스를 쓰지 않는다. 그래야 "로컬 데스크탑이든 사내 서버든 같은 방식으로 돈다"가 성립한다. 외부 노출은 Tailscale Funnel(고정 HTTPS 주소)로 하고, 배포는 WSL 안의 self-hosted runner가 바깥 방향 연결로 받는다.</p>
+<p class="small">온프레미스 원칙: 관리형 서비스를 쓰지 않는다. 그래야 "로컬 노트북이든 사내 서버든 같은 방식으로 돈다"가 성립한다. 외부 노출은 Tailscale Funnel(고정 HTTPS 주소)로 하고, 배포는 맥북의 self-hosted runner가 바깥 방향 연결로 받는다.</p>
 
 <h3 id="s6-5">6.5 릴리스와 AI 승격 판단</h3>
 <figure>
@@ -677,7 +677,7 @@ stateDiagram-v2
     <tr><td>앱 배포 도구</td><td>Helm(App Chart) + Argo Rollouts</td><td>Terraform helm_release / ArgoCD</td><td>매 커밋 이미지 변경을 Terraform이 맡으면 state 잠금 충돌. ArgoCD는 반영 주체가 둘이 된다</td></tr>
     <tr><td>환경 분리</td><td>네임스페이스 분리</td><td>클러스터 분리</td><td>비용과 생성 시간 유지. 해커톤 범위에 충분</td></tr>
     <tr><td>테스트 주소</td><td>호스트 기반</td><td>경로 기반 / 포트 기반</td><td>경로 기반은 앱 수정 필요. 포트 기반은 도메인 없이 가능하지만 사용자 경험이 나쁨</td></tr>
-    <tr><td>온프레미스</td><td>로컬 WSL2 + k3s + Tailscale Funnel</td><td>대형 EC2를 온프레미스로 취급 / 공유기 포트포워딩</td><td>테마의 "온프레미스(로컬)"와 일치. Funnel은 도메인 없이 고정 주소. 포트포워딩은 CGNAT·포트 차단 위험</td></tr>
+    <tr><td>온프레미스</td><td>로컬 맥북(k3d) + k3s + Tailscale Funnel. 시간이 남으면 리눅스 머신</td><td>대형 EC2를 온프레미스로 취급 / 공유기 포트포워딩</td><td>테마의 "온프레미스(로컬)"와 일치. Funnel은 도메인 없이 고정 주소. 포트포워딩은 CGNAT·포트 차단 위험</td></tr>
   </tbody>
 </table>
 
@@ -688,7 +688,7 @@ stateDiagram-v2
   <tbody>
     <tr><td>파이프라인이 3분 데모보다 길다</td><td>높음</td><td>BE·FE 병렬, Docker 레이어 캐시, 베이스 이미지 사전 빌드. 데모 시작과 동시에 실행하고 대기 중 구조 설명</td></tr>
     <tr><td>클라우드 최초 생성 실패</td><td>높음</td><td>플랫폼은 데모 전에 미리 구축. 사전 검증에서 OIDC·애드온 교착 문제를 겪고 해결함 (9장)</td></tr>
-    <tr><td>로컬 PC 절전·네트워크 문제</td><td>중간</td><td>절전 해제, WSL systemd로 k3s·tailscaled·runner 자동 시작, 데모 전 점검</td></tr>
+    <tr><td>로컬 PC 절전·네트워크 문제</td><td>중간</td><td>맥북 잠자기 방지(caffeinate · 전원 연결), k3s·tailscaled·runner 자동 시작, 데모 전 점검</td></tr>
     <tr><td>AI가 검사를 우회</td><td>중간</td><td>템플릿·테스트·워크플로 경로 수정 시 검사 실패, CODEOWNERS</td></tr>
     <tr><td>yolo 자동 수정이 잘못된 방향으로 고침</td><td>중간</td><td>최대 3회 제한, 수정 범위는 앱 코드·Dockerfile·변수 파일만, 결과는 테스트 환경에만 반영. 운영은 사람 승인</td></tr>
     <tr><td>AI 승격 판단 오판</td><td>중간</td><td>규제 대상은 운영에 사람 승인. 비규제 yolo는 판단 근거를 배포 리포트에 남기고, 운영에서도 Blue-Green 롤백 버튼으로 즉시 복구</td></tr>
@@ -722,7 +722,7 @@ stateDiagram-v2
 
 <!-- 10 -->
 <h2 id="s10">10. 데모 시나리오 (3분, 라이브)</h2>
-<p>전제: AWS 클러스터와 로컬 WSL k3s는 사전 구축. 녹화 없이 전부 라이브.</p>
+<p>전제: AWS 클러스터와 맥북 k3s(k3d)는 사전 구축. 녹화 없이 전부 라이브.</p>
 <table>
   <thead><tr><th style="width:10%">시각</th><th>장면</th><th style="width:26%">보여 주는 요구사항</th></tr></thead>
   <tbody>
@@ -739,50 +739,52 @@ stateDiagram-v2
 <!-- 11 -->
 <h2 id="s11">11. 작업 계획과 역할</h2>
 <h3>11.1 작업 목록</h3>
-<p class="small">레포가 둘(one-tatchi-platform, demo-app)로 나뉜 구조 기준이다. 아래 그림으로 순서를 보고, 항목을 누르면 세부 작업과 선행·후속 작업이 펼쳐진다. P0: 데모에 꼭 필요 · P1: 점수에 중요 · P2: 여유 있으면</p>
+<p class="small">레포 두 개(one-tatchi-platform, demo-app) 기준. 아래 그림으로 순서를 보고, 항목을 누르면 왜 필요한지 · 무엇을 만드는지 · 세부 작업 · 선행과 후속이 펼쳐진다. 원본은 <code>docs/tasks.md</code>, 이슈는 one-tatchi-platform #1~#25. P0: 데모에 꼭 필요 · P1: 점수에 중요 · P2: 여유 있으면</p>
 <figure>
 <pre class="mermaid">
 flowchart LR
   subgraph A0["레포 · 인프라"]
     direction TB
-    T1["T1 · 레포 2개·bootstrap"]
-    T20["T20 · 템플릿 레포·릴리스"]
-    T21["T21 · 참조 검증"]
-    T2["T2 · 도메인·HTTPS"]
-    T3["T3 · 온프레미스 WSL"]
+    T1["T1 · 레포 두 개와 bootstra"]
+    T2["T2 · 도메인과 HTTPS"]
+    T3["T3 · 온프레미스 구현체"]
     T4["T4 · GCP 구현체"]
+    T20["T20 · 템플릿 레포 구성과 릴리스"]
+    T21["T21 · 레포 간 참조 검증"]
+    T23["T23 · 초기 인프라 세팅"]
+    T24["T24 · AWS 구현체"]
   end
   subgraph A1["파이프라인 (platform 재사용 워크플로)"]
     direction TB
-    T5["T5 · test/prod 분리"]
-    T6["T6 · 규제 운영 관문"]
-    T7["T7 · AI 승격 판단"]
-    T8["T8 · main PR 자동 머지"]
-    T9["T9 · 배포 2분대"]
+    T5["T5 · test / prod 분리와 "]
+    T6["T6 · 규제 여부에 따른 운영 관문"]
+    T7["T7 · AI 승격·롤백 판단"]
+    T8["T8 · yolo main PR 자동 "]
+    T9["T9 · 배포 시간 2분대 단축"]
     T10["T10 · yolo 배포 리포트"]
-    T11["T11 · 검사 3종"]
-    T22["T22 · 템플릿 버전 업데이트"]
-    T12["T12 · AI 실패 진단"]
+    T11["T11 · 검사 3종 추가"]
+    T12["T12 · 배포 실패 AI 원인 진단"]
+    T22["T22 · 템플릿 버전 업데이트 흐름"]
   end
   subgraph A2["스킬"]
     direction TB
-    T13["T13 · janto/yolo 스킬"]
-    T14["T14 · yolo 자동 수정"]
-    T15["T15 · 브리프 질문"]
+    T13["T13 · janto / yolo 두 경"]
+    T14["T14 · yolo 자동 수정 루프"]
+    T15["T15 · 브리프 질문 UX"]
     T16["T16 · 비용 추정"]
   end
   subgraph A3["관측 · 문서 · 데모"]
     direction TB
     T17["T17 · Grafana 통합"]
-    T18["T18 · ADR·문서"]
-    T19["T19 · 3분 리허설"]
+    T18["T18 · ADR·용어집·문서 갱신"]
+    T19["T19 · 3분 데모 리허설"]
+    T25["T25 · 데모 앱 개발"]
   end
-  T1 --> T20
-  T1 --> T21
-  T20 --> T21
+  T23 --> T1
   T5 --> T2
   T20 --> T3
   T20 --> T4
+  T23 --> T4
   T21 --> T5
   T5 --> T6
   T5 --> T7
@@ -790,24 +792,28 @@ flowchart LR
   T5 --> T9
   T8 --> T10
   T20 --> T11
-  T21 --> T22
   T7 --> T12
   T21 --> T13
+  T25 --> T13
   T13 --> T14
   T15 --> T16
   T3 --> T17
   T2 --> T19
   T3 --> T19
   T9 --> T19
+  T1 --> T20
+  T1 --> T21
+  T20 --> T21
+  T24 --> T21
+  T21 --> T22
+  T20 --> T24
   classDef p0 fill:#fff1e5,stroke:#bc4c00,color:#953800
   classDef p1 fill:#fff8c5,stroke:#9a6700,color:#7d4e00
   classDef p2 fill:#f6f8fa,stroke:#8c959f,color:#59636e
-  class T1,T20,T21,T2,T3,T5,T6,T7,T8,T9,T13,T14,T15 p0
-  class T4,T10,T11,T22,T16,T17,T18,T19 p1
+  class T1,T2,T3,T5,T6,T7,T8,T9,T13,T14,T15,T20,T21,T23,T24,T25 p0
+  class T4,T10,T11,T16,T17,T18,T19,T22 p1
   class T12 p2
   click T1 "#t1"
-  click T20 "#t20"
-  click T21 "#t21"
   click T2 "#t2"
   click T3 "#t3"
   click T4 "#t4"
@@ -818,7 +824,6 @@ flowchart LR
   click T9 "#t9"
   click T10 "#t10"
   click T11 "#t11"
-  click T22 "#t22"
   click T12 "#t12"
   click T13 "#t13"
   click T14 "#t14"
@@ -827,75 +832,183 @@ flowchart LR
   click T17 "#t17"
   click T18 "#t18"
   click T19 "#t19"
+  click T20 "#t20"
+  click T21 "#t21"
+  click T22 "#t22"
+  click T23 "#t23"
+  click T24 "#t24"
+  click T25 "#t25"
 </pre>
 <figcaption><b>그림 7.</b> 작업 의존 관계. 화살표는 "먼저 끝나야 하는 작업 → 그다음 작업". 주황 P0 · 노랑 P1 · 회색 P2. 노드를 누르면 해당 작업으로 이동한다.</figcaption>
 </figure>
-<p class="small"><b>바로 시작할 수 있는 작업</b>(선행 없음): <a class="tlink" href="#t1">T1</a>, <a class="tlink" href="#t15">T15</a>, <a class="tlink" href="#t18">T18</a>. <b>가장 긴 경로</b>: <a class="tlink" href="#t1">T1</a> → <a class="tlink" href="#t20">T20</a> → <a class="tlink" href="#t21">T21</a> → <a class="tlink" href="#t5">T5</a> → <a class="tlink" href="#t7">T7</a> → <a class="tlink" href="#t8">T8</a> → <a class="tlink" href="#t10">T10</a>.</p>
-<h4>레포 · 인프라</h4>
-<details class="task" id="t1">
-  <summary><span class="st p0">P0</span> <b>T1</b> 레포 두 개와 bootstrap</summary>
+<p class="small"><b>바로 시작할 수 있는 작업</b>(선행 없음): <a class="tlink" href="#t15">T15</a>, <a class="tlink" href="#t18">T18</a>, <a class="tlink" href="#t23">T23</a>, <a class="tlink" href="#t25">T25</a>. <b>가장 긴 경로</b>: <a class="tlink" href="#t23">T23</a> → <a class="tlink" href="#t1">T1</a> → <a class="tlink" href="#t20">T20</a> → <a class="tlink" href="#t24">T24</a> → <a class="tlink" href="#t21">T21</a> → <a class="tlink" href="#t5">T5</a> → <a class="tlink" href="#t7">T7</a> → <a class="tlink" href="#t8">T8</a> → <a class="tlink" href="#t10">T10</a>.</p>
+<h4>1단계</h4>
+<details class="task" id="t15">
+  <summary><span class="st p0">P0</span> <b>T15</b> 브리프 질문 UX <span class="small">· 김형래</span></summary>
   <div class="task-body">
+    <p><b>어디에 필요</b> 스킬이 처음 묻는 질문. 이 답(특히 규제 여부)이 인프라 추천과 운영 승인 여부를 정한다.</p>
+    <p><b>만들 것</b> 스킬의 질문 단계. 질문 3~5개의 목록과 문구(<code>references/brief-format.md</code> 갱신), 답을 <code>.deploy/brief.md</code>와 <code>config.yaml</code>의 <code>compliance</code>로 저장하는 단계, 규제 판정 규칙(어떤 답이면 <code>regulated</code>인지).</p>
+    <p><b>목표</b> 질문 3~5개로 코드에서 알 수 없는 정보를 받는다.</p>
+    <p><b>세부 작업</b></p>
+    <ul class="checklist"><li>질문 확정: 예상 사용자 수, 월 예산, 규제 여부(개인정보·결제·금융), 배포 대상 선호, 가용성</li><li>기본값과 건너뛰기</li><li>답변 → <code>.deploy/brief.md</code>, 규제 답변 → <code>compliance</code></li></ul>
+    <p><b>완료 기준</b> 질문에 답하면 브리프와 compliance 값이 만들어진다.</p>
+    <p class="small"><b>선행</b> 없음 · <b>후속</b> <a class="tlink" href="#t16">T16</a> · <b>관련</b> FR-1</p>
+  </div>
+</details>
+<details class="task" id="t23">
+  <summary><span class="st p0">P0</span> <b>T23</b> 초기 인프라 세팅 (계정 · 권한) <span class="small">· 이소울</span></summary>
+  <div class="task-body">
+    <p><b>어디에 필요</b> 팀원 각자가 AWS · GCP를 안전하게 쓸 계정과 권한. 모든 클라우드 작업의 출발점.</p>
+    <p><b>만들 것</b> 팀원별 AWS 계정(IAM Identity Center 또는 IAM 사용자)과 권한 세트, AWS Budgets 경보, GCP 프로젝트와 팀원 IAM 권한, 계정 현황 문서.</p>
+    <p><b>목표</b> 팀이 AWS · GCP를 안전하게 쓸 수 있도록 계정과 권한을 준비한다.</p>
+    <p><b>세부 작업</b></p>
+    <ul class="checklist"><li>AWS 루트 계정 정리: MFA 설정, 루트 액세스 키 삭제</li><li>팀원별 IAM 사용자 또는 IAM Identity Center 계정 발급 (최소 권한, 관리자는 소수)</li><li>AWS Budgets로 예산 경보 설정</li><li>GCP 프로젝트 생성, 결제 연결, 팀원 IAM 권한 부여</li><li>자격증명 공유 규칙: 키 공유 금지, 각자 자기 계정으로 로그인</li><li>계정 · 권한 현황 문서화</li></ul>
+    <p><b>완료 기준</b> 팀원 각자 자기 계정으로 AWS · GCP CLI를 쓸 수 있고, 루트 액세스 키가 없다.</p>
+    <p class="small"><b>선행</b> 없음 · <b>후속</b> <a class="tlink" href="#t1">T1</a>, <a class="tlink" href="#t4">T4</a> · <b>관련</b> 6.6</p>
+  </div>
+</details>
+<details class="task" id="t25">
+  <summary><span class="st p0">P0</span> <b>T25</b> 데모 앱 개발 <span class="small">· 배준범</span></summary>
+  <div class="task-body">
+    <p><b>어디에 필요</b> 배포할 대상 앱. 에이전트가 분석하고 파이프라인이 배포하는 재료.</p>
+    <p><b>만들 것</b> demo-app 레포의 앱 코드(<code>be/</code>, <code>fe/</code>, <code>db/</code>, <code>compose.yaml</code>)와 테스트 · 린트 설정.</p>
+    <p><b>목표</b> 배포 대상이 될 데모 앱을 demo-app 레포에 둔다.</p>
+    <p><b>세부 작업</b></p>
+    <ul class="checklist"><li>게시판 CRUD(Next.js + FastAPI + Postgres)를 demo-app 레포에 정리</li><li>로컬 실행(docker compose), 테스트 · 린트 통과</li><li>헬스체크 엔드포인트(<code>/health</code>) 유지</li><li>데모 때 바꿀 화면 요소(예: 버전 배지) 준비</li><li>배포 산출물(Dockerfile 등)은 넣지 않는다 (에이전트가 만들 몫)</li></ul>
+    <p><b>완료 기준</b> demo-app에서 로컬로 앱이 뜨고 테스트 · 린트가 통과한다.</p>
+    <p class="small"><b>선행</b> 없음 · <b>후속</b> <a class="tlink" href="#t13">T13</a> · <b>관련</b> 2.1, 10장</p>
+  </div>
+</details>
+<details class="task" id="t18">
+  <summary><span class="st p1">P1</span> <b>T18</b> ADR · 용어집 · 문서 갱신 <span class="small">· 전원</span></summary>
+  <div class="task-body">
+    <p><b>어디에 필요</b> 설계 문서화(심사 20점). 왜 이렇게 정했는지를 남긴다.</p>
+    <p><b>만들 것</b> <code>docs/adr/</code>의 ADR 문서(레포 분리, janto/yolo, 운영 관문, 자동 수정, 온프레미스), <code>CONTEXT.md</code> 용어 갱신.</p>
+    <p><b>목표</b> 결정 사항이 문서로 남는다.</p>
+    <p><b>세부 작업</b></p>
+    <ul class="checklist"><li>ADR: 레포 분리와 태그 참조, janto/yolo 경로, 규제 여부 운영 관문, 자동 수정 루프, 온프레미스 정의</li><li><code>CONTEXT.md</code> 용어 갱신(template_version, platform 레포 등)</li><li>본 문서 · 한 페이지 요약 · 아키텍처 그림을 두 레포 구조로 갱신</li></ul>
+    <p><b>완료 기준</b> 새 결정마다 ADR이 있다.</p>
+    <p class="small"><b>선행</b> 없음 · <b>후속</b> 없음 · <b>관련</b> 팀 개발</p>
+  </div>
+</details>
+<h4>2단계</h4>
+<details class="task" id="t1">
+  <summary><span class="st p0">P0</span> <b>T1</b> 레포 두 개와 bootstrap <span class="small">· 원가연</span></summary>
+  <div class="task-body">
+    <p><b>어디에 필요</b> GitHub Actions가 AWS에 들어갈 권한(OIDC)과 Terraform 상태 저장소를 만든다. 이게 없으면 어떤 배포도 시작할 수 없다.</p>
+    <p><b>만들 것</b> <code>bootstrap/</code> Terraform 실행 결과(S3 state 버킷, 감사 로그 버킷, GitHub OIDC 역할 2개), demo-app 레포 설정(Variables 5개, <code>prod</code> environment, 브랜치 보호).</p>
     <p><b>목표</b> one-tatchi-platform와 demo-app 레포가 준비되고, demo-app에서 GHA가 장기 키 없이 AWS에 접근한다.</p>
     <p><b>세부 작업</b></p>
-    <ul class="checklist"><li>(완료) <code>one-tatchi-platform</code> · <code>demo-app</code> 레포 생성, public 전환, 팀원 admin 권한 부여</li><li>Actions 설정: 외부 fork PR 워크플로는 승인 필수, self-hosted runner는 PR job에 쓰지 않음</li><li>demo-app의 OIDC sub 접두사 조회(<code>gh api repos/&lt;owner&gt;/demo-app/actions/oidc/customization/sub</code>) → bootstrap 변수</li><li>로컬에서 <code>bootstrap</code> apply(state 버킷, 감사 로그, OIDC 역할) → state를 S3로 이전</li><li>OIDC 역할 신뢰 조건에 <code>job_workflow_ref</code>(platform 재사용 워크플로만 허용) 추가 검토</li><li>demo-app에 GitHub Variables 등록, environment <code>prod</code>(required reviewers) 생성</li><li>브랜치 보호: <code>main</code>은 PR 필수 · 필수 검사 지정 · auto-merge 허용</li></ul>
+    <ul class="checklist"><li><code>one-tatchi-platform</code> · <code>demo-app</code> 레포 생성, public 전환, 팀원 admin 권한 부여</li><li>Actions 설정: 외부 fork PR 워크플로는 승인 필수, self-hosted runner는 PR job에 쓰지 않음</li><li>demo-app의 OIDC sub 접두사 조회(<code>gh api repos/&lt;owner&gt;/demo-app/actions/oidc/customization/sub</code>) → bootstrap 변수</li><li>로컬에서 <code>bootstrap</code> apply(state 버킷, 감사 로그, OIDC 역할) → state를 S3로 이전</li><li>OIDC 역할 신뢰 조건에 <code>job_workflow_ref</code>(platform 재사용 워크플로만 허용) 추가 검토</li><li>demo-app에 GitHub Variables 등록, environment <code>prod</code>(required reviewers) 생성</li><li>브랜치 보호: <code>main</code>은 PR 필수 · 필수 검사 지정 · auto-merge 허용</li></ul>
     <p><b>완료 기준</b> demo-app의 PR에서 plan이, main 머지에서 apply가 돈다.</p>
-    <p class="small"><b>선행</b> 없음 · <b>후속</b> <a class="tlink" href="#t20">T20</a>, <a class="tlink" href="#t21">T21</a> · <b>관련</b> 6.1, 6.6</p>
+    <p class="small"><b>선행</b> <a class="tlink" href="#t23">T23</a> · <b>후속</b> <a class="tlink" href="#t20">T20</a>, <a class="tlink" href="#t21">T21</a> · <b>관련</b> 6.1, 6.6</p>
   </div>
 </details>
-<details class="task" id="t20">
-  <summary><span class="st p0">P0</span> <b>T20</b> 템플릿 레포 구성과 릴리스</summary>
+<details class="task" id="t16">
+  <summary><span class="st p1">P1</span> <b>T16</b> 비용 추정 (예산 분석기) <span class="small">· 배규태</span></summary>
   <div class="task-body">
+    <p><b>어디에 필요</b> 분석 보고서에 "이 구성이면 월 얼마"를 붙인다. 추천 인프라를 고를 때와 비용 효율성 심사에 쓴다.</p>
+    <p><b>만들 것</b> 가격 조회 스크립트(<code>skills/deploy-analyze/scripts/price.py</code>), 비용 계산 규칙, <code>references/analyzers/budget.md</code> 수정, 분석 보고서의 비용 표.</p>
+    <p><b>목표</b> 분석 보고서에 구성별 월 비용이 나온다.</p>
+    <p><b>세부 작업</b></p>
+    <ul class="checklist"><li>가격 조회 스크립트(예: <code>skills/deploy-analyze/scripts/price.py</code>): AWS Pricing API · GCP Cloud Billing Catalog API로 리전별 단가 조회 → JSON</li><li>계산 규칙: 추천 구성(트래픽 분석기 결과)을 템플릿 자원 목록으로 바꿔 <code>단가 × 730시간</code>, 고정비와 변동비 구분</li><li><code>references/analyzers/budget.md</code> 수정: "알고 있는 가격으로 추정" 대신 조회 도구 사용, 후보별(aws / gcp / onprem / 하이브리드) 비교 표, 예산 초과 시 절감안</li><li>분석 보고서 요약에 월 예상 비용 연결 (janto 리뷰 지점 1에서 표시)</li></ul>
+    <p><b>완료 기준</b> demo-app 분석 보고서에 API로 조회한 단가 기반 비용 표(조회 시각 포함)가 나오고, 예산을 넘으면 경고와 절감안이 뜬다.</p>
+    <p class="small"><b>선행</b> <a class="tlink" href="#t15">T15</a> · <b>후속</b> 없음 · <b>관련</b> FR-1</p>
+  </div>
+</details>
+<h4>3단계</h4>
+<details class="task" id="t20">
+  <summary><span class="st p0">P0</span> <b>T20</b> 템플릿 레포 구성과 릴리스 <span class="small">· 원가연</span></summary>
+  <div class="task-body">
+    <p><b>어디에 필요</b> Terraform 모듈 · App Chart · 공통 워크플로를 한곳에 두고 태그로 배포한다. demo-app이 참조할 원본.</p>
+    <p><b>만들 것</b> <code>one-tatchi-platform</code>의 모듈 계약(<code>variables.tf</code> · <code>outputs.tf</code>), App Chart, 재사용 워크플로 4개, 태그 시 차트를 GHCR에 올리는 릴리스 워크플로, 첫 태그 <code>v1.0.0</code>.</p>
     <p><b>목표</b> one-tatchi-platform에 기본 템플릿이 모이고, 태그 하나로 세 가지 참조 대상이 함께 배포된다.</p>
     <p><b>세부 작업</b></p>
-    <ul class="checklist"><li><code>modules/</code>: 기능 계약과 aws 구현체(사전 검증한 코드 기반)</li><li><code>charts/app</code>: App Chart. 태그를 달면 <code>helm push</code>로 <code>oci://ghcr.io/&lt;org&gt;/charts</code>에 배포, GHCR 패키지는 public으로</li><li><code>.github/workflows/</code>: 재사용 워크플로 <code>checks.yml</code> · <code>infra.yml</code> · <code>deploy.yml</code> · <code>report.yml</code>(<code>on: workflow_call</code>, 입력: 대상·서비스·모드)</li><li><code>bootstrap/</code>, <code>skills/</code> 이동</li><li>릴리스 규칙: 시맨틱 버전 태그(v1.2.0), 변경 기록(CHANGELOG)</li><li>보호: main은 리뷰 필수, 태그는 관리자만</li></ul>
+    <ul class="checklist"><li><code>modules/</code>: 기능 계약(입력 · 출력 이름) 정의. aws 구현은 T24</li><li><code>charts/app</code>: App Chart. 태그를 달면 <code>helm push</code>로 <code>oci://ghcr.io/&lt;org&gt;/charts</code>에 배포, GHCR 패키지는 public으로</li><li><code>.github/workflows/</code>: 재사용 워크플로 <code>checks.yml</code> · <code>infra.yml</code> · <code>deploy.yml</code> · <code>report.yml</code>(<code>on: workflow_call</code>, 입력: 대상·서비스·모드)</li><li><code>bootstrap/</code>, <code>skills/</code> 이동</li><li>릴리스 규칙: 시맨틱 버전 태그(v1.2.0), 변경 기록(CHANGELOG)</li><li>보호: main은 리뷰 필수, 태그는 관리자만</li></ul>
     <p><b>완료 기준</b> v1.0.0 태그를 달면 차트가 GHCR에 올라가고, 재사용 워크플로를 외부 레포에서 호출할 수 있다.</p>
-    <p class="small"><b>선행</b> <a class="tlink" href="#t1">T1</a> · <b>후속</b> <a class="tlink" href="#t3">T3</a>, <a class="tlink" href="#t4">T4</a>, <a class="tlink" href="#t11">T11</a>, <a class="tlink" href="#t21">T21</a> · <b>관련</b> 6.1</p>
+    <p class="small"><b>선행</b> <a class="tlink" href="#t1">T1</a> · <b>후속</b> <a class="tlink" href="#t3">T3</a>, <a class="tlink" href="#t4">T4</a>, <a class="tlink" href="#t11">T11</a>, <a class="tlink" href="#t21">T21</a>, <a class="tlink" href="#t24">T24</a> · <b>관련</b> 6.1</p>
   </div>
 </details>
-<details class="task" id="t21">
-  <summary><span class="st p0">P0</span> <b>T21</b> 레포 간 참조 검증</summary>
-  <div class="task-body">
-    <p><b>목표</b> 세 가지 참조가 실제로 동작하는지 작은 예제로 먼저 확인한다.</p>
-    <p><b>세부 작업</b></p>
-    <ul class="checklist"><li>demo-app에서 <code>uses: &lt;org&gt;/one-tatchi-platform/.github/workflows/deploy.yml@v1.0.0</code> 호출</li><li>Terraform <code>source = "git::…?ref=v1.0.0"</code>로 원격 모듈 <code>init</code> · <code>plan</code> 성공</li><li><code>helm upgrade … oci://ghcr.io/&lt;org&gt;/charts/app --version 1.0.0</code> 로 hello 앱 배포</li><li>확인할 함정: GHCR 패키지 공개 여부, 재사용 워크플로 안에서 템플릿 파일 checkout, OIDC가 demo-app 기준으로 발급되는지</li><li>결과와 함정을 6.1 표에 기록</li></ul>
-    <p><b>완료 기준</b> demo-app 레포에서 세 참조만으로 hello 앱이 test에 배포된다.</p>
-    <p class="small"><b>선행</b> <a class="tlink" href="#t1">T1</a>, <a class="tlink" href="#t20">T20</a> · <b>후속</b> <a class="tlink" href="#t5">T5</a>, <a class="tlink" href="#t13">T13</a>, <a class="tlink" href="#t22">T22</a> · <b>관련</b> 6.1</p>
-  </div>
-</details>
-<details class="task" id="t2">
-  <summary><span class="st p0">P0</span> <b>T2</b> 도메인과 HTTPS</summary>
-  <div class="task-body">
-    <p><b>목표</b> 운영은 <code>https://&lt;도메인&gt;</code>, 테스트는 <code>https://yolo.&lt;도메인&gt;</code>으로 누구나 접속한다.</p>
-    <p><b>세부 작업</b></p>
-    <ul class="checklist"><li>도메인 구매, DNS 관리 위치 결정(Route53 또는 외부)</li><li>와일드카드 인증서(ACM <code>*.&lt;도메인&gt;</code>)</li><li>App Chart(platform) Ingress에 <code>host</code> 값 추가</li><li>ALB HTTPS 리스너와 HTTP → HTTPS 리다이렉트</li><li>(선택) external-dns 애드온으로 DNS 레코드 자동 생성</li></ul>
-    <p><b>완료 기준</b> 두 주소가 HTTPS로 열리고 각각 test · prod로 연결된다.</p>
-    <p class="small"><b>선행</b> <a class="tlink" href="#t5">T5</a> · <b>후속</b> <a class="tlink" href="#t19">T19</a> · <b>관련</b> FR-10, 6.2</p>
-  </div>
-</details>
+<h4>4단계</h4>
 <details class="task" id="t3">
-  <summary><span class="st p0">P0</span> <b>T3</b> 온프레미스 구현체 (로컬 WSL)</summary>
+  <summary><span class="st p0">P0</span> <b>T3</b> 온프레미스 구현체 (로컬 맥북) <span class="small">· 원가연</span></summary>
   <div class="task-body">
-    <p><b>목표</b> 같은 App Chart로 로컬 데스크탑에서도 게시판이 고정 주소로 뜬다.</p>
+    <p><b>어디에 필요</b> 테마의 "온프레미스(로컬)". 같은 앱이 내 노트북에서도 뜬다는 이식성 장면에 쓴다.</p>
+    <p><b>만들 것</b> 맥북(M2 · 16GB)에 k3d(k3s) · Tailscale Funnel · self-hosted runner 설치, <code>modules/*/onprem</code> Terraform 구현체(Helm Postgres 등), 같은 App Chart로 demo-app 배포.</p>
+    <p><b>목표</b> 같은 App Chart로 로컬 맥북에서도 게시판이 고정 주소로 뜬다.</p>
     <p><b>세부 작업</b></p>
-    <ul class="checklist"><li>WSL2 systemd 활성화, <code>.wslconfig</code> 메모리, Windows 절전 해제</li><li>k3s 설치(Traefik), Tailscale Funnel → 고정 HTTPS 주소</li><li>WSL 안에 self-hosted runner 설치(demo-app 레포, 라벨 <code>onprem</code>, push 이벤트 전용)</li><li>platform의 <code>modules/*/onprem</code> 구현: cluster, database(Helm Postgres), registry(GHCR), secrets, observability(Prometheus)</li><li>runner가 GHCR 차트·이미지를 pull할 수 있는지 확인</li><li>App Chart로 demo-app 배포, 재부팅 후 자동 복구 확인</li></ul>
+    <ul class="checklist"><li>k3d(또는 OrbStack)로 k3s 클러스터 생성, Docker VM 메모리 6~8GB</li><li>잠자기 방지(<code>caffeinate</code>), 전원 연결</li><li>k3s 설치(Traefik), Tailscale Funnel → 고정 HTTPS 주소</li><li>맥북에 self-hosted runner 설치(demo-app 레포, 라벨 <code>onprem</code>, push 이벤트 전용)</li><li>platform의 <code>modules/*/onprem</code> 구현: cluster, database(Helm Postgres), registry(GHCR), secrets, observability(Prometheus)</li><li>runner가 GHCR 차트·이미지를 pull할 수 있는지 확인</li><li>이미지를 멀티 아키텍처(<code>linux/amd64</code> + <code>linux/arm64</code>)로 빌드</li><li>App Chart로 demo-app 배포, 재부팅 후 자동 복구 확인</li><li>(시간이 남으면) 리눅스 머신에서 같은 절차 확인</li></ul>
     <p><b>완료 기준</b> Funnel 주소에서 게시판이 동작하고, 재부팅 후에도 자동으로 뜬다.</p>
     <p class="small"><b>선행</b> <a class="tlink" href="#t20">T20</a> · <b>후속</b> <a class="tlink" href="#t17">T17</a>, <a class="tlink" href="#t19">T19</a> · <b>관련</b> 6.4</p>
   </div>
 </details>
-<details class="task" id="t4">
-  <summary><span class="st p1">P1</span> <b>T4</b> GCP 구현체</summary>
+<details class="task" id="t24">
+  <summary><span class="st p0">P0</span> <b>T24</b> AWS 구현체 <span class="small">· 김형래</span></summary>
   <div class="task-body">
+    <p><b>어디에 필요</b> AWS에 실제로 VPC · EKS · RDS 등을 만드는 Terraform 코드. 첫 배포 대상(Happy Path).</p>
+    <p><b>만들 것</b> <code>modules/*/aws</code> Terraform 구현체 7개(사전 검증 코드 이식 + 해결한 문제 반영)와 demo-app용 <code>infra/envs/aws</code> 예시 루트.</p>
+    <p><b>목표</b> one-tatchi-platform의 <code>modules/*/aws</code>를 사전 검증한 코드 기준으로 완성한다.</p>
+    <p><b>세부 작업</b></p>
+    <ul class="checklist"><li>network · cluster · cluster_addons · registry · database · observability · ci_identity의 aws 구현 이식</li><li>사전 검증에서 해결한 문제 반영: 애드온 설치 순서, LB Controller Service webhook 끄기, Helm <code>replace</code>, DB 보안 그룹 <code>count</code>, OIDC immutable subject</li><li>출력값 이름이 벤더 중립인지 확인 (계약 준수)</li><li>demo-app용 <code>infra/envs/aws</code> 루트 예시 작성</li><li><code>terraform validate</code>, Trivy IaC 검사 통과</li></ul>
+    <p><b>완료 기준</b> demo-app의 <code>infra/envs/aws</code>에서 원격 모듈로 plan · apply가 성공한다.</p>
+    <p class="small"><b>선행</b> <a class="tlink" href="#t20">T20</a> · <b>후속</b> <a class="tlink" href="#t21">T21</a> · <b>관련</b> 6.4</p>
+  </div>
+</details>
+<details class="task" id="t4">
+  <summary><span class="st p1">P1</span> <b>T4</b> GCP 구현체 <span class="small">· 배규태</span></summary>
+  <div class="task-body">
+    <p><b>어디에 필요</b> 테마의 "Google Cloud, AWS". AWS 말고 다른 클라우드로도 같은 방식으로 배포된다는 증거.</p>
+    <p><b>만들 것</b> <code>modules/*/gcp</code> Terraform 구현체(GKE, Cloud SQL, Artifact Registry, Workload Identity Federation)와 demo-app의 <code>infra/envs/gcp</code> 루트.</p>
     <p><b>목표</b> <code>envs/gcp</code> 루트로 같은 App Chart가 GCP에서 뜬다.</p>
     <p><b>세부 작업</b></p>
     <ul class="checklist"><li>GCP 프로젝트와 결제 연결</li><li>platform의 <code>ci_identity/gcp</code>(Workload Identity Federation, demo-app 신뢰)</li><li>network · cluster(GKE) · registry(Artifact Registry) · database(Cloud SQL) · secrets · observability 구현</li><li>출력값 이름이 aws 구현체와 같은지 확인</li><li>demo-app에 <code>infra/envs/gcp</code> 루트 추가, 배포 확인</li></ul>
     <p><b>완료 기준</b> AWS와 같은 App Chart · 같은 값 파일로 GCP 배포가 성공한다.</p>
-    <p class="small"><b>선행</b> <a class="tlink" href="#t20">T20</a> · <b>후속</b> 없음 · <b>관련</b> 6.4</p>
+    <p class="small"><b>선행</b> <a class="tlink" href="#t20">T20</a>, <a class="tlink" href="#t23">T23</a> · <b>후속</b> 없음 · <b>관련</b> 6.4</p>
   </div>
 </details>
-<h4>파이프라인 (platform 재사용 워크플로)</h4>
-<details class="task" id="t5">
-  <summary><span class="st p0">P0</span> <b>T5</b> test / prod 분리와 브랜치 흐름</summary>
+<details class="task" id="t11">
+  <summary><span class="st p1">P1</span> <b>T11</b> 검사 3종 추가 <span class="small">· 배준범</span></summary>
   <div class="task-body">
+    <p><b>어디에 필요</b> 기본 검사에 더해 이미지 취약점 · 시크릿 유출 · 라이선스를 막는다. 컴플라이언스 점수용.</p>
+    <p><b>만들 것</b> <code>checks.yml</code>에 이미지 Trivy · gitleaks · 라이선스 검사 step 추가, 예외 사유를 적는 파일.</p>
+    <p><b>목표</b> 이미지 취약점, 시크릿 유출, 라이선스를 검사한다.</p>
+    <p><b>세부 작업</b></p>
+    <ul class="checklist"><li>재사용 <code>checks.yml</code>에 이미지 Trivy, gitleaks, 라이선스 검사 추가</li><li>차단 기준: HIGH 이상 차단, 나머지는 리포트로. 예외는 사유와 함께 파일로</li></ul>
+    <p><b>완료 기준</b> 시크릿을 커밋하면 검사가 실패한다.</p>
+    <p class="small"><b>선행</b> <a class="tlink" href="#t20">T20</a> · <b>후속</b> 없음 · <b>관련</b> FR-3</p>
+  </div>
+</details>
+<h4>5단계</h4>
+<details class="task" id="t21">
+  <summary><span class="st p0">P0</span> <b>T21</b> 레포 간 참조 검증 <span class="small">· 원가연</span></summary>
+  <div class="task-body">
+    <p><b>어디에 필요</b> 레포를 나눈 구조가 실제로 동작하는지 작은 예제로 먼저 확인한다. 막히면 뒤 작업이 전부 막힌다.</p>
+    <p><b>만들 것</b> demo-app에 세 가지 참조(워크플로 <code>uses@</code>, 모듈 <code>source ?ref=</code>, OCI 차트)만 쓰는 hello 배포 설정과, 동작 결과 · 함정을 적은 기록.</p>
+    <p><b>목표</b> 세 가지 참조가 실제로 동작하는지 작은 예제로 먼저 확인한다.</p>
+    <p><b>세부 작업</b></p>
+    <ul class="checklist"><li>demo-app에서 <code>uses: &lt;org&gt;/one-tatchi-platform/.github/workflows/deploy.yml@v1.0.0</code> 호출</li><li>Terraform <code>source = "git::…?ref=v1.0.0"</code>로 원격 모듈 <code>init</code> · <code>plan</code> 성공</li><li><code>helm upgrade … oci://ghcr.io/&lt;org&gt;/charts/app --version 1.0.0</code> 로 hello 앱 배포</li><li>확인할 함정: GHCR 패키지 공개 여부, 재사용 워크플로 안에서 템플릿 파일 checkout, OIDC가 demo-app 기준으로 발급되는지</li><li>결과와 함정을 6.1 표에 기록</li></ul>
+    <p><b>완료 기준</b> demo-app 레포에서 세 참조만으로 hello 앱이 test에 배포된다.</p>
+    <p class="small"><b>선행</b> <a class="tlink" href="#t1">T1</a>, <a class="tlink" href="#t20">T20</a>, <a class="tlink" href="#t24">T24</a> · <b>후속</b> <a class="tlink" href="#t5">T5</a>, <a class="tlink" href="#t13">T13</a>, <a class="tlink" href="#t22">T22</a> · <b>관련</b> 6.1</p>
+  </div>
+</details>
+<details class="task" id="t17">
+  <summary><span class="st p1">P1</span> <b>T17</b> Grafana 통합 <span class="small">· 김형래</span></summary>
+  <div class="task-body">
+    <p><b>어디에 필요</b> AWS · 온프레미스 · GCP 지표를 한 화면에서 본다. AI 판단의 입력이자 데모 화면.</p>
+    <p><b>만들 것</b> Grafana 데이터 소스 설정(CloudWatch, Prometheus, Cloud Monitoring)과 "Deploy Overview" 대시보드 JSON.</p>
+    <p><b>목표</b> 배포 대상별 지표를 Grafana 한 곳에서 본다.</p>
+    <p><b>세부 작업</b></p>
+    <ul class="checklist"><li>중앙 Grafana에 CloudWatch, Prometheus(온프레미스), Cloud Monitoring 연결</li><li>대시보드: 서비스별 요청 · 에러율 · 응답시간 · 리소스</li><li>AI 판단 job과 같은 쿼리 사용</li></ul>
+    <p><b>완료 기준</b> 한 대시보드에서 AWS와 온프레미스 지표가 함께 보인다.</p>
+    <p class="small"><b>선행</b> <a class="tlink" href="#t3">T3</a> · <b>후속</b> 없음 · <b>관련</b> 5.2</p>
+  </div>
+</details>
+<h4>6단계</h4>
+<details class="task" id="t5">
+  <summary><span class="st p0">P0</span> <b>T5</b> test / prod 분리와 브랜치 흐름 <span class="small">· 원가연</span></summary>
+  <div class="task-body">
+    <p><b>어디에 필요</b> yolo는 test로, janto·운영은 prod로 가는 배포 흐름의 뼈대. 원터치(테스트)와 투터치(운영)를 나누는 곳.</p>
+    <p><b>만들 것</b> 재사용 워크플로 <code>deploy.yml</code>(대상 · 환경 입력, prod environment 연결), test · prod 네임스페이스, demo-app 호출부 트리거(<code>yolo/**</code> → test, <code>main</code> → test 후 prod).</p>
     <p><b>목표</b> <code>yolo/*</code> push는 test로, <code>main</code> 머지는 test → prod로 간다.</p>
     <p><b>세부 작업</b></p>
     <ul class="checklist"><li>네임스페이스 <code>test</code>, <code>prod</code> (service-base 차트 확장)</li><li>demo-app 호출부 트리거: <code>push: yolo/**</code> → test, <code>push: main</code> → test 후 prod, <code>pull_request</code> → 검사·plan</li><li>재사용 <code>deploy.yml</code>에 대상 · 환경 입력, prod job에 environment 연결</li><li>test에서 검증한 같은 이미지를 prod에 사용(rebase 머지 또는 PR head SHA 조회)</li><li>환경별 <code>concurrency</code>, 테스트 슬롯 1개</li></ul>
@@ -903,9 +1016,48 @@ flowchart LR
     <p class="small"><b>선행</b> <a class="tlink" href="#t21">T21</a> · <b>후속</b> <a class="tlink" href="#t2">T2</a>, <a class="tlink" href="#t6">T6</a>, <a class="tlink" href="#t7">T7</a>, <a class="tlink" href="#t9">T9</a> · <b>관련</b> 6.2, FR-4·5</p>
   </div>
 </details>
-<details class="task" id="t6">
-  <summary><span class="st p0">P0</span> <b>T6</b> 규제 여부에 따른 운영 관문</summary>
+<details class="task" id="t13">
+  <summary><span class="st p0">P0</span> <b>T13</b> janto / yolo 두 경로로 스킬 정리 <span class="small">· 김형래</span></summary>
   <div class="task-body">
+    <p><b>어디에 필요</b> 사용자가 실제로 실행하는 진입점(<code>/janto-deploy</code>, <code>/yolo-deploy</code>). 앱을 분석해 배포 파일을 만든다.</p>
+    <p><b>만들 것</b> <code>skills/</code>의 <code>/janto-deploy</code> · <code>/yolo-deploy</code> 스킬 문서(SKILL.md)와 산출물 생성 규칙(Dockerfile, values, tfvars, <code>config.yaml</code>, <code>smoke.yaml</code>, 워크플로 호출부).</p>
+    <p><b>목표</b> 두 스킬이 demo-app에 PR 또는 <code>yolo/*</code> 브랜치를 만든다. 스킬은 직접 apply하지 않는다.</p>
+    <p><b>세부 작업</b></p>
+    <ul class="checklist"><li>platform의 <code>skills/</code>를 새 계약에 맞게 수정: 로컬 자격증명으로 apply하는 단계 제거</li><li><code>/janto-deploy</code>: 리뷰 지점 1 → 기능 브랜치 + main PR</li><li><code>/yolo-deploy</code>: <code>yolo/&lt;기능&gt;</code> push</li><li>산출물 생성(6.3 표): Dockerfile, 값 파일, <code>infra/envs/&lt;대상&gt;</code>(원격 모듈 참조 + tfvars), <code>.deploy/config.yaml</code>(<code>template_version</code> 포함), <code>.deploy/smoke.yaml</code>(API 분석으로 smoke 요청 목록), 재사용 워크플로 호출부</li><li><code>.deploy/</code>에 배포 기록</li></ul>
+    <p><b>완료 기준</b> demo-app에 두 스킬을 실행하면 PR과 <code>yolo/*</code> 브랜치가 생기고, 템플릿은 태그로 참조된다.</p>
+    <p class="small"><b>선행</b> <a class="tlink" href="#t21">T21</a>, <a class="tlink" href="#t25">T25</a> · <b>후속</b> <a class="tlink" href="#t14">T14</a> · <b>관련</b> 6.1, 6.3</p>
+  </div>
+</details>
+<details class="task" id="t22">
+  <summary><span class="st p1">P1</span> <b>T22</b> 템플릿 버전 업데이트 흐름 <span class="small">· 이소울</span></summary>
+  <div class="task-body">
+    <p><b>어디에 필요</b> 템플릿이 바뀌면 demo-app이 새 버전을 쓰도록 PR을 자동으로 올린다.</p>
+    <p><b>만들 것</b> 템플릿에 새 태그가 생기면 demo-app에 버전 업데이트 PR을 여는 설정(Renovate 또는 릴리스 워크플로).</p>
+    <p><b>목표</b> platform에 새 태그가 생기면 demo-app에 버전을 올리는 PR이 자동으로 열린다.</p>
+    <p><b>세부 작업</b></p>
+    <ul class="checklist"><li>Renovate 또는 platform 릴리스 워크플로로 demo-app에 PR 생성</li><li><code>template_version</code>, 모듈 <code>ref</code>, <code>uses@</code>, 차트 버전을 한 번에 갱신</li><li>PR은 janto 경로로 리뷰(템플릿 변경 내역 첨부)</li></ul>
+    <p><b>완료 기준</b> v1.1.0 태그 후 demo-app에 버전 업데이트 PR이 자동으로 생긴다.</p>
+    <p class="small"><b>선행</b> <a class="tlink" href="#t21">T21</a> · <b>후속</b> 없음 · <b>관련</b> 6.1</p>
+  </div>
+</details>
+<h4>7단계</h4>
+<details class="task" id="t2">
+  <summary><span class="st p0">P0</span> <b>T2</b> 도메인과 HTTPS <span class="small">· 배준범</span></summary>
+  <div class="task-body">
+    <p><b>어디에 필요</b> 심사 기준 "누구나 접근". 데모에서 고정 주소(<code>https://도메인</code>, <code>https://yolo.도메인</code>)로 서비스를 보여 줄 때 필요하다.</p>
+    <p><b>만들 것</b> 도메인 1개, DNS 호스티드 존, 와일드카드 인증서(ACM), App Chart Ingress의 <code>host</code> 값, ALB HTTPS 리스너.</p>
+    <p><b>목표</b> 운영은 <code>https://&lt;도메인&gt;</code>, 테스트는 <code>https://yolo.&lt;도메인&gt;</code>으로 누구나 접속한다.</p>
+    <p><b>세부 작업</b></p>
+    <ul class="checklist"><li>도메인 구매, DNS 관리 위치 결정(Route53 또는 외부)</li><li>와일드카드 인증서(ACM <code>*.&lt;도메인&gt;</code>)</li><li>App Chart(platform) Ingress에 <code>host</code> 값 추가</li><li>ALB HTTPS 리스너와 HTTP → HTTPS 리다이렉트</li><li>(선택) external-dns 애드온으로 DNS 레코드 자동 생성</li></ul>
+    <p><b>완료 기준</b> 두 주소가 HTTPS로 열리고 각각 test · prod로 연결된다.</p>
+    <p class="small"><b>선행</b> <a class="tlink" href="#t5">T5</a> · <b>후속</b> <a class="tlink" href="#t19">T19</a> · <b>관련</b> FR-10, 6.2</p>
+  </div>
+</details>
+<details class="task" id="t6">
+  <summary><span class="st p0">P0</span> <b>T6</b> 규제 여부에 따른 운영 관문 <span class="small">· 이소울</span></summary>
+  <div class="task-body">
+    <p><b>어디에 필요</b> 금융 스토리의 핵심. 규제 대상이면 yolo여도 운영 앞에서 사람 승인을 강제한다.</p>
+    <p><b>만들 것</b> <code>.deploy/config.yaml</code>의 <code>compliance</code> 스키마, 재사용 워크플로의 운영 승인 분기, config를 보호하는 CODEOWNERS와 경로 검사.</p>
     <p><b>목표</b> 같은 yolo 배포가 <code>compliance</code> 값에 따라 승인 대기 또는 자동 반영으로 갈린다.</p>
     <p><b>세부 작업</b></p>
     <ul class="checklist"><li><code>.deploy/config.yaml</code> 스키마(<code>compliance: regulated | none</code>, <code>template_version</code>)</li><li>재사용 워크플로가 config를 읽어 승인 environment 분기</li><li>demo-app에서 config 보호: CODEOWNERS, AI 커밋이 바꾸면 검사 실패</li><li>값을 바꾸는 PR은 사람 리뷰 필수</li></ul>
@@ -914,28 +1066,22 @@ flowchart LR
   </div>
 </details>
 <details class="task" id="t7">
-  <summary><span class="st p0">P0</span> <b>T7</b> AI 승격 · 롤백 판단</summary>
+  <summary><span class="st p0">P0</span> <b>T7</b> AI 승격 · 롤백 판단 <span class="small">· 배규태</span></summary>
   <div class="task-body">
+    <p><b>어디에 필요</b> 배포 후 지표를 보고 넘길지 되돌릴지 AI가 정한다. "배포 후 모니터링까지 원터치"가 되는 부분.</p>
+    <p><b>만들 것</b> 재사용 워크플로의 승격 판단 job: smoke 요청 실행 → 지표 조회 → Claude API 호출(<code>{decision, reason}</code>) → <code>kubectl argo rollouts promote</code> 또는 <code>abort</code>.</p>
     <p><b>목표</b> green의 지표를 보고 promote 또는 abort를 정하고 근거를 남긴다.</p>
     <p><b>세부 작업</b></p>
-    <ul class="checklist"><li>관찰 창 동안 미리보기 주소로 smoke 요청 실행(<code>.deploy/smoke.yaml</code> + 가벼운 반복 요청). green은 승격 전 사용자 트래픽이 없으므로 이게 판단 근거가 된다</li><li>관찰 창(예: 60초) 동안 smoke 결과 · 에러율 · p95 · 재시작 · 헬스체크 조회</li><li>판단 기준값 정의(12장 미결정 2번)</li><li>LLM 호출(Claude API) → <code>{decision, reason}</code> JSON, API 키는 demo-app Secret → <code>secrets: inherit</code></li><li><code>kubectl argo rollouts promote / abort</code>. yolo는 자동, janto는 PR 코멘트 후 사람이 실행</li><li>호출 실패 시 안전한 기본값(abort), (검토) 숫자 판정은 AnalysisTemplate</li></ul>
+    <ul class="checklist"><li>관찰 창 동안 미리보기 주소로 smoke 요청 실행 (<code>.deploy/smoke.yaml</code> + 가벼운 반복 요청). green은 승격 전 사용자 트래픽이 없으므로 이게 판단 근거가 된다</li><li>관찰 창(예: 60초) 동안 smoke 결과 · 에러율 · p95 · 재시작 · 헬스체크 조회</li><li>판단 기준값 정의(12장 미결정 2번)</li><li>LLM 호출(Claude API) → <code>{decision, reason}</code> JSON, API 키는 demo-app Secret → <code>secrets: inherit</code></li><li><code>kubectl argo rollouts promote / abort</code>. yolo는 자동, janto는 PR 코멘트 후 사람이 실행</li><li>호출 실패 시 안전한 기본값(abort), (검토) 숫자 판정은 AnalysisTemplate</li></ul>
     <p><b>완료 기준</b> 정상 버전은 promote, 일부러 500을 내는 버전은 abort된다.</p>
     <p class="small"><b>선행</b> <a class="tlink" href="#t5">T5</a> · <b>후속</b> <a class="tlink" href="#t8">T8</a>, <a class="tlink" href="#t12">T12</a> · <b>관련</b> 6.5, FR-7</p>
   </div>
 </details>
-<details class="task" id="t8">
-  <summary><span class="st p0">P0</span> <b>T8</b> yolo main PR 자동 생성 · 자동 머지</summary>
-  <div class="task-body">
-    <p><b>목표</b> test 승격 후 사람 개입 없이 <code>main</code>에 머지된다.</p>
-    <p><b>세부 작업</b></p>
-    <ul class="checklist"><li>주체 결정: GHA 또는 에이전트(12장 미결정 8번)</li><li>GHA라면 GitHub App 토큰(기본 토큰으로 만든 PR은 워크플로를 실행하지 않음)</li><li><code>gh pr create</code> + <code>gh pr merge --auto --rebase</code></li><li>PR 본문에 yolo 배포 리포트, 라벨 <code>yolo</code></li></ul>
-    <p><b>완료 기준</b> yolo 배포가 test 승격 후 자동으로 main에 머지된다.</p>
-    <p class="small"><b>선행</b> <a class="tlink" href="#t7">T7</a> · <b>후속</b> <a class="tlink" href="#t10">T10</a> · <b>관련</b> 6.1</p>
-  </div>
-</details>
 <details class="task" id="t9">
-  <summary><span class="st p0">P0</span> <b>T9</b> 배포 시간 2분대 단축</summary>
+  <summary><span class="st p0">P0</span> <b>T9</b> 배포 시간 2분대 단축 <span class="small">· 이소울</span></summary>
   <div class="task-body">
+    <p><b>어디에 필요</b> 데모가 3분이다. 배포가 그 안에 끝나야 라이브로 보여 줄 수 있다.</p>
+    <p><b>만들 것</b> 워크플로 최적화: BE · FE 병렬 matrix, buildx GHA 캐시, 의존성 캐시. 단계별 소요 시간 측정 기록.</p>
     <p><b>목표</b> yolo push부터 test 반영까지 2분대.</p>
     <p><b>세부 작업</b></p>
     <ul class="checklist"><li>단계별 소요 시간 측정</li><li>BE · FE 병렬(matrix), 검사 job 병렬</li><li><code>docker buildx</code> + GHA 캐시, 베이스 이미지 미리 빌드, pnpm · uv 캐시</li><li>원격 모듈 · OCI 차트 다운로드 시간 확인(캐시)</li></ul>
@@ -943,60 +1089,11 @@ flowchart LR
     <p class="small"><b>선행</b> <a class="tlink" href="#t5">T5</a> · <b>후속</b> <a class="tlink" href="#t19">T19</a> · <b>관련</b> NFR-1</p>
   </div>
 </details>
-<details class="task" id="t10">
-  <summary><span class="st p1">P1</span> <b>T10</b> yolo 배포 리포트</summary>
-  <div class="task-body">
-    <p><b>목표</b> yolo 배포마다 누가·언제·어떤 문제를 안고 배포했는지 남고, 문제가 있으면 이슈가 열린다.</p>
-    <p><b>세부 작업</b></p>
-    <ul class="checklist"><li>리포트 JSON 스키마, 재사용 <code>report.yml</code></li><li>수집: 실행자, 시각, SHA, 대상, compliance, template_version, 자동 수정 이력, 비차단 경고, AI 판단 근거, 승인 생략 여부</li><li>저장: 감사 로그(S3), 실행 요약. 문제가 있으면 demo-app에 <code>yolo-debt</code> 이슈</li></ul>
-    <p><b>완료 기준</b> 경고가 있는 yolo 배포 후 <code>yolo-debt</code> 이슈가 열린다.</p>
-    <p class="small"><b>선행</b> <a class="tlink" href="#t8">T8</a> · <b>후속</b> 없음 · <b>관련</b> 6.3, FR-12</p>
-  </div>
-</details>
-<details class="task" id="t11">
-  <summary><span class="st p1">P1</span> <b>T11</b> 검사 3종 추가</summary>
-  <div class="task-body">
-    <p><b>목표</b> 이미지 취약점, 시크릿 유출, 라이선스를 검사한다.</p>
-    <p><b>세부 작업</b></p>
-    <ul class="checklist"><li>재사용 <code>checks.yml</code>에 이미지 Trivy, gitleaks, 라이선스 검사 추가</li><li>차단 기준: HIGH 이상 차단, 나머지는 리포트로. 예외는 사유와 함께 파일로</li></ul>
-    <p><b>완료 기준</b> 시크릿을 커밋하면 검사가 실패한다.</p>
-    <p class="small"><b>선행</b> <a class="tlink" href="#t20">T20</a> · <b>후속</b> 없음 · <b>관련</b> FR-3</p>
-  </div>
-</details>
-<details class="task" id="t22">
-  <summary><span class="st p1">P1</span> <b>T22</b> 템플릿 버전 업데이트 흐름</summary>
-  <div class="task-body">
-    <p><b>목표</b> platform에 새 태그가 생기면 demo-app에 버전을 올리는 PR이 자동으로 열린다.</p>
-    <p><b>세부 작업</b></p>
-    <ul class="checklist"><li>Renovate 또는 platform 릴리스 워크플로로 demo-app에 PR 생성</li><li><code>template_version</code>, 모듈 <code>ref</code>, <code>uses@</code>, 차트 버전을 한 번에 갱신</li><li>PR은 janto 경로로 리뷰(템플릿 변경 내역 첨부)</li></ul>
-    <p><b>완료 기준</b> v1.1.0 태그 후 demo-app에 버전 업데이트 PR이 자동으로 생긴다.</p>
-    <p class="small"><b>선행</b> <a class="tlink" href="#t21">T21</a> · <b>후속</b> 없음 · <b>관련</b> 6.1</p>
-  </div>
-</details>
-<details class="task" id="t12">
-  <summary><span class="st p2">P2</span> <b>T12</b> 배포 실패 AI 원인 진단</summary>
-  <div class="task-body">
-    <p><b>목표</b> 배포 단계가 실패하면 AI가 원인을 요약한다.</p>
-    <p><b>세부 작업</b></p>
-    <ul class="checklist"><li>실패 로그 수집 → LLM 원인 요약 → PR 코멘트 또는 이슈</li><li>(선택) 수정 PR 제안</li></ul>
-    <p><b>완료 기준</b> 배포 실패 시 원인 요약이 자동으로 달린다.</p>
-    <p class="small"><b>선행</b> <a class="tlink" href="#t7">T7</a> · <b>후속</b> 없음 · <b>관련</b> -</p>
-  </div>
-</details>
-<h4>스킬</h4>
-<details class="task" id="t13">
-  <summary><span class="st p0">P0</span> <b>T13</b> janto / yolo 두 경로로 스킬 정리</summary>
-  <div class="task-body">
-    <p><b>목표</b> 두 스킬이 demo-app에 PR 또는 <code>yolo/*</code> 브랜치를 만든다. 스킬은 직접 apply하지 않는다.</p>
-    <p><b>세부 작업</b></p>
-    <ul class="checklist"><li>platform의 <code>skills/</code>를 새 계약에 맞게 수정: 로컬 자격증명으로 apply하는 단계 제거</li><li><code>/janto-deploy</code>: 리뷰 지점 1 → 기능 브랜치 + main PR</li><li><code>/yolo-deploy</code>: <code>yolo/&lt;기능&gt;</code> push</li><li>산출물 생성(6.3 표): Dockerfile, 값 파일, <code>infra/envs/&lt;대상&gt;</code>(원격 모듈 참조 + tfvars), <code>.deploy/config.yaml</code>(<code>template_version</code> 포함), <code>.deploy/smoke.yaml</code>(API 분석으로 smoke 요청 목록), 재사용 워크플로 호출부</li><li><code>.deploy/</code>에 배포 기록</li></ul>
-    <p><b>완료 기준</b> demo-app에 두 스킬을 실행하면 PR과 <code>yolo/*</code> 브랜치가 생기고, 템플릿은 태그로 참조된다.</p>
-    <p class="small"><b>선행</b> <a class="tlink" href="#t21">T21</a> · <b>후속</b> <a class="tlink" href="#t14">T14</a> · <b>관련</b> 6.1, 6.3</p>
-  </div>
-</details>
 <details class="task" id="t14">
-  <summary><span class="st p0">P0</span> <b>T14</b> yolo 자동 수정 루프</summary>
+  <summary><span class="st p0">P0</span> <b>T14</b> yolo 자동 수정 루프 <span class="small">· 김형래</span></summary>
   <div class="task-body">
+    <p><b>어디에 필요</b> yolo에서 검사가 실패해도 사람 없이 AI가 고쳐서 다시 올린다.</p>
+    <p><b>만들 것</b> <code>/yolo-deploy</code>의 수정 루프: <code>gh run watch</code>로 대기 → 실패 로그 수집 → 허용 경로만 수정 → 재push(최대 3회) → 실패하면 보고.</p>
     <p><b>목표</b> 검사 실패를 AI가 최대 3회까지 고쳐 통과시킨다.</p>
     <p><b>세부 작업</b></p>
     <ul class="checklist"><li><code>gh run watch</code>로 대기, <code>gh run view --log-failed</code>로 실패 로그 수집</li><li>수정 허용: 앱 코드, Dockerfile, 값 파일. 템플릿은 다른 레포라 애초에 수정 불가</li><li>demo-app 안의 금지 경로(테스트, 워크플로 호출부, config의 compliance)를 건드리면 중단</li><li>최대 3회, 실패 시 정리해 보고</li></ul>
@@ -1004,67 +1101,67 @@ flowchart LR
     <p class="small"><b>선행</b> <a class="tlink" href="#t13">T13</a> · <b>후속</b> 없음 · <b>관련</b> 6.3, FR-11</p>
   </div>
 </details>
-<details class="task" id="t15">
-  <summary><span class="st p0">P0</span> <b>T15</b> 브리프 질문 UX</summary>
+<h4>8단계</h4>
+<details class="task" id="t8">
+  <summary><span class="st p0">P0</span> <b>T8</b> yolo main PR 자동 생성 · 자동 머지 <span class="small">· 이소울</span></summary>
   <div class="task-body">
-    <p><b>목표</b> 질문 3~5개로 코드에서 알 수 없는 정보를 받는다.</p>
+    <p><b>어디에 필요</b> yolo가 test 검증 후 사람 손 없이 main까지 가게 한다. yolo가 진짜 yolo가 되는 부분.</p>
+    <p><b>만들 것</b> yolo가 test 승격 후 <code>main</code> PR을 만들고 auto-merge를 거는 단계(GHA job 또는 스킬)와 GitHub App 토큰.</p>
+    <p><b>목표</b> test 승격 후 사람 개입 없이 <code>main</code>에 머지된다.</p>
     <p><b>세부 작업</b></p>
-    <ul class="checklist"><li>질문 확정: 예상 사용자 수, 월 예산, 규제 여부(개인정보·결제·금융), 배포 대상 선호, 가용성</li><li>기본값과 건너뛰기</li><li>답변 → <code>.deploy/brief.md</code>, 규제 답변 → <code>compliance</code></li></ul>
-    <p><b>완료 기준</b> 질문에 답하면 브리프와 compliance 값이 만들어진다.</p>
-    <p class="small"><b>선행</b> 없음 · <b>후속</b> <a class="tlink" href="#t16">T16</a> · <b>관련</b> FR-1</p>
-  </div>
-</details>
-<details class="task" id="t16">
-  <summary><span class="st p1">P1</span> <b>T16</b> 비용 추정 (예산 분석기)</summary>
-  <div class="task-body">
-    <p><b>목표</b> 분석 보고서에 구성별 월 비용이 나온다.</p>
-    <p><b>세부 작업</b></p>
-    <ul class="checklist"><li>가격 조회 스크립트(예: <code>skills/deploy-analyze/scripts/price.py</code>): AWS Pricing API · GCP Cloud Billing Catalog API로 리전별 단가 조회 → JSON</li><li>계산 규칙: 추천 구성(트래픽 분석기 결과)을 템플릿 자원 목록으로 바꿔 <code>단가 × 730시간</code>, 고정비와 변동비 구분</li><li><code>references/analyzers/budget.md</code> 수정: "알고 있는 가격으로 추정" 대신 조회 도구 사용, 후보별(aws / gcp / onprem / 하이브리드) 비교 표, 예산 초과 시 절감안</li><li>분석 보고서 요약에 월 예상 비용 연결 (janto 리뷰 지점 1에서 표시)</li></ul>
-    <p><b>완료 기준</b> demo-app 분석 보고서에 API로 조회한 단가 기반 비용 표(조회 시각 포함)가 나오고, 예산을 넘으면 경고와 절감안이 뜬다.</p>
-    <p class="small"><b>선행</b> <a class="tlink" href="#t15">T15</a> · <b>후속</b> 없음 · <b>관련</b> FR-1</p>
-  </div>
-</details>
-<h4>관측 · 문서 · 데모</h4>
-<details class="task" id="t17">
-  <summary><span class="st p1">P1</span> <b>T17</b> Grafana 통합</summary>
-  <div class="task-body">
-    <p><b>목표</b> 배포 대상별 지표를 Grafana 한 곳에서 본다.</p>
-    <p><b>세부 작업</b></p>
-    <ul class="checklist"><li>중앙 Grafana에 CloudWatch, Prometheus(온프레미스), Cloud Monitoring 연결</li><li>대시보드: 서비스별 요청 · 에러율 · 응답시간 · 리소스</li><li>AI 판단 job과 같은 쿼리 사용</li></ul>
-    <p><b>완료 기준</b> 한 대시보드에서 AWS와 온프레미스 지표가 함께 보인다.</p>
-    <p class="small"><b>선행</b> <a class="tlink" href="#t3">T3</a> · <b>후속</b> 없음 · <b>관련</b> 5.2</p>
-  </div>
-</details>
-<details class="task" id="t18">
-  <summary><span class="st p1">P1</span> <b>T18</b> ADR · 용어집 · 문서 갱신</summary>
-  <div class="task-body">
-    <p><b>목표</b> 결정 사항이 문서로 남는다.</p>
-    <p><b>세부 작업</b></p>
-    <ul class="checklist"><li>ADR: 레포 분리와 태그 참조, janto/yolo 경로, 규제 여부 운영 관문, 자동 수정 루프, 온프레미스 정의</li><li><code>CONTEXT.md</code> 용어 갱신(template_version, platform 레포 등)</li><li>본 문서 · 한 페이지 요약 · 아키텍처 그림을 두 레포 구조로 갱신</li></ul>
-    <p><b>완료 기준</b> 새 결정마다 ADR이 있다.</p>
-    <p class="small"><b>선행</b> 없음 · <b>후속</b> 없음 · <b>관련</b> 팀 개발</p>
+    <ul class="checklist"><li>주체 결정: GHA 또는 에이전트(12장 미결정 8번)</li><li>GHA라면 GitHub App 토큰(기본 토큰으로 만든 PR은 워크플로를 실행하지 않음)</li><li><code>gh pr create</code> + <code>gh pr merge --auto --rebase</code></li><li>PR 본문에 yolo 배포 리포트, 라벨 <code>yolo</code></li></ul>
+    <p><b>완료 기준</b> yolo 배포가 test 승격 후 자동으로 main에 머지된다.</p>
+    <p class="small"><b>선행</b> <a class="tlink" href="#t7">T7</a> · <b>후속</b> <a class="tlink" href="#t10">T10</a> · <b>관련</b> 6.1</p>
   </div>
 </details>
 <details class="task" id="t19">
-  <summary><span class="st p1">P1</span> <b>T19</b> 3분 데모 리허설</summary>
+  <summary><span class="st p1">P1</span> <b>T19</b> 3분 데모 리허설 <span class="small">· 미정</span></summary>
   <div class="task-body">
+    <p><b>어디에 필요</b> 3분 라이브 데모를 실패 없이 끝내기 위한 연습.</p>
+    <p><b>만들 것</b> 데모 사전 점검 체크리스트 문서와 리허설 2회 기록(걸린 시간, 문제점).</p>
     <p><b>목표</b> 3분 안에 라이브 데모가 끝난다.</p>
     <p><b>세부 작업</b></p>
-    <ul class="checklist"><li>사전 점검: 클러스터, 도메인, WSL, Funnel, runner, GHCR 접근</li><li>데모용 HTML 변경 준비</li><li>3분 타이머로 2회 이상</li><li>실패 대비: 직전 상태로 되돌리는 방법</li></ul>
+    <ul class="checklist"><li>사전 점검: 클러스터, 도메인, 맥북 k3d, Funnel, runner, GHCR 접근</li><li>데모용 HTML 변경 준비</li><li>3분 타이머로 2회 이상</li><li>실패 대비: 직전 상태로 되돌리는 방법</li></ul>
     <p><b>완료 기준</b> 리허설 2회 연속 3분 안에 성공한다.</p>
     <p class="small"><b>선행</b> <a class="tlink" href="#t2">T2</a>, <a class="tlink" href="#t3">T3</a>, <a class="tlink" href="#t9">T9</a> · <b>후속</b> 없음 · <b>관련</b> 10장</p>
   </div>
 </details>
-<h3>11.2 역할 분담 (제안)</h3>
+<details class="task" id="t12">
+  <summary><span class="st p2">P2</span> <b>T12</b> 배포 실패 AI 원인 진단 <span class="small">· 배규태</span></summary>
+  <div class="task-body">
+    <p><b>어디에 필요</b> 배포가 실패하면 AI가 원인을 요약해 준다. 있으면 좋은 부가 기능.</p>
+    <p><b>만들 것</b> 배포가 실패하면 실패 로그를 Claude API로 요약해 PR 코멘트로 다는 job.</p>
+    <p><b>목표</b> 배포 단계가 실패하면 AI가 원인을 요약한다.</p>
+    <p><b>세부 작업</b></p>
+    <ul class="checklist"><li>실패 로그 수집 → LLM 원인 요약 → PR 코멘트 또는 이슈</li><li>(선택) 수정 PR 제안</li></ul>
+    <p><b>완료 기준</b> 배포 실패 시 원인 요약이 자동으로 달린다.</p>
+    <p class="small"><b>선행</b> <a class="tlink" href="#t7">T7</a> · <b>후속</b> 없음 · <b>관련</b> -</p>
+  </div>
+</details>
+<h4>9단계</h4>
+<details class="task" id="t10">
+  <summary><span class="st p1">P1</span> <b>T10</b> yolo 배포 리포트 <span class="small">· 배규태</span></summary>
+  <div class="task-body">
+    <p><b>어디에 필요</b> yolo는 리뷰가 없으니, 무엇을 안고 배포했는지 기록과 책임 소재를 남긴다.</p>
+    <p><b>만들 것</b> 재사용 워크플로 <code>report.yml</code>: 리포트 JSON 생성 → S3 감사 로그 저장 → 문제가 있으면 <code>yolo-debt</code> 이슈 생성.</p>
+    <p><b>목표</b> yolo 배포마다 누가·언제·어떤 문제를 안고 배포했는지 남고, 문제가 있으면 이슈가 열린다.</p>
+    <p><b>세부 작업</b></p>
+    <ul class="checklist"><li>리포트 JSON 스키마, 재사용 <code>report.yml</code></li><li>수집: 실행자, 시각, SHA, 대상, compliance, template_version, 자동 수정 이력, 비차단 경고, AI 판단 근거, 승인 생략 여부</li><li>저장: 감사 로그(S3), 실행 요약. 문제가 있으면 demo-app에 <code>yolo-debt</code> 이슈</li></ul>
+    <p><b>완료 기준</b> 경고가 있는 yolo 배포 후 <code>yolo-debt</code> 이슈가 열린다.</p>
+    <p class="small"><b>선행</b> <a class="tlink" href="#t8">T8</a> · <b>후속</b> 없음 · <b>관련</b> 6.3, FR-12</p>
+  </div>
+</details>
+<h3>11.2 역할 분담</h3>
 <table>
-  <thead><tr><th style="width:12%">담당</th><th style="width:26%">영역</th><th>담당 작업</th></tr></thead>
+  <thead><tr><th style="width:12%">담당</th><th style="width:22%">영역</th><th>작업</th></tr></thead>
   <tbody>
-    <tr><td>원가연</td><td>레포 · 인프라 · 파이프라인 · 온프레미스</td><td><a class="tlink" href="#t1">T1</a> 레포 2개·bootstrap, <a class="tlink" href="#t20">T20</a> 템플릿 레포·릴리스, <a class="tlink" href="#t21">T21</a> 참조 검증, <a class="tlink" href="#t2">T2</a> 도메인·HTTPS, <a class="tlink" href="#t3">T3</a> 온프레미스 WSL, <a class="tlink" href="#t5">T5</a> test/prod 분리, <a class="tlink" href="#t6">T6</a> 규제 운영 관문, <a class="tlink" href="#t9">T9</a> 배포 2분대, <a class="tlink" href="#t22">T22</a> 템플릿 버전 업데이트</td></tr>
-    <tr><td>이소울</td><td>에이전트 스킬</td><td><a class="tlink" href="#t13">T13</a> janto/yolo 스킬, <a class="tlink" href="#t14">T14</a> yolo 자동 수정, <a class="tlink" href="#t8">T8</a> main PR 자동 머지</td></tr>
-    <tr><td>김형래</td><td>브리프 질문 · 데모</td><td><a class="tlink" href="#t15">T15</a> 브리프 질문, <a class="tlink" href="#t19">T19</a> 3분 리허설</td></tr>
-    <tr><td>배규태</td><td>비용 추정 · AI 판단 · 리포트</td><td><a class="tlink" href="#t16">T16</a> 비용 추정, <a class="tlink" href="#t7">T7</a> AI 승격 판단, <a class="tlink" href="#t10">T10</a> yolo 배포 리포트, <a class="tlink" href="#t12">T12</a> AI 실패 진단</td></tr>
-    <tr><td>배준범</td><td>GCP · 검사 · 관측</td><td><a class="tlink" href="#t4">T4</a> GCP 구현체, <a class="tlink" href="#t11">T11</a> 검사 3종, <a class="tlink" href="#t17">T17</a> Grafana 통합</td></tr>
-    <tr><td>전원</td><td>문서</td><td><a class="tlink" href="#t18">T18</a> ADR·문서 (각자 맡은 결정의 ADR 작성)</td></tr>
+    <tr><td>원가연</td><td>플랫폼 코어</td><td><a class="tlink" href="#t1">T1</a> 레포 두 개와 bootstrap, <a class="tlink" href="#t3">T3</a> 온프레미스 구현체 (로컬 맥북), <a class="tlink" href="#t5">T5</a> test / prod 분리와 브랜치 흐름, <a class="tlink" href="#t20">T20</a> 템플릿 레포 구성과 릴리스, <a class="tlink" href="#t21">T21</a> 레포 간 참조 검증</td></tr>
+    <tr><td>이소울</td><td>파이프라인</td><td><a class="tlink" href="#t6">T6</a> 규제 여부에 따른 운영 관문, <a class="tlink" href="#t8">T8</a> yolo main PR 자동 생성 · 자동 머지, <a class="tlink" href="#t9">T9</a> 배포 시간 2분대 단축, <a class="tlink" href="#t23">T23</a> 초기 인프라 세팅 (계정 · 권한), <a class="tlink" href="#t22">T22</a> 템플릿 버전 업데이트 흐름</td></tr>
+    <tr><td>김형래</td><td>에이전트 스킬</td><td><a class="tlink" href="#t13">T13</a> janto / yolo 두 경로로 스킬 정리, <a class="tlink" href="#t14">T14</a> yolo 자동 수정 루프, <a class="tlink" href="#t15">T15</a> 브리프 질문 UX, <a class="tlink" href="#t24">T24</a> AWS 구현체, <a class="tlink" href="#t17">T17</a> Grafana 통합</td></tr>
+    <tr><td>배준범</td><td>배포 대상 · 데모 앱</td><td><a class="tlink" href="#t2">T2</a> 도메인과 HTTPS, <a class="tlink" href="#t25">T25</a> 데모 앱 개발, <a class="tlink" href="#t11">T11</a> 검사 3종 추가</td></tr>
+    <tr><td>배규태</td><td>AI 판단 · 리포트</td><td><a class="tlink" href="#t7">T7</a> AI 승격 · 롤백 판단, <a class="tlink" href="#t4">T4</a> GCP 구현체, <a class="tlink" href="#t10">T10</a> yolo 배포 리포트, <a class="tlink" href="#t16">T16</a> 비용 추정 (예산 분석기), <a class="tlink" href="#t12">T12</a> 배포 실패 AI 원인 진단</td></tr>
+    <tr><td>전원</td><td>문서</td><td><a class="tlink" href="#t18">T18</a> ADR · 용어집 · 문서 갱신 (영역별 ADR은 각자)</td></tr>
+    <tr><td>미정</td><td>데모</td><td><a class="tlink" href="#t19">T19</a> 3분 데모 리허설</td></tr>
   </tbody>
 </table>
 
@@ -1074,7 +1171,7 @@ flowchart LR
   <tbody>
     <tr><td>1</td><td>도메인 이름과 DNS 관리 위치</td><td>도메인 1개 구매, 운영·테스트 서브도메인</td></tr>
     <tr><td>2</td><td>AI 승격 판단의 지표 임계값과 관찰 시간</td><td>에러율 0%, p95 기준값, 60초 관찰</td></tr>
-    <tr><td>3</td><td>온프레미스 데모 머신 (누구의 PC)</td><td>원가연 데스크탑</td></tr>
+    <tr><td>3</td><td>온프레미스 데모 머신 (누구의 PC)</td><td>원가연 맥북 (M2 · 16GB, k3d). 시간이 남으면 리눅스</td></tr>
     <tr><td>4</td><td>두 번째 클라우드</td><td>GCP (Azure도 가능)</td></tr>
     <tr><td>5</td><td>Grafana 위치 (각 클러스터 vs 중앙 1개)</td><td>AWS 클러스터에 중앙 1개</td></tr>
     <tr><td>6</td><td>규제 대상 판정 기준 (어떤 답이면 <code>regulated</code>인가)</td><td>개인정보·결제·금융 데이터를 다루면 regulated</td></tr>
@@ -1097,7 +1194,7 @@ flowchart LR
     <tr><td>App Chart</td><td>모든 서비스가 공유하는 Helm 차트. 릴리스 전략과 보안 설정을 강제한다</td></tr>
     <tr><td>배포 파이프라인</td><td>인프라 변경과 릴리스를 배포 대상에 반영하는 유일한 주체</td></tr>
     <tr><td>릴리스</td><td>웹앱의 한 버전을 배포 대상에 올려 트래픽을 받게 하는 일</td></tr>
-    <tr><td>온프레미스</td><td>사용자가 직접 운영하는 k3s 클러스터. 로컬 데스크탑 포함, 관리형 서비스 미사용</td></tr>
+    <tr><td>온프레미스</td><td>사용자가 직접 운영하는 k3s 클러스터. 로컬 노트북 포함, 관리형 서비스 미사용</td></tr>
     <tr><td>감사 로그</td><td>반영 작업마다 남기는 수정 불가 기록</td></tr>
     <tr><td>규제 여부 (compliance)</td><td>서비스가 규제 대상인지(<code>regulated</code> | <code>none</code>). 운영 승인 필요 여부를 정한다</td></tr>
     <tr><td>yolo 배포 리포트</td><td>yolo 배포마다 누가·언제·무엇을·어떤 문제를 안고 배포했는지 남기는 기록</td></tr>
