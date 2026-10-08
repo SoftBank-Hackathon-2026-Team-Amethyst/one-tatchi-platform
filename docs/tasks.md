@@ -59,8 +59,9 @@ Claude Code는 `/todo-task`, Codex는 `$todo-task`로 이 순서를 따르는 �
 **전원** · 문서
 - `T18` ADR · 용어집 · 문서 갱신 (P1). 영역별 ADR은 각자 작성
 
-**미정** · 데모
+**미정**
 - `T19` 3분 데모 리허설 (P1). 담당 필요
+- `T26` Slack 버튼으로 머지 · 승인 · 승격 (P1). 담당 필요
 
 가장 긴 경로(여기가 밀리면 전체가 밀림): `T23` → `T1` → `T20` → `T24` → `T21` → `T5` → `T7` → `T8` → `T10`
 
@@ -389,7 +390,7 @@ Claude Code는 `/todo-task`, Codex는 `$todo-task`로 이 순서를 따르는 �
 **만들 것** 재사용 워크플로 `deploy.yml`(대상 · 환경 입력, prod environment 연결), test · prod 네임스페이스, demo-app 호출부 트리거(`yolo/**` → test, `main` → test 후 prod).
 
 - **우선순위** P0 · **영역** 파이프라인 (platform 재사용 워크플로) · **담당** 원가연
-- **선행** `T21` · **후속** `T2`, `T6`, `T7`, `T9` · **설계 문서** 6.2, FR-4·5
+- **선행** `T21` · **후속** `T2`, `T6`, `T7`, `T9`, `T26` · **설계 문서** 6.2, FR-4·5
 
 **목표** `yolo/*` push는 test로, `main` 머지는 test → prod로 간다.
 
@@ -473,7 +474,7 @@ Claude Code는 `/todo-task`, Codex는 `$todo-task`로 이 순서를 따르는 �
 **만들 것** `.deploy/config.yaml`의 `compliance` 스키마, 재사용 워크플로의 운영 승인 분기, config를 보호하는 CODEOWNERS와 경로 검사.
 
 - **우선순위** P0 · **영역** 파이프라인 (platform 재사용 워크플로) · **담당** 이소울
-- **선행** `T5` · **후속** 없음 · **설계 문서** 6.6, FR-5
+- **선행** `T5` · **후속** `T26` · **설계 문서** 6.6, FR-5
 
 **목표** 같은 yolo 배포가 `compliance` 값에 따라 승인 대기 또는 자동 반영으로 갈린다.
 
@@ -576,7 +577,7 @@ Claude Code는 `/todo-task`, Codex는 `$todo-task`로 이 순서를 따르는 �
 **만들 것** 데모 사전 점검 체크리스트 문서와 리허설 2회 기록(걸린 시간, 문제점).
 
 - **우선순위** P1 · **영역** 관측 · 문서 · 데모 · **담당** 미정
-- **선행** `T2`, `T3`, `T9` · **후속** 없음 · **설계 문서** 10장
+- **선행** `T2`, `T3`, `T9`, `T26` · **후속** 없음 · **설계 문서** 10장
 
 **목표** 3분 안에 라이브 데모가 끝난다.
 
@@ -604,6 +605,26 @@ Claude Code는 `/todo-task`, Codex는 `$todo-task`로 이 순서를 따르는 �
 - [ ] (선택) 수정 PR 제안
 
 **완료 기준** 배포 실패 시 원인 요약이 자동으로 달린다.
+
+### [T26] Slack 버튼으로 머지 · 승인 · 승격
+
+**어디에 필요** 승인자가 GitHub에 들어가지 않고 Slack 알림의 버튼만 눌러 PR 머지 → 테스트 배포 → 승격 → 운영 승인까지 진행한다. "투터치"를 데모에서 보여 주는 부분.
+
+**만들 것** platform 레포의 `slack-bot/`(기존 봇 이식), PR 머지 버튼, 운영 승인 · 거절 버튼(GitHub App 승인 규칙), 단계별 알림 메시지.
+
+- **우선순위** P1 · **영역** 파이프라인 (platform 재사용 워크플로) · **담당** 미정
+- **선행** `T5`, `T6` · **후속** `T19` · **설계 문서** 6.2, 6.6
+
+**목표** janto 배포의 사람 조작(머지 · 승격 · 운영 승인)이 전부 Slack 버튼으로 끝나고, 누가 눌렀는지 감사 로그에 남는다.
+
+**할 일**
+- [ ] 기존 봇(알림 + promote · abort · undo 버튼, Socket Mode)을 platform `slack-bot/`으로 이식, 대상 레포 · 워크플로 이름을 설정값으로
+- [ ] PR 머지 버튼: janto PR의 검사 통과 · plan 결과를 알리고, 버튼을 누르면 봇이 머지 API 호출. 누른 사람을 PR 코멘트로 남김
+- [ ] 운영 승인 · 거절 버튼: 봇을 GitHub App으로 만들고 demo-app `prod` environment의 승인 규칙(custom deployment protection rule)으로 등록, 버튼으로 승인 · 거절
+- [ ] 누를 수 있는 사람 제한(`ALLOWED_USER_IDS`), 요청자를 감사 로그 `requested_by`에 기록
+- [ ] 알림 흐름 정리: PR 준비 → 테스트 배포 완료(승격 · 취소) → 운영 승인 대기(승인 · 거절) → 운영 반영 결과(되돌리기)
+
+**완료 기준** demo-app janto 배포 한 번을 GitHub 화면 없이 Slack 버튼만으로 prod까지 반영하고, 버튼을 누른 사람이 감사 로그에 남는다.
 
 ---
 
@@ -634,5 +655,5 @@ Claude Code는 `/todo-task`, Codex는 `$todo-task`로 이 순서를 따르는 �
 ## GitHub Project 등록 현황
 
 - 이슈는 `one-tatchi-platform` 레포, 보드는 조직 프로젝트 **Softbank 2026 project**
-- 등록된 이슈: T1~T25 (#1~#25)
+- 등록된 이슈: T1~T25 (#1~#25), T26 (#35)
 - 라벨: `P0`/`P1`/`P2`, `area:infra`/`area:pipeline`/`area:skill`/`area:docs`, `stage:N`
