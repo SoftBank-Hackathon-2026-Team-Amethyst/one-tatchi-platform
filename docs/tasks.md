@@ -353,11 +353,11 @@ Claude Code는 `/todo-task`, Codex는 `$todo-task`로 이 순서를 따르는 �
 **목표** 세 가지 참조가 실제로 동작하는지 작은 예제로 먼저 확인한다.
 
 **할 일**
-- [ ] demo-app에서 `uses: <org>/one-tatchi-platform/.github/workflows/deploy.yml@v1.0.0` 호출
-- [ ] Terraform `source = "git::…?ref=v1.0.0"`로 원격 모듈 `init` · `plan` 성공
-- [ ] `helm upgrade … oci://ghcr.io/<org>/charts/app --version 1.0.0` 로 hello 앱 배포
-- [ ] 확인할 함정: GHCR 패키지 공개 여부, 재사용 워크플로 안에서 템플릿 파일 checkout, OIDC가 demo-app 기준으로 발급되는지
-- [ ] 결과와 함정을 6.1 표에 기록
+- [ ] demo-app에서 `uses: <org>/one-tatchi-platform/.github/workflows/deploy.yml@v1.0.0` 호출 (진행 중: 재사용 워크플로 호출은 `infra.yml@v1`로 확인(PR plan · main apply). `deploy.yml`은 EKS 클러스터가 있어야 해서 T24 이후, 또는 맥북 self-hosted runner(T3)로 onprem 배포 경로를 만든 뒤)
+- [x] Terraform `source = "git::…?ref=v1.0.0"`로 원격 모듈 `init` · `plan` 성공 (`v1.1.0`, demo-app `infra/envs/onprem`. 맥북 state를 옮긴 뒤 plan 변경 없음)
+- [x] `helm upgrade … oci://ghcr.io/<org>/charts/app --version 1.0.0` 로 hello 앱 배포 (`1.1.0`, 로그인 없이 pull, 맥북 test에 demo-app be · fe)
+- [x] 확인할 함정: GHCR 패키지 공개 여부, 재사용 워크플로 안에서 템플릿 파일 checkout, OIDC가 demo-app 기준으로 발급되는지 (+ Helm 4 server-side apply · `--wait` 문제를 찾아 `deploy.yml`에 `--server-side=false`, Helm 버전 고정)
+- [x] 결과와 함정을 6.1 표에 기록
 
 **완료 기준** demo-app 레포에서 세 참조만으로 hello 앱이 test에 배포된다.
 

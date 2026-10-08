@@ -15,6 +15,9 @@ runs:
         role-to-assume: ${{ inputs.role-arn }}
         aws-region: ${{ inputs.region }}
     - uses: azure/setup-helm@v5
+      with:
+        # deploy.yml이 Helm 4 플래그(--server-side)를 쓴다. 메이저가 바뀌면 같이 확인한다.
+        version: v4.3.0
     - shell: bash
       run: |
         aws eks update-kubeconfig --name "${{ inputs.cluster }}" --region "${{ inputs.region }}"

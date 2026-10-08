@@ -86,6 +86,7 @@ jobs:
             docker push "$IMAGE:$TAG"
           fi
       - name: helm upgrade (green 생성)
+        # Helm 4 기본 server-side apply는 Argo Rollouts가 바꾼 Service selector와 충돌해 두 번째 배포부터 실패한다.
         env:
           IMAGE: ${{ steps.ecr.outputs.registry }}/${{ matrix.service.name }}
           MIGRATION: ${{ matrix.service.migration }}
@@ -100,6 +101,7 @@ jobs:
             --set image.tag="$TAG" \
             --set ingress.group="${{ inputs.ingress-group }}" \
             "${extra[@]}" \
+            --server-side=false \
             --timeout 10m
       - name: green 대기 (Paused) 또는 Healthy
         run: |
