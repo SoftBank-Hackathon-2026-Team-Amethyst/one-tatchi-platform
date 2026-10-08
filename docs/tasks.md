@@ -36,7 +36,7 @@ Claude Code는 `/todo-task`, Codex는 `$todo-task`로 이 순서를 따르는 �
 - `T20` 템플릿 레포 구성과 릴리스 (P0)
 - `T21` 레포 간 참조 검증 (P0)
 
-**이소울** · 파이프라인 (7개, P0 5개)
+**이소울** · 파이프라인 (8개, P0 5개)
 - `T6` 규제 여부에 따른 운영 관문 (P0)
 - `T8` yolo main PR 자동 생성 · 자동 머지 (P0)
 - `T9` 배포 시간 2분대 단축 (P0)
@@ -44,6 +44,7 @@ Claude Code는 `/todo-task`, Codex는 `$todo-task`로 이 순서를 따르는 �
 - `T22` 템플릿 버전 업데이트 흐름 (P1)
 - `T2` 도메인과 HTTPS (P0)
 - `T26` Slack 버튼으로 머지 · 승인 · 승격 (P1). 담당 필요
+- `T27` GCP 프로젝트와 팀원 권한 (P1)
 
 **김형래** · 에이전트 스킬 (5개, P0 4개)
 - `T13` janto / yolo 두 경로로 스킬 정리 (P0)
@@ -119,7 +120,7 @@ Claude Code는 `/todo-task`, Codex는 `$todo-task`로 이 순서를 따르는 �
 **만들 것** 팀원별 AWS 계정(IAM Identity Center 또는 IAM 사용자)과 권한 세트, AWS Budgets 경보, GCP 프로젝트와 팀원 IAM 권한, 계정 현황 문서.
 
 - **우선순위** P0 · **영역** 레포 · 인프라 · **담당** 이소울
-- **선행** 없음 · **후속** `T1`, `T4` · **설계 문서** 6.6
+- **선행** 없음 · **후속** `T1` · **설계 문서** 6.6
 
 **목표** 팀이 AWS · GCP를 안전하게 쓸 수 있도록 계정과 권한을 준비한다.
 
@@ -127,12 +128,32 @@ Claude Code는 `/todo-task`, Codex는 `$todo-task`로 이 순서를 따르는 �
 - [x] AWS 루트 계정 정리: MFA 설정, 루트 액세스 키 삭제
 - [x] 팀원별 IAM Identity Center 계정 발급: 멤버 계정 `one-tatchi`, 권한 세트 `AdministratorAccess` 4명 · `ReadOnlyAccess` 1명, SCP 가드레일 (`org/`, ADR 0001)
 - [x] AWS Budgets로 예산 경보 설정 (월 $200, 크레딧 제외)
-- [ ] GCP 프로젝트 생성, 결제 연결, 팀원 IAM 권한 부여 → T4 시작 시로 보류
 - [x] 자격증명 공유 규칙: 키 공유 금지, 각자 자기 계정으로 로그인 (`docs/aws-setup.md`)
 - [x] 계정 · 권한 현황 문서화 (`docs/aws-setup.md`, `org/README.md`)
 - [ ] 팀원 5명 `aws sts get-caller-identity --profile onetatchi` 확인
 
 **완료 기준** 팀원 각자 자기 계정으로 AWS · GCP CLI를 쓸 수 있고, 루트 액세스 키가 없다.
+
+### [T27] GCP 프로젝트와 팀원 권한
+
+**어디에 필요** T4(GCP 구현체)를 시작하려면 결제가 연결된 프로젝트와 팀원 권한이 있어야 한다. T23에서 T4 시작 시로 미뤄 둔 GCP 부분.
+
+**만들 것** GCP 프로젝트 `one-tatchi`와 결제 연결, `org/gcp/` Terraform(API 활성화, 팀원 IAM 바인딩, 예산 경보), 계정 현황 문서 `docs/gcp-setup.md`.
+
+- **우선순위** P1 · **영역** 레포 · 인프라 · **담당** 이소울
+- **선행** 없음 · **후속** `T4` · **설계 문서** 6.4, 6.6
+
+**목표** 팀원이 각자 자기 Google 계정으로 GCP 프로젝트를 쓰고, T4 담당이 바로 구현을 시작할 수 있다.
+
+**할 일**
+- [ ] GCP 프로젝트 `one-tatchi` 생성, 결제 계정 연결
+- [ ] `org/gcp/`: 필요한 API 활성화 (GKE · Artifact Registry · Cloud SQL · Secret Manager · IAM Credentials)
+- [ ] 팀원 Google 계정에 IAM 역할 부여 (T4 담당은 IAM 관리 권한 포함)
+- [ ] 예산 경보 설정
+- [ ] 계정 · 권한 현황 문서화 (`docs/gcp-setup.md`)
+- [ ] 팀원 `gcloud projects describe one-tatchi` 확인
+
+**완료 기준** 팀원 각자 자기 Google 계정으로 gcloud CLI를 쓸 수 있고, 예산 경보가 걸려 있다.
 
 ### [T25] 데모 앱 개발
 
@@ -309,12 +330,11 @@ Claude Code는 `/todo-task`, Codex는 `$todo-task`로 이 순서를 따르는 �
 **만들 것** `modules/*/gcp` Terraform 구현체(GKE, Cloud SQL, Artifact Registry, Workload Identity Federation)와 demo-app의 `infra/envs/gcp` 루트.
 
 - **우선순위** P1 · **영역** 레포 · 인프라 · **담당** 배규태
-- **선행** `T20`, `T23` · **후속** 없음 · **설계 문서** 6.4
+- **선행** `T20`, `T27` · **후속** 없음 · **설계 문서** 6.4
 
 **목표** `envs/gcp` 루트로 같은 App Chart가 GCP에서 뜬다.
 
 **할 일**
-- [ ] GCP 프로젝트와 결제 연결
 - [ ] platform의 `ci_identity/gcp`(Workload Identity Federation, demo-app 신뢰)
 - [ ] network · cluster(GKE) · registry(Artifact Registry) · database(Cloud SQL) · secrets · observability 구현
 - [ ] 출력값 이름이 aws 구현체와 같은지 확인
