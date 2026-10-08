@@ -10,6 +10,10 @@
 
 ## Unreleased
 
+## v1.6.1
+
+- `deploy.yml`: aws 대상에서 Ingress가 없는 서비스(FE가 프록시하는 BE 등)의 "주소" 단계가 실패하던 문제. 새 ALB는 주소가 붙을 때까지 최대 150초 기다린다
+
 ## v1.6.0
 
 - 운영 관문 (T6): `deploy.yml`이 운영 배포(`environment: prod`) 때 `.deploy/config.yaml`의 `compliance`를 읽어 environment를 고른다. `regulated`(또는 값 없음) → `prod`(사람 승인), `none` → `prod-auto`(자동 반영). 대상 레포에 `prod-auto` environment(main 브랜치만)가 있어야 하고, bootstrap `deploy_environments`에 `prod-auto`를 추가했다
