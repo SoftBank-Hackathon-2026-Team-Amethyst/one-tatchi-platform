@@ -487,10 +487,10 @@ Claude Code는 `/todo-task`, Codex는 `$todo-task`로 이 순서를 따르는 �
 **목표** 같은 yolo 배포가 `compliance` 값에 따라 승인 대기 또는 자동 반영으로 갈린다.
 
 **할 일**
-- [ ] `.deploy/config.yaml` 스키마(`compliance: regulated | none`, `template_version`)
+- [x] `.deploy/config.yaml` 스키마(`compliance: regulated | none`, `template_version`)
 - [ ] 재사용 워크플로가 config를 읽어 승인 environment 분기
-- [ ] demo-app에서 config 보호: CODEOWNERS, AI 커밋이 바꾸면 검사 실패
-- [ ] 값을 바꾸는 PR은 사람 리뷰 필수
+- [x] demo-app에서 config 보호: CODEOWNERS, AI 커밋이 바꾸면 검사 실패
+- [x] 값을 바꾸는 PR은 사람 리뷰 필수
 
 **완료 기준** regulated면 승인 버튼이 뜨고, none이면 자동으로 prod까지 간다.
 
