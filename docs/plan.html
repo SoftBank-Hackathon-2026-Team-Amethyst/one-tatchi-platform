@@ -224,7 +224,7 @@ footer { margin-top: 48px; padding-top: 16px; border-top: 1px solid var(--line);
     <tr><td>FR-4</td><td><code>main</code> 머지(janto)와 <code>yolo/*</code> 브랜치 push(yolo)는 테스트 환경에 자동 배포된다.</td></tr>
     <tr><td>FR-5</td><td>운영 환경 반영은 <code>main</code>에 들어간 변경만 대상이다. janto이거나 규제 대상 서비스이면 승인자 승인이 필요하고, 규제 대상이 아닌 yolo는 승인 없이 반영된다.</td></tr>
     <tr><td>FR-6</td><td>새 버전은 Blue-Green으로 반영하고, 승격 전 미리보기 주소를 제공한다.</td></tr>
-    <tr><td>FR-7</td><td>AI는 테스트 환경의 지표로 승격·롤백을 판단하고 근거를 남긴다.</td></tr>
+    <tr><td>FR-7</td><td>AI는 테스트 환경의 지표로 승격·롤백을 판단하고 근거를 남긴다. green은 승격 전 사용자 트래픽이 없으므로, 관찰 창 동안 파이프라인이 미리보기 주소로 smoke 요청을 보내 판단 근거를 만든다.</td></tr>
     <tr><td>FR-8</td><td>롤백은 한 번의 조작으로 직전 버전으로 되돌린다.</td></tr>
     <tr><td>FR-9</td><td>같은 앱이 AWS, GCP, 온프레미스에 같은 배포 정의로 배포된다.</td></tr>
     <tr><td>FR-10</td><td>배포된 서비스는 고정 도메인으로 누구나 접근할 수 있다.</td></tr>
@@ -530,6 +530,7 @@ flowchart LR
     <tr><td><code>be/Dockerfile</code>, <code>fe/Dockerfile</code>, <code>.dockerignore</code></td><td>앱을 컨테이너 이미지로 포장</td><td>BE: Python 3.13 + uv로 의존성 설치, non-root(UID 10001)로 <code>fastapi run</code>. FE: Next.js standalone 빌드, non-root로 <code>node server.js</code></td></tr>
     <tr><td><code>deploy/values-be.yaml</code>, <code>values-fe.yaml</code></td><td>App Chart에 넣을 서비스별 값</td><td>포트(8000 / 3000), 헬스체크 경로, 릴리스 전략 <code>blueGreen</code>, 노출 경로(<code>/api</code> / <code>/</code>), DB 시크릿 연결, 마이그레이션 사용 여부</td></tr>
     <tr><td><code>infra/.../terraform.tfvars</code></td><td>베이스 인프라에 서비스 추가</td><td>이미지 저장소 2개(<code>demo-app-fe</code>, <code>demo-app-be</code>), 서비스 <code>demo-app</code>에 Postgres DB 1개</td></tr>
+    <tr><td><code>.deploy/smoke.yaml</code></td><td>승격 판단 전 미리보기 주소로 보낼 smoke 요청 목록</td><td><code>GET /health</code> 200, <code>GET /api/posts</code> 200, <code>POST /api/posts</code> 201 등 API 분석으로 생성</td></tr>
     <tr><td><code>.deploy/config.yaml</code></td><td>분석 결과에서 나온 배포 설정</td><td>배포 대상(<code>aws</code>), 규제 여부(<code>compliance</code>), 서비스 목록과 크기</td></tr>
     <tr><td><code>.github/workflows/*.yml</code></td><td>배포 파이프라인 (기본 템플릿 복사, 변수만 채움)</td><td>서비스별 검사 명령(<code>ruff</code>·<code>pytest</code>, <code>biome</code>·<code>pnpm build</code>), 빌드 대상 경로</td></tr>
     <tr><td>코드 수정 (필요할 때만)</td><td>운영 환경에서 돌도록 최소 수정</td><td>FE <code>next.config.ts</code>에 <code>output: "standalone"</code> 추가. 예: SQLite를 쓰는 앱이면 DB 접속을 환경변수로 바꾸고, 헬스체크 경로가 없으면 추가</td></tr>
@@ -630,7 +631,7 @@ stateDiagram-v2
   direction LR
   [*] --> Stable: blue가 트래픽 수신
   Stable --> Preview: helm upgrade (green 생성)
-  Preview --> Judging: green 준비 완료
+  Preview --> Judging: green 준비 → 미리보기 주소로 smoke 요청
   Judging --> Promoted: AI 판단 "안전" (janto는 사람 확인)
   Judging --> Aborted: AI 판단 "위험"
   Aborted --> Stable: green 폐기, blue 유지
@@ -642,7 +643,8 @@ stateDiagram-v2
 </figure>
 <ul>
   <li>릴리스 전략은 App Chart 값 <code>deployStrategy</code>로 고른다(<code>blueGreen</code> | <code>rolling</code>, <code>canary</code>는 다음 단계).</li>
-  <li>AI 판단 입력: green의 에러율, p95 응답시간, 컨테이너 재시작 수, 헬스체크 결과. 출력: promote / abort와 근거 문장.</li>
+  <li><b>smoke 요청</b>: green은 승격 전에는 미리보기 주소로만 열려 있어 사용자 트래픽이 없다. 그대로 두면 관찰 창 동안 에러율과 p95가 비어 있다. 그래서 관찰 창 동안 <b>파이프라인(GHA)</b>이 미리보기 주소로 <code>.deploy/smoke.yaml</code>에 적힌 요청(주요 API, 기대 상태 코드)과 가벼운 반복 요청을 보낸다. 요청 목록은 에이전트가 API를 분석해 만든다(6.3).</li>
+  <li>AI 판단 입력: smoke 결과(실패 요청, 상태 코드), smoke 트래픽 기준의 에러율 · p95 응답시간, 컨테이너 재시작 수, 헬스체크. 출력: promote / abort와 근거 문장.</li>
   <li>근거는 PR 코멘트와 감사 로그에 남기고, 운영 승인 화면에서 승인자가 확인한다.</li>
   <li>DB 스키마 마이그레이션은 릴리스 직전 Job으로 실행하며, 여러 번 실행해도 안전해야 한다.</li>
 </ul>
@@ -916,7 +918,7 @@ flowchart LR
   <div class="task-body">
     <p><b>목표</b> green의 지표를 보고 promote 또는 abort를 정하고 근거를 남긴다.</p>
     <p><b>세부 작업</b></p>
-    <ul class="checklist"><li>관찰 창(예: 60초) 동안 에러율 · p95 · 재시작 · 헬스체크 조회</li><li>판단 기준값 정의(12장 미결정 2번)</li><li>LLM 호출(Claude API) → <code>{decision, reason}</code> JSON, API 키는 demo-app Secret → <code>secrets: inherit</code></li><li><code>kubectl argo rollouts promote / abort</code>. yolo는 자동, janto는 PR 코멘트 후 사람이 실행</li><li>호출 실패 시 안전한 기본값(abort), (검토) 숫자 판정은 AnalysisTemplate</li></ul>
+    <ul class="checklist"><li>관찰 창 동안 미리보기 주소로 smoke 요청 실행(<code>.deploy/smoke.yaml</code> + 가벼운 반복 요청). green은 승격 전 사용자 트래픽이 없으므로 이게 판단 근거가 된다</li><li>관찰 창(예: 60초) 동안 smoke 결과 · 에러율 · p95 · 재시작 · 헬스체크 조회</li><li>판단 기준값 정의(12장 미결정 2번)</li><li>LLM 호출(Claude API) → <code>{decision, reason}</code> JSON, API 키는 demo-app Secret → <code>secrets: inherit</code></li><li><code>kubectl argo rollouts promote / abort</code>. yolo는 자동, janto는 PR 코멘트 후 사람이 실행</li><li>호출 실패 시 안전한 기본값(abort), (검토) 숫자 판정은 AnalysisTemplate</li></ul>
     <p><b>완료 기준</b> 정상 버전은 promote, 일부러 500을 내는 버전은 abort된다.</p>
     <p class="small"><b>선행</b> <a class="tlink" href="#t5">T5</a> · <b>후속</b> <a class="tlink" href="#t8">T8</a>, <a class="tlink" href="#t12">T12</a> · <b>관련</b> 6.5, FR-7</p>
   </div>
@@ -987,7 +989,7 @@ flowchart LR
   <div class="task-body">
     <p><b>목표</b> 두 스킬이 demo-app에 PR 또는 <code>yolo/*</code> 브랜치를 만든다. 스킬은 직접 apply하지 않는다.</p>
     <p><b>세부 작업</b></p>
-    <ul class="checklist"><li>platform의 <code>skills/</code>를 새 계약에 맞게 수정: 로컬 자격증명으로 apply하는 단계 제거</li><li><code>/janto-deploy</code>: 리뷰 지점 1 → 기능 브랜치 + main PR</li><li><code>/yolo-deploy</code>: <code>yolo/&lt;기능&gt;</code> push</li><li>산출물 생성(6.3 표): Dockerfile, 값 파일, <code>infra/envs/&lt;대상&gt;</code>(원격 모듈 참조 + tfvars), <code>.deploy/config.yaml</code>(<code>template_version</code> 포함), 재사용 워크플로 호출부</li><li><code>.deploy/</code>에 배포 기록</li></ul>
+    <ul class="checklist"><li>platform의 <code>skills/</code>를 새 계약에 맞게 수정: 로컬 자격증명으로 apply하는 단계 제거</li><li><code>/janto-deploy</code>: 리뷰 지점 1 → 기능 브랜치 + main PR</li><li><code>/yolo-deploy</code>: <code>yolo/&lt;기능&gt;</code> push</li><li>산출물 생성(6.3 표): Dockerfile, 값 파일, <code>infra/envs/&lt;대상&gt;</code>(원격 모듈 참조 + tfvars), <code>.deploy/config.yaml</code>(<code>template_version</code> 포함), <code>.deploy/smoke.yaml</code>(API 분석으로 smoke 요청 목록), 재사용 워크플로 호출부</li><li><code>.deploy/</code>에 배포 기록</li></ul>
     <p><b>완료 기준</b> demo-app에 두 스킬을 실행하면 PR과 <code>yolo/*</code> 브랜치가 생기고, 템플릿은 태그로 참조된다.</p>
     <p class="small"><b>선행</b> <a class="tlink" href="#t21">T21</a> · <b>후속</b> <a class="tlink" href="#t14">T14</a> · <b>관련</b> 6.1, 6.3</p>
   </div>

@@ -365,7 +365,7 @@
 - [ ] platform의 `skills/`를 새 계약에 맞게 수정: 로컬 자격증명으로 apply하는 단계 제거
 - [ ] `/janto-deploy`: 리뷰 지점 1 → 기능 브랜치 + main PR
 - [ ] `/yolo-deploy`: `yolo/<기능>` push
-- [ ] 산출물 생성(6.3 표): Dockerfile, 값 파일, `infra/envs/<대상>`(원격 모듈 참조 + tfvars), `.deploy/config.yaml`(`template_version` 포함), 재사용 워크플로 호출부
+- [ ] 산출물 생성(6.3 표): Dockerfile, 값 파일, `infra/envs/<대상>`(원격 모듈 참조 + tfvars), `.deploy/config.yaml`(`template_version` 포함), `.deploy/smoke.yaml`(API 분석으로 smoke 요청 목록), 재사용 워크플로 호출부
 - [ ] `.deploy/`에 배포 기록
 
 **완료 기준** demo-app에 두 스킬을 실행하면 PR과 `yolo/*` 브랜치가 생기고, 템플릿은 태그로 참조된다.
@@ -437,7 +437,8 @@
 **목표** green의 지표를 보고 promote 또는 abort를 정하고 근거를 남긴다.
 
 **할 일**
-- [ ] 관찰 창(예: 60초) 동안 에러율 · p95 · 재시작 · 헬스체크 조회
+- [ ] 관찰 창 동안 미리보기 주소로 smoke 요청 실행 (`.deploy/smoke.yaml` + 가벼운 반복 요청). green은 승격 전 사용자 트래픽이 없으므로 이게 판단 근거가 된다
+- [ ] 관찰 창(예: 60초) 동안 smoke 결과 · 에러율 · p95 · 재시작 · 헬스체크 조회
 - [ ] 판단 기준값 정의(12장 미결정 2번)
 - [ ] LLM 호출(Claude API) → `{decision, reason}` JSON, API 키는 demo-app Secret → `secrets: inherit`
 - [ ] `kubectl argo rollouts promote / abort`. yolo는 자동, janto는 PR 코멘트 후 사람이 실행
