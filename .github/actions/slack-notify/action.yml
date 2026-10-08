@@ -26,11 +26,16 @@ inputs:
     description: 본문 아래에 덧붙일 내용 (Slack mrkdwn)
     required: false
   buttons:
-    description: 붙일 조작 버튼. promote, abort, undo 중에서 공백으로 구분합니다. slack-bot이 받아 rollout 워크플로를 실행합니다.
+    description: >-
+      붙일 조작 버튼. promote, abort, undo, merge 중에서 공백으로 구분합니다.
+      promote · abort · undo는 slack-bot이 받아 대상 레포의 rollout 워크플로를 실행하고, merge는 PR을 머지합니다.
     required: false
   service:
-    description: 버튼이 조작할 서비스 (all | be | fe)
-    default: all
+    description: "promote · abort · undo 버튼이 조작할 대상 (<서비스|all>@<대상>.<환경>). 비우면 target을 쓴다"
+    default: ""
+  pr:
+    description: merge 버튼이 머지할 PR 번호 (대상 레포)
+    default: ""
 runs:
   using: composite
   steps:
@@ -45,7 +50,8 @@ runs:
         REQUESTED_BY: ${{ inputs.requested-by }}
         DETAILS: ${{ inputs.details }}
         BUTTONS: ${{ inputs.buttons }}
-        SERVICE: ${{ inputs.service }}
+        SERVICE: ${{ inputs.service || inputs.target }}
+        PR: ${{ inputs.pr }}
         RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}/attempts/${{ github.run_attempt }}
       run: |
         if [ -z "$TOKEN" ] || [ -z "$CHANNEL" ]; then
@@ -59,17 +65,22 @@ runs:
         esac
         text="$icon *$ACTION* \`$TARGET\` @ \`${VERSION::7}\` ($RESULT)"
         meta="${REQUESTED_BY:-$GITHUB_ACTOR} | <$RUN_URL|워크플로 실행 보기>"
-        # 버튼의 action_id(rollout_<action>)와 value(서비스)는 slack-bot/app/main.py와 맞춘 약속입니다.
+        # 버튼의 action_id와 value는 slack-bot/app/main.py와 맞춘 약속입니다 (slack-bot/README.md "버튼 약속").
+        #   rollout_<promote|abort|undo>: value = <서비스|all>@<대상>.<환경>
+        #   pr_merge:                     value = PR 번호
         payload="$(jq -n \
           --arg channel "$CHANNEL" --arg text "$text" --arg details "$DETAILS" \
-          --arg meta "$meta" --arg buttons "$BUTTONS" --arg service "$SERVICE" '
-          def title: {promote: "승격", abort: "취소", undo: "되돌리기"}[.];
+          --arg meta "$meta" --arg buttons "$BUTTONS" --arg service "$SERVICE" --arg pr "$PR" '
+          def title: {promote: "승격", abort: "취소", undo: "되돌리기", merge: "머지"}[.];
           def plain: {type: "plain_text", text: .};
           def button:
-            {type: "button", action_id: ("rollout_" + .), value: $service, text: (title | plain),
-             confirm: {title: ("확인" | plain), text: ("\($service) 서비스에 \(title) 요청을 보낼까요?" | plain),
-                       confirm: ("실행" | plain), deny: ("닫기" | plain)}}
-            + (if . == "promote" then {style: "primary"} elif . == "undo" then {style: "danger"} else {} end);
+            (if . == "merge" then {id: "pr_merge", value: $pr, subject: "PR #\($pr)"}
+             else {id: ("rollout_" + .), value: $service, subject: $service} end) as $b
+            | {type: "button", action_id: $b.id, value: $b.value, text: (title | plain),
+               confirm: {title: ("확인" | plain), text: ("\($b.subject)에 \(title) 요청을 보낼까요?" | plain),
+                         confirm: ("실행" | plain), deny: ("닫기" | plain)}}
+              + (if . == "promote" or . == "merge" then {style: "primary"}
+                 elif . == "undo" then {style: "danger"} else {} end);
           ($buttons | split(" ") | map(select(. != ""))) as $actions
           | {channel: $channel, text: $text, blocks: (
               [{type: "section", text: {type: "mrkdwn", text: $text}}]
