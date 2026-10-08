@@ -19,6 +19,17 @@ variable "tunnel" {
     token_secret = optional(string, "")
     replicas     = optional(number, 1)
   })
+  default = null
+}
+
+variable "tunnels" {
+  description = "환경별 터널 (이름 → tunnel과 같은 모양). Deployment cloudflared-<이름>으로 뜬다. 예: { test = {...}, prod = {...} }"
+  type = map(object({
+    origin_url   = string
+    token_secret = optional(string, "")
+    replicas     = optional(number, 1)
+  }))
+  default = {}
 }
 
 variable "chart_versions" {
