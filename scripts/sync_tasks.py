@@ -1,11 +1,12 @@
-"""docs/tasks.md를 기준으로 GitHub 이슈와 프로젝트 보드를 맞춘다.
+"""docs/tasks.md와 GitHub 이슈 · 프로젝트 보드를 맞춘다. 진행 상황의 기준은 보드(이슈)다.
 
-사람은 tasks.md만 고친다. 이 스크립트는 매번 tasks.md 전체를 읽어
-작업(T번호)마다 이슈의 제목 · 본문 · 라벨 · 담당자와 보드 상태를 다시 맞춘다.
-그래서 할 일이 바뀌거나 다른 작업으로 옮겨져도 다음 실행에서 그대로 반영된다.
+- 진행 상황(할 일 체크, 담당, 완료)은 이슈와 보드에서 관리한다.
+- 계획(작업 추가, 할 일 문장, 할 일 이동, 우선순위)은 tasks.md에서 고친다.
 
-    python scripts/sync_tasks.py            # 반영
-    python scripts/sync_tasks.py --dry-run  # 바뀔 내용만 출력
+    python scripts/sync_tasks.py push   # tasks.md의 계획 → 이슈 (체크 상태는 이슈 것을 유지)
+    python scripts/sync_tasks.py pull   # 이슈의 체크 · 담당 → tasks.md, 체크 상태 → 보드
+    python scripts/sync_tasks.py tick T3 2   # T3 이슈의 2번째 할 일을 체크
+    --dry-run 을 붙이면 바뀔 내용만 출력한다.
 
 필요: gh CLI, GH_TOKEN(이슈 쓰기 + 조직 프로젝트 쓰기 권한).
 """
@@ -32,6 +33,7 @@ LOGINS = {
     "배준범": "baejun10",
     "배규태": "baekyutae",
 }
+NAMES = {v: k for k, v in LOGINS.items()}
 AREAS = {
     "레포 · 인프라": "area:infra",
     "파이프라인": "area:pipeline",
@@ -40,6 +42,10 @@ AREAS = {
 }
 # 스크립트가 관리하는 라벨. 이 접두사의 라벨은 tasks.md 값으로 덮어쓴다.
 MANAGED = ("P0", "P1", "P2", "stage:", "area:")
+STEP = re.compile(r"^- \[([ x])\] (.+)$")
+
+# 보드로 옮긴 내역. 워크플로가 Slack으로 보낸다.
+moves: list[str] = []
 
 
 @dataclass
@@ -57,11 +63,7 @@ class Task:
     refs: str = ""
     deps: list[str] = field(default_factory=list)
     succ: list[str] = field(default_factory=list)
-    steps: list[str] = field(default_factory=list)
-
-    @property
-    def checked(self) -> int:
-        return sum(s.startswith("- [x]") for s in self.steps)
+    steps: list[tuple[bool, str]] = field(default_factory=list)
 
 
 def run(*args: str, input: str | None = None) -> str:
@@ -87,12 +89,14 @@ def ids(text: str) -> list[str]:
     return re.findall(r"`(T\d+)`", text)
 
 
-def parse(path: str) -> dict[str, Task]:
+# ---------------------------------------------------------------- tasks.md
+
+
+def parse(text: str) -> dict[str, Task]:
     tasks: dict[str, Task] = {}
     stage = ""
     cur: Task | None = None
-    for line in open(path, encoding="utf-8"):
-        line = line.rstrip("\n")
+    for line in text.splitlines():
         if m := re.match(r"## (\d+)단계", line):
             stage, cur = m.group(1), None
         elif line.startswith("## "):
@@ -119,15 +123,21 @@ def parse(path: str) -> dict[str, Task]:
             dep, rest = line.split("**후속**", 1)
             succ, _, refs = rest.partition("**설계 문서**")
             cur.deps, cur.succ, cur.refs = ids(dep), ids(succ), refs.strip()
-        elif re.match(r"- \[[ x]\] ", line):
-            cur.steps.append(line)
+        elif m := STEP.match(line):
+            cur.steps.append((m.group(1) == "x", m.group(2)))
     return tasks
+
+
+def issue_steps(body: str) -> dict[str, bool]:
+    """이슈 본문의 할 일 문장 → 체크 여부."""
+    return {m.group(2): m.group(1) == "x" for line in (body or "").splitlines() if (m := STEP.match(line))}
 
 
 def body(t: Task, num: dict[str, int]) -> str:
     def link(ts: list[str]) -> str:
         return ", ".join(f"#{num[x]} {x}" if x in num else x for x in ts) or "없음"
 
+    steps = "\n".join(f"- [{'x' if c else ' '}] {s}" for c, s in t.steps)
     return f"""**어디에 필요** {t.why}
 
 **만들 것** {t.make}
@@ -136,7 +146,7 @@ def body(t: Task, num: dict[str, int]) -> str:
 {t.goal}
 
 ## 할 일
-{chr(10).join(t.steps)}
+{steps}
 
 ## 완료 기준
 {t.done}
@@ -144,9 +154,9 @@ def body(t: Task, num: dict[str, int]) -> str:
 ## 관계
 - 선행: {link(t.deps)}
 - 후속: {link(t.succ)}
-- 담당: {t.owner} · 단계 {t.stage} · 우선순위 {t.prio} · 설계 문서 {t.refs}
+- 단계 {t.stage} · 우선순위 {t.prio} · 설계 문서 {t.refs}
 
-> 이 본문은 `docs/tasks.md`에서 자동으로 만든다. 고칠 때는 tasks.md를 고친다.
+> 할 일 체크와 담당은 이 이슈에서 한다. 할 일 문장 · 작업 추가 · 이동은 `docs/tasks.md`에서 고친다.
 """
 
 
@@ -155,16 +165,79 @@ def labels(t: Task) -> set[str]:
     return {t.prio, f"stage:{t.stage}"} | ({area} if area else set())
 
 
-def want_status(t: Task, now: str | None) -> str | None:
-    """열린 이슈의 체크 상태로 보드 상태를 정한다. 사람이 고른 Ready · In review는 되도록 그대로 둔다."""
-    total, k = len(t.steps), t.checked
-    if total and k == total:
-        return "Done"
-    if k > 0:
-        return None if now in ("In progress", "In review") else "In progress"
-    if now in (None, "Done"):
-        return "Backlog"
-    return None
+def owner_of(issue: dict) -> str:
+    logins = [a["login"] for a in issue["assignees"]]
+    return ", ".join(NAMES.get(x, x) for x in logins) or "미정"
+
+
+def rewrite_tasks(text: str, issues: dict[str, dict]) -> str:
+    """tasks.md의 체크박스와 담당을 이슈에 맞춘다. 계획 내용은 건드리지 않는다."""
+    out, cur = [], None
+    owners: dict[str, str] = {}
+    for line in text.splitlines():
+        if m := re.match(r"### \[(T\d+)\]", line):
+            cur = issues.get(m.group(1))
+        elif line.startswith("## "):
+            cur = None
+        if cur is not None:
+            if m := STEP.match(line):
+                checked = issue_steps(cur["body"]).get(m.group(2))
+                if checked is not None:
+                    line = f"- [{'x' if checked else ' '}] {m.group(2)}"
+            elif line.startswith("- **우선순위**") and (m := re.search(r"\*\*담당\*\* (.+)$", line)):
+                if m.group(1) != "전원":
+                    new = owner_of(cur)
+                    line = line[: m.start(1)] + new
+                    tid = re.match(r"\[(T\d+)\]", cur["title"]).group(1)
+                    owners[tid] = new
+        out.append(line)
+    return rewrite_roles("\n".join(out) + "\n", owners)
+
+
+def rewrite_roles(text: str, owners: dict[str, str]) -> str:
+    """역할 분담 목록에서 담당이 바뀐 작업을 새 담당 아래로 옮기고 개수를 다시 센다."""
+    start = text.index("## 역할 분담")
+    end = text.index("\n## ", start + 1)
+    lines = text[start:end].split("\n")
+    blocks: list[list[str]] = []  # [헤더, 항목...]
+    head: list[str] = []
+    for line in lines:
+        if line.startswith("**"):
+            blocks.append([line])
+        elif blocks and line.startswith("- `T"):
+            blocks[-1].append(line)
+        elif blocks:
+            blocks[-1].append(line)
+        else:
+            head.append(line)
+
+    def who(block: list[str]) -> str:
+        return re.match(r"\*\*(.+?)\*\*", block[0]).group(1)
+
+    entries = {}
+    for b in blocks:
+        for line in b[1:]:
+            if m := re.match(r"- `(T\d+)`", line):
+                entries[m.group(1)] = (who(b), line)
+    for tid, (cur, line) in entries.items():
+        new = owners.get(tid, cur).split(", ")[0]
+        if new == cur or tid not in owners:
+            continue
+        target = next((b for b in blocks if who(b) == new), None) or next(b for b in blocks if who(b) == "미정")
+        src = next(b for b in blocks if who(b) == cur)
+        src.remove(line)
+        items = [i for i, x in enumerate(target) if x.startswith("- `T")]
+        target.insert((items[-1] + 1) if items else 1, line)
+
+    for b in blocks:
+        items = [x for x in b if x.startswith("- `T")]
+        p0 = sum("(P0)" in x for x in items)
+        b[0] = re.sub(r"\((\d+)개, P0 (\d+)개\)", f"({len(items)}개, P0 {p0}개)", b[0])
+    section = "\n".join(head + [x for b in blocks for x in b])
+    return text[:start] + section + text[end:]
+
+
+# ---------------------------------------------------------------- 보드
 
 
 class Board:
@@ -191,7 +264,14 @@ class Board:
     def status(self, number: int) -> str | None:
         return self.items.get(number, (None, None))[1]
 
-    def set(self, number: int, node_id: str, name: str) -> None:
+    def set(self, number: int, node_id: str, name: str, label: str, dry: bool) -> None:
+        before = self.status(number)
+        if before == name:
+            return
+        moves.append(f"{label} : {before or '보드 밖'} → {name}")
+        print(f"{label}: 보드 {before or '없음'} → {name}")
+        if dry:
+            return
         item = self.items.get(number, (None, None))[0]
         if item is None:
             item = gql(
@@ -210,46 +290,55 @@ class Board:
         self.items[number] = (item, name)
 
 
-def main() -> int:
-    ap = argparse.ArgumentParser()
-    ap.add_argument("--dry-run", action="store_true")
-    ap.add_argument("--no-board", action="store_true", help="보드는 건너뛰고 이슈만 맞춘다")
-    a = ap.parse_args()
-
-    tasks = parse(TASKS)
+def load_issues() -> dict[str, dict]:
     issues = json.loads(
         run("gh", "issue", "list", "-R", REPO, "--state", "all", "--limit", "500",
             "--json", "number,id,title,body,state,labels,assignees")
     )
-    by_id: dict[str, dict] = {}
-    for i in issues:
+    out: dict[str, dict] = {}
+    for i in sorted(issues, key=lambda x: x["number"]):
         if m := re.match(r"\[(T\d+)\]", i["title"]):
-            by_id.setdefault(m.group(1), i)
+            out.setdefault(m.group(1), i)
+    return out
 
-    # 1) 새 작업은 이슈부터 만든다 (본문의 관계 링크에 번호가 필요하다)
+
+# ---------------------------------------------------------------- 명령
+
+
+def push(dry: bool) -> None:
+    """tasks.md의 계획을 이슈에 반영한다. 체크 상태는 이슈 것을 유지한다."""
+    tasks = parse(open(TASKS, encoding="utf-8").read())
+    by_id = load_issues()
+    board = Board()
+
     for t in tasks.values():
         if t.id not in by_id:
             print(f"{t.id}: 새 이슈")
-            if not a.dry_run:
-                url = run("gh", "issue", "create", "-R", REPO, "--title", f"[{t.id}][{t.prio}] {t.title}",
-                          "--body", "(tasks.md에서 생성 중)").strip()
-                n = int(url.rsplit("/", 1)[1])
-                node = json.loads(run("gh", "issue", "view", str(n), "-R", REPO, "--json", "id"))["id"]
-                by_id[t.id] = {"number": n, "id": node, "title": "", "body": "", "state": "OPEN",
-                               "labels": [], "assignees": []}
+            if dry:
+                continue
+            url = run("gh", "issue", "create", "-R", REPO, "--title", f"[{t.id}][{t.prio}] {t.title}",
+                      "--body", "(tasks.md에서 생성 중)").strip()
+            n = int(url.rsplit("/", 1)[1])
+            i = json.loads(run("gh", "issue", "view", str(n), "-R", REPO,
+                               "--json", "number,id,title,body,state,labels,assignees"))
+            by_id[t.id] = i
+            login = LOGINS.get(t.owner)
+            if login:
+                run("gh", "issue", "edit", str(n), "-R", REPO, "--add-assignee", login)
+            board.set(n, i["id"], "Backlog", f"{t.id} #{n}", dry)
     num = {k: v["number"] for k, v in by_id.items()}
 
-    board = None if a.no_board else Board()
-
-    # 2) 이슈 제목 · 본문 · 라벨 · 담당자 · 열림 상태 · 보드
     for t in sorted(tasks.values(), key=lambda x: int(x.id[1:])):
         i = by_id.get(t.id)
-        if i is None:  # dry-run에서 새 작업
+        if i is None:
             continue
         n = i["number"]
-        changes: list[str] = []
-        args = ["gh", "issue", "edit", str(n), "-R", REPO]
+        # 같은 문장이 이슈에 있으면 이슈의 체크를 따른다. 새로 생기거나 옮겨 온 할 일은 tasks.md 값을 쓴다.
+        have = issue_steps(i["body"])
+        t.steps = [(have.get(s, c), s) for c, s in t.steps]
 
+        args = ["gh", "issue", "edit", str(n), "-R", REPO]
+        changes = []
         title = f"[{t.id}][{t.prio}] {t.title}"
         if i["title"] != title:
             args += ["--title", title]
@@ -257,56 +346,91 @@ def main() -> int:
         new_body = body(t, num)
         if (i["body"] or "").strip() != new_body.strip():
             args += ["--body-file", "-"]
-            changes.append(f"본문({t.checked}/{len(t.steps)})")
-
-        have = {l["name"] for l in i["labels"]}
-        managed = {l for l in have if l.startswith(MANAGED)}
+            changes.append("본문")
+        have_l = {l["name"] for l in i["labels"]}
+        managed = {l for l in have_l if l.startswith(MANAGED)}
         want = labels(t)
-        if want - have:
-            args += ["--add-label", ",".join(sorted(want - have))]
+        if want - have_l:
+            args += ["--add-label", ",".join(sorted(want - have_l))]
         if managed - want:
             args += ["--remove-label", ",".join(sorted(managed - want))]
         if want != managed:
             changes.append("라벨")
-
-        # 담당자는 비어 있을 때만 채운다. GitHub에서 바꾼 담당은 덮어쓰지 않고 알린다.
-        login = LOGINS.get(t.owner)
-        assigned = {x["login"] for x in i["assignees"]}
-        if login and not assigned:
-            args += ["--add-assignee", login]
-            changes.append("담당")
-        elif login and login not in assigned:
-            warn(f"{t.id} #{n}: 담당이 다름 (tasks.md {t.owner}, GitHub {', '.join(sorted(assigned))}). tasks.md를 고칠 것")
-
-        if len(args) > 6 and not a.dry_run:
-            run(*args, input=new_body)
-
-        closed = i["state"] == "CLOSED"
-        all_done = bool(t.steps) and t.checked == len(t.steps)
-        if closed:
-            # 사람이 닫은 이슈는 다시 열지 않고 보드도 건드리지 않는다.
-            if not all_done:
-                warn(f"{t.id} #{n}: 이슈는 닫혔는데 tasks.md에 남은 할 일 {len(t.steps) - t.checked}개. 체크하거나 이슈를 다시 열 것")
-        else:
-            status = board.status(n) if board else None
-            target = want_status(t, status) if board else None
-            if target:
-                changes.append(f"보드 {status or '없음'} → {target}")
-                if not a.dry_run:
-                    board.set(n, i["id"], target)
-            if all_done:
-                changes.append("이슈 닫기")
-                if not a.dry_run:
-                    run("gh", "issue", "close", str(n), "-R", REPO, "--reason", "completed",
-                        "--comment", "tasks.md의 할 일이 모두 체크되어 자동으로 닫음")
-
         if changes:
             print(f"{t.id} #{n}: {', '.join(changes)}")
+            if not dry:
+                run(*args, input=new_body)
 
-    # 3) tasks.md에서 사라진 작업은 건드리지 않고 알리기만 한다
     for k, i in by_id.items():
         if k not in tasks and i["state"] == "OPEN":
             warn(f"{k} #{i['number']}: tasks.md에 없음 (그대로 둠, 필요하면 직접 닫기)")
+
+
+def pull(dry: bool) -> bool:
+    """이슈의 체크 · 담당을 tasks.md에 반영하고, 체크 상태로 보드와 이슈 열림을 맞춘다."""
+    by_id = load_issues()
+    board = Board()
+    tasks = parse(open(TASKS, encoding="utf-8").read())
+
+    for tid, i in sorted(by_id.items(), key=lambda x: int(x[0][1:])):
+        if tid not in tasks:
+            continue
+        n, label = i["number"], f"{tid} #{i['number']}"
+        steps = issue_steps(i["body"])
+        total, k = len(steps), sum(steps.values())
+        now = board.status(n)
+        if i["state"] == "CLOSED":
+            board.set(n, i["id"], "Done", label, dry)
+        elif total and k == total:
+            print(f"{label}: 할 일을 모두 체크해 이슈 닫기")
+            if not dry:
+                run("gh", "issue", "close", str(n), "-R", REPO, "--reason", "completed",
+                    "--comment", "할 일이 모두 체크되어 자동으로 닫음")
+            board.set(n, i["id"], "Done", label, dry)
+        elif k > 0 and now in (None, "Backlog", "Ready", "Done"):
+            board.set(n, i["id"], "In progress", label, dry)
+        elif k == 0 and now in (None, "Done"):
+            board.set(n, i["id"], "Backlog", label, dry)
+
+    text = open(TASKS, encoding="utf-8").read()
+    new = rewrite_tasks(text, by_id)
+    changed = new != text
+    if changed:
+        print("tasks.md: 이슈의 체크 · 담당 반영")
+        if not dry:
+            open(TASKS, "w", encoding="utf-8").write(new)
+    return changed
+
+
+def tick(task: str, index: int, dry: bool) -> None:
+    """작업 이슈의 index번째(1부터) 할 일을 체크한다."""
+    i = load_issues()[task]
+    lines = i["body"].splitlines()
+    pos = [n for n, line in enumerate(lines) if STEP.match(line)]
+    if not 1 <= index <= len(pos):
+        sys.exit(f"{task} 할 일은 1~{len(pos)}번")
+    line = lines[pos[index - 1]]
+    lines[pos[index - 1]] = line.replace("- [ ]", "- [x]", 1)
+    print(f"{task} #{i['number']}: {lines[pos[index - 1]]}")
+    if not dry:
+        run("gh", "issue", "edit", str(i["number"]), "-R", REPO, "--body-file", "-", input="\n".join(lines) + "\n")
+
+
+def main() -> int:
+    ap = argparse.ArgumentParser()
+    ap.add_argument("command", choices=["push", "pull", "tick"])
+    ap.add_argument("args", nargs="*")
+    ap.add_argument("--dry-run", action="store_true")
+    ap.add_argument("--moves-file", help="보드로 옮긴 내역을 적을 파일 (Slack 알림용)")
+    a = ap.parse_args()
+    if a.command == "push":
+        push(a.dry_run)
+    elif a.command == "pull":
+        pull(a.dry_run)
+    else:
+        tick(a.args[0], int(a.args[1]), a.dry_run)
+    if a.moves_file and moves:
+        open(a.moves_file, "w", encoding="utf-8").write("\n".join(moves) + "\n")
     return 0
 
 
