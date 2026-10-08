@@ -37,10 +37,10 @@ jobs:
     steps:
       - uses: actions/checkout@v7
         with:
-          ref: main
           token: ${{ secrets.PROJECT_TOKEN }}
       - name: 동기화
         id: sync
+        shell: bash  # pipefail: 스크립트가 실패하면 tee 뒤에서도 job이 실패한다
         env:
           COMMAND: ${{ github.event_name == 'push' && 'push' || inputs.command || 'pull' }}
           DRY: ${{ inputs.dry-run && '--dry-run' || '' }}
