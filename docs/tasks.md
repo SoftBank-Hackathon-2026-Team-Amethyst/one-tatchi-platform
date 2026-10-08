@@ -268,7 +268,7 @@ Claude Code는 `/todo-task`, Codex는 `$todo-task`로 이 순서를 따르는 �
 - [ ] 잠자기 방지(`caffeinate`), 전원 연결
 - [x] k3s 설치, Cloudflare Tunnel → HTTPS 주소 (클러스터 안 cloudflared Quick Tunnel `*.trycloudflare.com`. 고정 도메인은 쓰지 않기로 함, 필요하면 `tunnel.token_secret`으로 Named Tunnel 전환. Traefik 대신 터널이 Service로 바로 연결)
 - [ ] 맥북에 self-hosted runner 설치(demo-app 레포, 라벨 `onprem`, push 이벤트 전용)
-- [ ] platform의 `modules/*/onprem` 구현: cluster, database(Helm Postgres), registry(GHCR), secrets, observability(Prometheus) (진행 중: cluster · cluster_addons · database(StatefulSet Postgres, TLS) · registry 완료, secrets는 External Secrets kubernetes provider로 `cloud-secrets` 제공. observability 남음. 루트 예시 `examples/onprem`)
+- [ ] platform의 `modules/*/onprem` 구현: cluster, database(Helm Postgres), registry(GHCR), secrets, observability(Prometheus) (진행 중: cluster · cluster_addons · database(StatefulSet Postgres, TLS) · registry 완료, secrets는 External Secrets kubernetes provider로 `cloud-secrets` 제공. observability 남음. 맥북 루트는 demo-app `infra/envs/onprem`)
 - [ ] runner가 GHCR 차트·이미지를 pull할 수 있는지 확인
 - [ ] 이미지를 멀티 아키텍처(`linux/amd64` + `linux/arm64`)로 빌드
 - [ ] App Chart로 demo-app 배포, 재부팅 후 자동 복구 확인 (진행 중: test 네임스페이스에 be · fe 배포, DB 연결 · 마이그레이션 · 방명록 쓰기 확인. 이미지는 로컬 빌드 후 `k3d image import`. 재부팅 복구 미확인)
