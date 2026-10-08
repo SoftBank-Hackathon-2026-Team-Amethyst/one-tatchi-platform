@@ -10,6 +10,11 @@
 
 ## Unreleased
 
+## v1.5.0
+
+- `ci_identity/aws`: 벤더 중립 출력 `plan_identity`, `deploy_identity` 추가. 기존 `plan_role_arn`, `deploy_role_arn`은 유지 (T24)
+- `modules/README.md`: AWS 모듈의 공통 출력, 연결 순서와 사전 검증 조건 문서화 (T24)
+
 ## v1.4.0
 
 Slack 봇과 롤아웃 워크플로, 템플릿 버전 업데이트 흐름, 서비스 도메인(HTTPS)을 추가했다.
