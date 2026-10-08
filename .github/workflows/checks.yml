@@ -189,3 +189,89 @@ jobs:
           severity: HIGH,CRITICAL
           exit-code: "1"
           trivyignores: .trivyignore
+
+  # 배포 설정(.deploy/config.yaml) 형식과 운영 관문 보호 (T6, 6.6).
+  # compliance는 운영 배포의 사람 승인 여부를 정하므로(deploy.yml의 gate) 리뷰 없이 바뀌면 안 된다.
+  #   - yolo 경로(yolo/** push, yolo/** → main PR)에서는 compliance와 CODEOWNERS를 바꿀 수 없다
+  #   - 그 밖의 PR에서도 AI가 만든 커밋(작성자 · Co-authored-by에 AI 이름 또는 [bot])이 바꾸면 실패한다
+  #   - 사람이 바꾼 PR은 통과하고, CODEOWNERS 리뷰를 받아야 머지된다
+  config-guard:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - name: 배포 설정 형식 (.deploy/config.yaml)
+        run: |
+          cfg=.deploy/config.yaml
+          if [ ! -f "$cfg" ]; then
+            echo "::warning::$cfg가 없다. 운영 배포는 regulated(사람 승인)로 처리된다"
+            exit 0
+          fi
+          compliance="$(yq -r '.compliance // ""' "$cfg")"
+          version="$(yq -r '.template_version // ""' "$cfg")"
+          fail=0
+          case "$compliance" in
+            regulated | none) ;;
+            *) echo "::error file=$cfg::compliance는 regulated | none 중 하나여야 한다 (지금: '$compliance')"; fail=1 ;;
+          esac
+          if ! [[ "$version" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "::error file=$cfg::template_version은 vX.Y.Z 형식이어야 한다 (지금: '$version')"
+            fail=1
+          fi
+          exit "$fail"
+      - name: 운영 관문 보호 (compliance · CODEOWNERS)
+        env:
+          EVENT: ${{ github.event_name }}
+          REF_NAME: ${{ github.ref_name }}
+          HEAD_REF: ${{ github.head_ref }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          case "$EVENT:$REF_NAME" in
+            pull_request:*) base="$(git merge-base "$BASE_SHA" "$HEAD_SHA")"; head="$HEAD_SHA"; branch="$HEAD_REF" ;;
+            push:yolo/*) base="$(git merge-base origin/main HEAD)"; head=HEAD; branch="$REF_NAME" ;;
+            *) echo "PR과 yolo/** push만 검사한다"; exit 0 ;;
+          esac
+
+          compliance_at() { git show "$1:.deploy/config.yaml" 2>/dev/null | yq -r '.compliance // ""' 2>/dev/null || true; }
+          is_ai() {
+            git log -1 --format='%an <%ae>%n%(trailers:key=Co-authored-by,valueonly)' "$1" |
+              grep -qiE 'claude|anthropic|codex|openai|copilot|gemini|cursor|\[bot\]'
+          }
+
+          changes=()
+          before="$(compliance_at "$base")"
+          after="$(compliance_at "$head")"
+          [ "$before" = "$after" ] || changes+=("compliance: '$before' → '$after'")
+          git diff --quiet "$base" "$head" -- .github/CODEOWNERS || changes+=(".github/CODEOWNERS")
+          if [ "${#changes[@]}" -eq 0 ]; then
+            echo "compliance와 CODEOWNERS 변경 없음"
+            exit 0
+          fi
+          printf '변경: %s\n' "${changes[@]}"
+
+          if [[ "$branch" == yolo/* ]]; then
+            echo "::error::yolo 경로(리뷰 없음)에서는 compliance와 CODEOWNERS를 바꿀 수 없다. janto PR(사람 리뷰)로 바꾼다"
+            exit 1
+          fi
+
+          ai=()
+          for c in $(git rev-list "$base..$head" -- .deploy/config.yaml .github/CODEOWNERS); do
+            touched=0
+            [ "$(compliance_at "$c^")" = "$(compliance_at "$c")" ] || touched=1
+            git diff --quiet "$c^" "$c" -- .github/CODEOWNERS || touched=1
+            if [ "$touched" = 1 ] && is_ai "$c"; then ai+=("$(git log -1 --format='%h %an: %s' "$c")"); fi
+          done
+          if [ "${#ai[@]}" -gt 0 ]; then
+            echo "::error::AI가 만든 커밋이 compliance나 CODEOWNERS를 바꿨다. 사람이 직접 커밋한다"
+            printf '  %s\n' "${ai[@]}"
+            exit 1
+          fi
+
+          echo "::notice::운영 관문 변경(${changes[*]}). CODEOWNERS 리뷰를 받아야 머지된다"
+          {
+            echo "### 운영 관문 변경"
+            printf -- '- %s\n' "${changes[@]}"
+            echo "사람이 만든 변경이다. CODEOWNERS 리뷰 후 머지한다."
+          } >> "$GITHUB_STEP_SUMMARY"

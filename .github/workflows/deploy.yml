@@ -12,7 +12,9 @@ on:
         type: string
         default: aws
       environment:
-        description: "GitHub environment 이름 (test | prod). prod는 승인 규칙이 걸린다"
+        description: >-
+          환경 (test | prod). prod는 .deploy/config.yaml의 compliance로 GitHub environment를 고른다:
+          regulated(또는 값 없음) → prod (사람 승인), none → prod-auto (자동 반영)
         type: string
         required: true
       services:
@@ -53,12 +55,43 @@ on:
         required: false
 
 jobs:
+  # 운영 관문 (T6): 운영 배포의 승인 여부는 배포하는 커밋의 compliance가 정한다. 값은 checks의 config-guard가 보호한다.
+  # 값이 없거나 파일이 없으면 안전한 쪽(regulated)으로 본다.
+  gate:
+    runs-on: ubuntu-latest
+    outputs:
+      environment: ${{ steps.gate.outputs.environment }}
+    steps:
+      - if: inputs.environment == 'prod'
+        uses: actions/checkout@v7
+        with:
+          sparse-checkout: .deploy
+      - id: gate
+        name: 운영 관문 (compliance)
+        env:
+          ENVIRONMENT: ${{ inputs.environment }}
+        run: |
+          if [ "$ENVIRONMENT" != prod ]; then
+            echo "environment=$ENVIRONMENT" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          compliance=""
+          if [ -f .deploy/config.yaml ]; then compliance="$(yq -r '.compliance // ""' .deploy/config.yaml)"; fi
+          case "$compliance" in
+            none) environment=prod-auto ;;
+            regulated | "") compliance="${compliance:-regulated (값 없음)}"; environment=prod ;;
+            *) echo "::error file=.deploy/config.yaml::compliance는 regulated | none 중 하나여야 한다 (지금: $compliance)"; exit 1 ;;
+          esac
+          echo "environment=$environment" >> "$GITHUB_OUTPUT"
+          echo "### 운영 관문: compliance=$compliance → environment \`$environment\`" >> "$GITHUB_STEP_SUMMARY"
+
   deploy:
+    needs: gate
     # onprem은 맥북의 self-hosted runner(바깥 방향 연결)에서 돈다. push 이벤트로만 호출한다.
     runs-on: ${{ inputs.target == 'onprem' && fromJSON('["self-hosted","onprem"]') || 'ubuntu-latest' }}
-    # environment를 지정하면 GitHub Deployments에 배포 기록이 남고, prod는 승인을 기다린다.
+    # environment를 지정하면 GitHub Deployments에 배포 기록이 남는다. prod는 승인을 기다리고, prod-auto는 바로 반영한다.
     environment:
-      name: ${{ inputs.environment }}
+      name: ${{ needs.gate.outputs.environment }}
       url: ${{ steps.urls.outputs.active }}
     # 같은 대상 · 환경 · 서비스의 배포는 동시에 돌지 않는다 (NFR-4). 대기 중인 배포는 최신 것 하나만 남는다.
     concurrency:

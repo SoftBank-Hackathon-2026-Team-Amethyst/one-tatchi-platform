@@ -15,9 +15,9 @@ variable "github_oidc_subject_prefix" {
 }
 
 variable "deploy_environments" {
-  description = "Deploy 역할을 받을 GitHub environment"
+  description = "Deploy 역할을 받을 GitHub environment. prod-auto는 compliance: none인 운영 배포(승인 없음, T6)"
   type        = list(string)
-  default     = ["test", "prod", "destroy"]
+  default     = ["test", "prod", "prod-auto", "destroy"]
 }
 
 variable "audit_log_lock_mode" {
