@@ -234,7 +234,7 @@ Claude Code는 `/todo-task`, Codex는 `$todo-task`로 이 순서를 따르는 �
 - [ ] 재사용 `report.yml`(yolo 배포 리포트, T10과 맞춤)
 - [x] `bootstrap/` 이동
 - [ ] `skills/` 이동 (T13과 맞춤)
-- [ ] 릴리스 규칙: 시맨틱 버전 태그(v1.2.0), 변경 기록(CHANGELOG)
+- [x] 릴리스 규칙: 시맨틱 버전 태그(v1.2.0), 변경 기록(`CHANGELOG.md`)
 - [ ] 보호: main은 리뷰 필수, 태그는 관리자만
 
 **완료 기준** v1.0.0 태그를 달면 차트가 GHCR에 올라가고, 재사용 워크플로를 외부 레포에서 호출할 수 있다.
