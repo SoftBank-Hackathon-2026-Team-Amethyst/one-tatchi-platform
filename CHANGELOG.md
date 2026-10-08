@@ -10,6 +10,10 @@
 
 ## Unreleased
 
+## v1.4.0
+
+Slack 봇과 롤아웃 워크플로, 템플릿 버전 업데이트 흐름, 서비스 도메인(HTTPS)을 추가했다.
+
 - `slack-bot/`: 사전 검증 봇 이식. GitHub App(`one-tatchi-bot`) 인증, 대상 레포 · 워크플로를 설정값으로, PR 머지 버튼(`pr_merge`) 추가 (T26)
 - 재사용 워크플로 `rollout.yml`: Blue-Green 승격 · 취소 · 되돌리기, 감사 로그 `requested-by`
 - `slack-notify`: 조작 버튼 value가 알림 `target`(`<서비스|all>@<대상>.<환경>`)이 됨. 입력 `service` 기본값이 `all`에서 빈 값(=target)으로 바뀜. `merge` 버튼과 입력 `pr` 추가
