@@ -60,6 +60,11 @@ demo-app은 템플릿을 **태그로 고정해 참조**만 한다. 그래서 에
 
 세 버전은 demo-app의 `.deploy/config.yaml` → `template_version` 하나로 맞춘다.
 
+## 문서
+
+- [설계 문서](docs/plan.html): 브라우저로 열어 본다 (다이어그램은 Mermaid로 그려진다)
+- [해야 할 일](docs/tasks.md): 단계별 작업과 역할 분담
+
 ## 작업 현황
 
 [Softbank 2026 project](https://github.com/orgs/SoftBank-Hackathon-2026-Team-Amethyst/projects/1) 보드와 이 레포의 이슈를 본다.
