@@ -31,7 +31,7 @@ variable "node_count" {
 }
 
 variable "admin_principal_arns" {
-  description = "클러스터 관리자 권한을 줄 IAM 주체 (GHA Deploy 역할 포함)"
+  description = "클러스터와 암호화 키 관리자 권한을 줄 IAM 주체 (GHA Deploy 역할 포함)"
   type        = list(string)
   default     = []
 }

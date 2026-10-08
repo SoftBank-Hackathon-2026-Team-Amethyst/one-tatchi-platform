@@ -10,6 +10,10 @@
 
 ## Unreleased
 
+## v1.5.1
+
+- `cluster/aws`: 지정된 관리자 목록을 KMS 키에도 적용해 plan/apply 실행 역할에 따라 키 정책이 바뀌는 문제 수정 (T24)
+
 ## v1.5.0
 
 - `ci_identity/aws`: 벤더 중립 출력 `plan_identity`, `deploy_identity` 추가. 기존 `plan_role_arn`, `deploy_role_arn`은 유지 (T24)
