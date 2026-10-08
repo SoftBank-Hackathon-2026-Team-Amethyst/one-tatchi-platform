@@ -75,9 +75,9 @@ demo-app은 템플릿을 **태그로 고정해 참조**만 한다. 그래서 에
 
 ## 팀원 작업 방법
 
-1. [`docs/tasks.md`](docs/tasks.md)에서 자기 이름과 맡은 작업을 찾는다.
+1. [프로젝트 보드](https://github.com/orgs/SoftBank-Hackathon-2026-Team-Amethyst/projects/1)나 [`docs/tasks.md`](docs/tasks.md)에서 맡은 작업을 찾는다. 진행 상황의 기준은 보드(이슈)다.
 2. 브랜치에서 작업하고 PR로 올린다. `main`은 보호돼 있어 CI가 통과해야 머지된다(리뷰 승인 불필요).
-3. 끝낸 할 일을 `- [x]`로 체크해 코드와 같은 PR에 넣는다. 커밋 메시지와 PR 제목 앞에 `[T번호]`.
+3. 커밋 메시지와 PR 제목 앞에 `[T번호]`. 끝낸 할 일은 **이슈에서** 체크한다. 보드 이동, tasks.md 체크박스 갱신, Slack 알림은 자동이다.
 4. Claude Code에서는 `/todo-task`, Codex에서는 `$todo-task`로 이 과정을 스킬로 진행할 수 있다.
 
 ## 문서

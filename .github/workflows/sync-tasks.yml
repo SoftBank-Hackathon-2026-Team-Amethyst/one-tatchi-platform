@@ -1,35 +1,74 @@
 name: sync-tasks
 
-# docs/tasks.md가 main에 들어오면 이슈(제목 · 본문 · 라벨)와 프로젝트 보드 상태를 맞춘다.
-# 사람은 tasks.md만 고친다. 보드와 이슈 본문은 이 워크플로가 따라간다.
+# 진행 상황의 기준은 보드(이슈)다.
+# - tasks.md가 main에 들어오면(push): 계획(작업 · 할 일 문장 · 우선순위)을 이슈에 반영. 체크 상태는 이슈 것을 유지
+# - 이슈가 바뀌면(issues): 체크 상태로 보드를 옮기고, 체크 · 담당을 tasks.md에 반영하는 PR을 자동 머지
+# 보드를 옮기면 Slack 채널에 알린다(SLACK_BOT_TOKEN, SLACK_CHANNEL_ID가 있을 때).
 on:
   push:
     branches: [main]
     paths: [docs/tasks.md, scripts/sync_tasks.py]
+  issues:
+    types: [edited, closed, reopened, assigned, unassigned]
   workflow_dispatch:
+    inputs:
+      command:
+        type: choice
+        options: [pull, push]
+        default: pull
+      dry-run:
+        type: boolean
+        default: false
 
 permissions:
   contents: read
-  issues: write
 
 concurrency:
   group: sync-tasks
   cancel-in-progress: false
+
+env:
+  # 조직 프로젝트 쓰기와, CI를 실행시키는 PR을 만들려면 기본 토큰 대신 PAT이 필요하다.
+  GH_TOKEN: ${{ secrets.PROJECT_TOKEN }}
 
 jobs:
   sync:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
-      - name: 이슈 · 보드 맞추기
+        with:
+          ref: main
+          token: ${{ secrets.PROJECT_TOKEN }}
+      - name: 동기화
+        id: sync
         env:
-          # 조직 프로젝트는 기본 토큰으로 못 고친다. PROJECT_TOKEN(이슈 + 프로젝트 쓰기)이 없으면 이슈만 맞춘다.
-          GH_TOKEN: ${{ secrets.PROJECT_TOKEN || github.token }}
-          HAS_PROJECT_TOKEN: ${{ secrets.PROJECT_TOKEN != '' }}
+          COMMAND: ${{ github.event_name == 'push' && 'push' || inputs.command || 'pull' }}
+          DRY: ${{ inputs.dry-run && '--dry-run' || '' }}
         run: |
-          if [ "$HAS_PROJECT_TOKEN" = "true" ]; then
-            python3 scripts/sync_tasks.py | tee -a "$GITHUB_STEP_SUMMARY"
-          else
-            echo "::warning::PROJECT_TOKEN 시크릿이 없어 보드는 건너뛴다"
-            python3 scripts/sync_tasks.py --no-board | tee -a "$GITHUB_STEP_SUMMARY"
-          fi
+          python3 scripts/sync_tasks.py "$COMMAND" $DRY --moves-file moves.txt | tee -a "$GITHUB_STEP_SUMMARY"
+          if [ -z "$DRY" ] && ! git diff --quiet docs/tasks.md; then echo "changed=true" >> "$GITHUB_OUTPUT"; fi
+      - name: tasks.md 반영 PR (자동 머지)
+        if: steps.sync.outputs.changed == 'true'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git switch -c bot/sync-tasks
+          git commit -qam "[sync] 보드의 체크 · 담당을 tasks.md에 반영"
+          git push -qf origin bot/sync-tasks
+          gh pr view bot/sync-tasks --json state -q .state 2>/dev/null | grep -q OPEN \
+            || gh pr create --head bot/sync-tasks --title "[sync] 보드 → tasks.md" \
+                 --body "이슈의 할 일 체크와 담당을 tasks.md에 반영한다. sync-tasks 워크플로가 만들었다."
+          gh pr merge bot/sync-tasks --auto --squash
+      - name: Slack 알림
+        if: hashFiles('moves.txt') != ''
+        env:
+          SLACK_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
+          CHANNEL: ${{ vars.SLACK_CHANNEL_ID }}
+        run: |
+          if [ -z "$SLACK_TOKEN" ] || [ -z "$CHANNEL" ]; then echo "Slack 설정 없음, 건너뜀"; exit 0; fi
+          text="$(printf '*보드 이동* (by %s)\n%s\n<https://github.com/orgs/%s/projects/1|보드 열기>' \
+            "${{ github.actor }}" "$(sed 's/^/• /' moves.txt)" "${{ github.repository_owner }}")"
+          jq -n --arg c "$CHANNEL" --arg t "$text" '{channel:$c,text:$t}' \
+            | curl -sS -X POST https://slack.com/api/chat.postMessage \
+                -H "Authorization: Bearer $SLACK_TOKEN" -H "Content-Type: application/json; charset=utf-8" -d @- \
+            | jq -e .ok >/dev/null || echo "::warning::Slack 전송 실패"
