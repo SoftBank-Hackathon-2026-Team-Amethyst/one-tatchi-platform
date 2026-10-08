@@ -30,3 +30,12 @@ variable "audit_log_retention_days" {
   type    = number
   default = 90
 }
+
+variable "allowed_workflow_refs" {
+  description = "OIDC 역할을 받을 수 있는 재사용 워크플로 (job_workflow_ref)"
+  type        = list(string)
+  default = [
+    "SoftBank-Hackathon-2026-Team-Amethyst/one-tatchi-platform/.github/workflows/*@refs/tags/v*",
+    "SoftBank-Hackathon-2026-Team-Amethyst/one-tatchi-platform/.github/workflows/*@refs/heads/main",
+  ]
+}

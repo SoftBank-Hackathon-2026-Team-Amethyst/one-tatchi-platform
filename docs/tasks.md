@@ -188,9 +188,9 @@ Claude Code는 `/todo-task`, Codex는 `$todo-task`로 이 순서를 따르는 �
 - [x] Actions 설정: 외부 fork PR 워크플로는 승인 필수, self-hosted runner는 PR job에 쓰지 않음 (두 레포 `all_external_contributors`. 재사용 워크플로는 모두 `ubuntu-latest`, `onprem` 라벨 runner는 push job에서만 쓴다)
 - [x] demo-app의 OIDC sub 접두사 조회(`gh api repos/<owner>/demo-app/actions/oidc/customization/sub`) → bootstrap 변수 (`repo:SoftBank-Hackathon-2026-Team-Amethyst@338407242/demo-app@1408704749`, bootstrap 기본값과 일치)
 - [x] 로컬에서 `bootstrap` apply(state 버킷, 감사 로그, OIDC 역할) → state를 S3로 이전 (`one-tatchi-993371732872-tfstate/bootstrap.tfstate`, 이전 후 plan 변경 없음)
-- [ ] OIDC 역할 신뢰 조건에 `job_workflow_ref`(platform 재사용 워크플로만 허용) 추가 검토 (진행 중: AWS가 이 조건 키를 지원함을 확인. `<org>/one-tatchi-platform/.github/workflows/*@refs/tags/v*`로 제한하는 안. `modules/ci_identity/aws`는 T24 범위라 김형래와 맞춰 반영)
+- [x] OIDC 역할 신뢰 조건에 `job_workflow_ref`(platform 재사용 워크플로만 허용) 추가 검토 (`modules/ci_identity/aws`에 `allowed_workflow_refs` 추가(기본 빈 목록 = 제한 없음), bootstrap에서 platform 워크플로 `@refs/tags/v*` · `@refs/heads/main`만 허용. 적용 후 demo-app plan · apply 통과)
 - [x] demo-app에 GitHub Variables 등록, environment `prod`(required reviewers) 생성 (Variables 5개 등록. environment `test` · `prod`(팀원 5명 중 1명 승인, `main`만 배포) · `destroy`)
-- [ ] 브랜치 보호: `main`은 PR 필수 · 필수 검사 지정 · auto-merge 허용 (진행 중: demo-app ruleset `main`(PR 필수 · 삭제 · force push 금지), auto-merge · 머지 후 브랜치 삭제 허용. 필수 검사는 demo-app 호출 워크플로(T5)가 생긴 뒤 지정)
+- [x] 브랜치 보호: `main`은 PR 필수 · auto-merge 허용 (demo-app ruleset `main`: PR 필수 · 삭제 · force push 금지, auto-merge · 머지 후 브랜치 삭제 허용. 필수 검사 지정은 T11로 넘김)
 
 **완료 기준** demo-app의 PR에서 plan이, main 머지에서 apply가 돈다.
 
@@ -330,6 +330,7 @@ Claude Code는 `/todo-task`, Codex는 `$todo-task`로 이 순서를 따르는 �
 **할 일**
 - [x] 재사용 `checks.yml`에 이미지 Trivy, gitleaks, 라이선스 검사 추가
 - [x] 차단 기준: HIGH 이상 차단, 나머지는 리포트로. 예외는 사유와 함께 파일로
+- [ ] demo-app `main` ruleset에 필수 검사 지정: 매 PR마다 도는 검사(`checks.yml` 호출 job)를 required status check로 건다. `infra`는 infra 경로 변경에만 돌아 필수로 걸면 다른 PR이 막힌다 (T1에서 넘어옴)
 
 **완료 기준** 시크릿을 커밋하면 검사가 실패한다.
 

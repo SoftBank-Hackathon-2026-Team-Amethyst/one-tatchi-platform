@@ -18,3 +18,9 @@ variable "state_bucket_arn" {
   description = "plan 역할이 state를 읽고 락을 걸 S3 버킷 ARN"
   type        = string
 }
+
+variable "allowed_workflow_refs" {
+  description = "역할을 받을 수 있는 재사용 워크플로 (OIDC job_workflow_ref, StringLike). 예: <org>/one-tatchi-platform/.github/workflows/*@refs/tags/v*. 비어 있으면 제한하지 않는다"
+  type        = list(string)
+  default     = []
+}

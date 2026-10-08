@@ -15,6 +15,15 @@ data "aws_iam_policy_document" "plan_trust" {
       variable = "token.actions.githubusercontent.com:sub"
       values   = ["${var.oidc_subject_prefix}:*"]
     }
+    # 지정한 재사용 워크플로 안에서 돈 job만 받는다. 비어 있으면 제한하지 않는다.
+    dynamic "condition" {
+      for_each = length(var.allowed_workflow_refs) > 0 ? [1] : []
+      content {
+        test     = "StringLike"
+        variable = "token.actions.githubusercontent.com:job_workflow_ref"
+        values   = var.allowed_workflow_refs
+      }
+    }
   }
 }
 
@@ -38,6 +47,15 @@ data "aws_iam_policy_document" "deploy_trust" {
         ["${var.oidc_subject_prefix}:ref:refs/heads/main"],
         [for env in var.deploy_environments : "${var.oidc_subject_prefix}:environment:${env}"],
       )
+    }
+    # 지정한 재사용 워크플로 안에서 돈 job만 받는다. 비어 있으면 제한하지 않는다.
+    dynamic "condition" {
+      for_each = length(var.allowed_workflow_refs) > 0 ? [1] : []
+      content {
+        test     = "StringLike"
+        variable = "token.actions.githubusercontent.com:job_workflow_ref"
+        values   = var.allowed_workflow_refs
+      }
     }
   }
 }

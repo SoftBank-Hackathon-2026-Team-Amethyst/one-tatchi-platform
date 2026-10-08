@@ -114,4 +114,7 @@ module "ci_identity" {
   oidc_subject_prefix = var.github_oidc_subject_prefix
   deploy_environments = var.deploy_environments
   state_bucket_arn    = aws_s3_bucket.state.arn
+
+  # demo-app 자신의 워크플로가 아니라 이 레포의 재사용 워크플로(태그 · main)에서만 역할을 받는다.
+  allowed_workflow_refs = var.allowed_workflow_refs
 }
