@@ -626,7 +626,7 @@ Claude Code는 `/todo-task`, Codex는 `$todo-task`로 이 순서를 따르는 �
 **목표** janto 배포의 사람 조작(머지 · 승격 · 운영 승인)이 전부 Slack 버튼으로 끝나고, 누가 눌렀는지 감사 로그에 남는다.
 
 **할 일**
-- [ ] 기존 봇(알림 + promote · abort · undo 버튼, Socket Mode)을 platform `slack-bot/`으로 이식, 대상 레포 · 워크플로 이름을 설정값으로
+- [x] 기존 봇(알림 + promote · abort · undo 버튼, Socket Mode)을 platform `slack-bot/`으로 이식, 대상 레포 · 워크플로 이름을 설정값으로
 - [ ] PR 머지 버튼: janto PR의 검사 통과 · plan 결과를 알리고, 버튼을 누르면 봇이 머지 API 호출. 누른 사람을 PR 코멘트로 남김
 - [ ] 운영 승인 · 거절 버튼: 봇을 GitHub App으로 만들고 demo-app `prod` environment의 승인 규칙(custom deployment protection rule)으로 등록, 버튼으로 승인 · 거절
 - [ ] 누를 수 있는 사람 제한(`ALLOWED_USER_IDS`), 요청자를 감사 로그 `requested_by`에 기록
