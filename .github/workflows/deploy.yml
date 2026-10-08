@@ -166,9 +166,23 @@ jobs:
         run: |
           case "$TARGET" in
             aws)
-              host="$(kubectl get ingress "$RELEASE" -n "$NAMESPACE" -o jsonpath='{.status.loadBalancer.ingress[0].hostname}')"
-              active="http://$host/"
-              preview="http://$host:8080/" ;;
+              # Ingress가 없는 서비스(예: FE가 클러스터 안에서 프록시하는 BE)는 외부 주소가 없다.
+              # 처음 만든 ALB는 주소가 붙기까지 시간이 걸려 잠시 기다린다.
+              host=""
+              if kubectl get ingress "$RELEASE" -n "$NAMESPACE" >/dev/null 2>&1; then
+                for _ in $(seq 1 30); do
+                  host="$(kubectl get ingress "$RELEASE" -n "$NAMESPACE" -o jsonpath='{.status.loadBalancer.ingress[0].hostname}')"
+                  [ -n "$host" ] && break
+                  sleep 5
+                done
+              fi
+              if [ -n "$host" ]; then
+                active="http://$host/"
+                preview="http://$host:8080/"
+              else
+                active=""
+                preview="(외부 주소 없음)"
+              fi ;;
             onprem)
               # Cloudflare Tunnel이 FE Service로 바로 연결한다. 환경별 터널(cloudflared-<네임스페이스>)이 있으면 그것을 쓴다.
               # green은 터널에 열지 않는다.
