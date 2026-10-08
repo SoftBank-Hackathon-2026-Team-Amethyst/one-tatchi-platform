@@ -43,12 +43,12 @@ one-tatchi-platform/
 │   ├── service-base/           # 서비스 네임스페이스 + DB 시크릿 동기화
 │   └── platform-config/        # 클러스터 공통 설정
 ├── .github/
-│   ├── workflows/              # 재사용: checks · infra · deploy / 이 레포용: ci · release
+│   ├── workflows/              # 재사용: checks · infra · deploy · template-update / 이 레포용: ci · release
 │   └── actions/                # 공통 액션 (감사 로그, Slack 알림 등)
 ├── bootstrap/                  # state 버킷 · 감사 로그 버킷 · OIDC 역할 (최초 1회)
 ├── skills/                     # 에이전트 스킬 (/janto-deploy, /yolo-deploy, 분석기)
 ├── slack-bot/                  # 배포 알림 · 조작 Slack 봇
-├── scripts/                    # 보조 스크립트
+├── scripts/                    # 보조 스크립트 (템플릿 버전 올리기 등) + tests/
 └── docs/                       # ADR, 설계 문서
 ```
 
@@ -64,6 +64,20 @@ demo-app은 템플릿을 **태그로 고정해 참조**만 한다. 그래서 에
 
 세 버전은 demo-app의 `.deploy/config.yaml` → `template_version` 하나로 맞춘다.
 
+### 버전 표기 규칙
+
+새 태그가 나오면 `template-update`가 아래 표기를 한 번에 올리는 PR을 연다(`scripts/bump-template-version.sh`). 이 형식을 벗어나면 갱신되지 않는다.
+
+| 위치 | 형식 |
+|---|---|
+| `.deploy/config.yaml` | `template_version: v1.0.0` |
+| 워크플로 · 액션 참조 | `one-tatchi-platform/...@v1.0.0` |
+| 워크플로 입력 | `template-ref: v1.0.0`, `chart-version: 1.0.0` (v 없음) |
+| Terraform 모듈 | `one-tatchi-platform.git//modules/...?ref=v1.0.0` |
+
+- `template-ref`는 생략하지 않는다. 기본값 `v1`은 움직이는 태그라 고정이 깨진다.
+- 예외: `template-update.yml` 자신은 `@v1`로 호출한다. 업데이트 도구라 최신을 따라가고, 갱신 대상에서도 빠진다.
+
 ## 재사용 워크플로
 
 | 워크플로 | 하는 일 |
@@ -71,8 +85,9 @@ demo-app은 템플릿을 **태그로 고정해 참조**만 한다. 그래서 에
 | `checks.yml` | 정적분석(ruff · lint) · 테스트(pytest, Postgres) · 빌드 · 의존성 취약점(Trivy fs) · IaC 규정(Trivy config). 끄는 입력이 없다 |
 | `infra.yml` | Terraform fmt · validate · plan(PR 코멘트) / apply. 감사 로그 · Slack 알림 |
 | `deploy.yml` | 이미지 빌드(SHA 태그) → App Chart(OCI)로 `helm upgrade` → green이 Paused가 될 때까지 대기 → 주소 · 감사 로그 · Slack(promote/abort 버튼) |
+| `template-update.yml` | 이 레포의 새 태그를 확인해 버전 표기를 올리는 PR을 연다(본문에 CHANGELOG 구간). GitHub App 토큰 사용 |
 
-이 레포 자체는 `ci.yml`(모듈 validate · 차트 lint · IaC 검사)과 `release.yml`(태그 `vX.Y.Z` → 차트를 GHCR에 push, 메이저 태그 `v1` 이동)로 관리한다.
+이 레포 자체는 `ci.yml`(모듈 validate · 차트 lint · IaC 검사 · scripts 테스트)과 `release.yml`(태그 `vX.Y.Z` → 차트를 GHCR에 push, 메이저 태그 `v1` 이동, 대상 레포에 `repository_dispatch`)로 관리한다.
 
 ## 팀원 작업 방법
 

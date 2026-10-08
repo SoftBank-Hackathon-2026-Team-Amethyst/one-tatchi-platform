@@ -34,3 +34,32 @@ jobs:
           major="${VERSION%%.*}"
           git tag -f "$major"
           git push -f origin "$major"
+
+  # 대상 레포에 새 버전을 알린다. 대상 레포의 template-update 워크플로가 업데이트 PR을 연다(T22).
+  # 메이저 태그(v1)를 옮긴 뒤에 보내야 대상 레포가 @v1로 새 template-update를 쓴다.
+  notify:
+    needs: charts
+    if: vars.BOT_CLIENT_ID != ''
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/create-github-app-token@v3
+        id: app
+        with:
+          client-id: ${{ vars.BOT_CLIENT_ID }}
+          private-key: ${{ secrets.BOT_PRIVATE_KEY }}
+          owner: ${{ github.repository_owner }}
+      - name: 대상 레포에 repository_dispatch
+        env:
+          GH_TOKEN: ${{ steps.app.outputs.token }}
+          VERSION: ${{ github.ref_name }}
+          # 공백으로 구분한 owner/repo 목록. 비우면 같은 조직의 demo-app
+          CONSUMERS: ${{ vars.TEMPLATE_CONSUMERS || format('{0}/demo-app', github.repository_owner) }}
+        run: |
+          for repo in $CONSUMERS; do
+            echo "→ $repo ($VERSION)"
+            gh api "repos/$repo/dispatches" \
+              -f event_type=template-released \
+              -f "client_payload[version]=$VERSION"
+          done

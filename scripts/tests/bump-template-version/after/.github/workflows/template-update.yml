@@ -1,0 +1,7 @@
+name: template-update
+on:
+  workflow_dispatch:
+jobs:
+  update:
+    # 업데이트 도구는 메이저 태그를 따라간다. 바뀌면 안 된다.
+    uses: SoftBank-Hackathon-2026-Team-Amethyst/one-tatchi-platform/.github/workflows/template-update.yml@v1
