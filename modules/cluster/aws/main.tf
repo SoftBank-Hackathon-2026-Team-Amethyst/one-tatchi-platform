@@ -39,6 +39,9 @@ module "eks" {
   enable_cluster_creator_admin_permissions = false
   access_entries                           = merge(local.admin_entries, local.viewer_entries)
 
+  # plan/apply 실행자 대신 지정된 관리자에게 KMS 관리 권한을 고정한다.
+  kms_key_administrators = var.admin_principal_arns
+
   addons = {
     vpc-cni                = { before_compute = true }
     eks-pod-identity-agent = { before_compute = true }
