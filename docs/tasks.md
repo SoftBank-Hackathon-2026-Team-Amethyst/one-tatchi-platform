@@ -99,7 +99,7 @@ Claude Code는 `/todo-task`, Codex는 `$todo-task`로 이 순서를 따르는 �
 **목표** 질문 3~5개로 코드에서 알 수 없는 정보를 받는다.
 
 **할 일**
-- [x] 질문 확정: 예상 사용자 수, 월 예산, 규제 여부(개인정보·결제·금융), 배포 대상 선호, 가용성 (`skills/deploy-analyze/references/brief-format.md`)
+- [x] 질문 확정: 사용자 수·원화 예산 범위, 민감 데이터 예/아니오/모름, 고정 배포 대상 4개, 가용성 (`skills/deploy-analyze/references/brief-questions.json`, 선택형 메뉴 1~4번 → 5번으로 연속 진행)
 - [x] 기본값과 건너뛰기 (명시적 건너뛰기만 적용, 규제 미정은 `regulated`와 확인 필요 근거 기록)
 - [x] 답변 → `.deploy/brief.md`, 규제 답변 → `compliance` (`scripts/write_brief.py`, 기존 규제 설정 변경 차단·다른 설정 보존)
 - [ ] Claude Code에서 실제 질문 → 응답 → 두 파일 생성 확인 (자동 테스트와 스킬 형식 검증 완료, 수동 대화 검증 절차는 `references/brief-format.md`)

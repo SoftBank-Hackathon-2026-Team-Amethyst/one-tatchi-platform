@@ -6,9 +6,7 @@ from __future__ import annotations
 import argparse
 import io
 import json
-import math
 import os
-import re
 import stat
 import sys
 import tempfile
@@ -18,21 +16,9 @@ from ruamel.yaml import YAML
 from ruamel.yaml.comments import CommentedMap
 from ruamel.yaml.error import YAMLError
 
-FIELDS = {
-    "expected_daily_users",
-    "monthly_budget",
-    "data_categories",
-    "preferred_target",
-    "availability",
-}
-DATA_LABELS = {"personal": "개인정보", "payment": "결제", "financial": "금융"}
-TARGET_LABELS = {"aws": "AWS", "gcp": "GCP", "onprem": "온프레미스", "auto": "추천받기"}
-AVAILABILITY_LABELS = {
-    "demo": "시연용",
-    "standard": "일반 운영",
-    "high": "중단에 민감",
-    "unknown": "미정",
-}
+QUESTION_PATH = Path(__file__).resolve().parents[1] / "references/brief-questions.json"
+QUESTIONS = json.loads(QUESTION_PATH.read_text(encoding="utf-8"))["questions"]
+FIELDS = {question["field"] for question in QUESTIONS}
 
 
 class BriefError(ValueError):
@@ -54,117 +40,100 @@ def validate_answers(value: object) -> dict:
             "답변에는 계약의 다섯 키가 모두 필요하며 추가 키는 허용하지 않습니다."
         )
 
-    users = value["expected_daily_users"]
-    if users is not None and (type(users) is not int or users < 0):
-        raise BriefError("expected_daily_users는 0 이상의 정수 또는 null이어야 합니다.")
+    # Compare serialized values so nested booleans/floats cannot pass as integers.
+    normalized = {}
+    for question in QUESTIONS:
+        field = question["field"]
+        allowed = [option["value"] for option in question["options"]]
+        allowed.append(question["skip_value"])
+        try:
+            encoded = json.dumps(value[field], sort_keys=True, allow_nan=False)
+        except (TypeError, ValueError) as exc:
+            raise BriefError(f"{field}의 답변 형식이 유효하지 않습니다.") from exc
+        for choice in allowed:
+            if encoded == json.dumps(choice, sort_keys=True, allow_nan=False):
+                normalized[field] = json.loads(json.dumps(choice))
+                break
+        else:
+            raise BriefError(f"{field}는 질문 계약에 정의된 선택값만 허용합니다.")
+    return normalized
 
-    budget = value["monthly_budget"]
-    if budget is not None:
-        if not isinstance(budget, dict) or set(budget) != {"amount", "currency"}:
-            raise BriefError("monthly_budget에는 amount와 currency가 필요합니다.")
-        amount = budget["amount"]
-        if (
-            type(amount) not in (int, float)
-            or (isinstance(amount, float) and not math.isfinite(amount))
-            or amount < 0
-        ):
-            raise BriefError("월 예산은 0 이상의 유한한 숫자여야 합니다.")
-        currency = budget["currency"]
-        if not isinstance(currency, str) or not re.fullmatch(r"[A-Z]{3}", currency):
-            raise BriefError("통화는 KRW, USD, JPY 같은 대문자 3자리 코드여야 합니다.")
 
-    categories = value["data_categories"]
-    if categories is not None:
-        if not isinstance(categories, list) or any(
-            not isinstance(item, str) or item not in DATA_LABELS for item in categories
-        ):
-            raise BriefError(
-                "data_categories는 personal/payment/financial 배열 또는 null입니다."
-            )
-        if len(categories) != len(set(categories)):
-            raise BriefError("데이터 종류를 중복해서 지정할 수 없습니다.")
+def question_batches() -> list[dict]:
+    """Emit native AskUserQuestion payloads without regenerating Korean text."""
+    questions = [
+        {
+            "header": question["header"],
+            "question": question["question"],
+            "multiSelect": False,
+            "options": [
+                {"label": option["label"], "description": option["description"]}
+                for option in question["options"]
+            ],
+        }
+        for question in QUESTIONS
+    ]
+    # Claude Code supports at most four questions per native tool call.
+    return [
+        {"questions": questions[index : index + 4]}
+        for index in range(0, len(questions), 4)
+    ]
 
-    for field, options in (
-        ("preferred_target", TARGET_LABELS),
-        ("availability", AVAILABILITY_LABELS),
-    ):
-        if not isinstance(value[field], str) or value[field] not in options:
-            raise BriefError(f"{field}는 {' | '.join(options)} 중 하나여야 합니다.")
 
-    # Keep canonical order for repeatable output, independent of question order.
-    return {
-        "expected_daily_users": users,
-        "monthly_budget": None
-        if budget is None
-        else {"amount": budget["amount"], "currency": budget["currency"]},
-        "data_categories": None if categories is None else sorted(categories),
-        "preferred_target": value["preferred_target"],
-        "availability": value["availability"],
-    }
+def answer_label(field: str, value: object) -> str:
+    question = next(item for item in QUESTIONS if item["field"] == field)
+    return next(
+        (option["label"] for option in question["options"] if option["value"] == value),
+        "미정",
+    )
 
 
 def classify_compliance(answers: dict) -> tuple[str, str]:
-    categories = answers["data_categories"]
-    if categories is None:
+    sensitive_data = answers["handles_sensitive_data"]
+    if sensitive_data == "unknown":
         return (
             "regulated",
             "데이터 취급 여부가 미정이므로 확인 전까지 승인 생략을 허용하지 않습니다.",
         )
-    if categories:
-        names = ", ".join(DATA_LABELS[item] for item in categories)
-        return "regulated", f"사용자가 다음 데이터 취급을 명시했습니다: {names}."
+    if sensitive_data == "yes":
+        return "regulated", "사용자가 민감한 데이터를 저장하거나 처리한다고 답했습니다."
     return (
         "none",
-        "사용자가 개인정보·결제·금융 데이터를 모두 취급하지 않는다고 명시했습니다.",
+        "사용자가 민감한 데이터를 저장하거나 처리하지 않는다고 명시했습니다.",
     )
 
 
 def defaulted_fields(answers: dict) -> list[str]:
-    defaults = []
-    for field in ("expected_daily_users", "monthly_budget", "data_categories"):
-        if answers[field] is None:
-            defaults.append(field)
-    if answers["preferred_target"] == "auto":
-        defaults.append("preferred_target")
-    if answers["availability"] == "unknown":
-        defaults.append("availability")
-    return defaults
+    return [
+        question["field"]
+        for question in QUESTIONS
+        if answers[question["field"]] == question["skip_value"]
+    ]
 
 
 def render_brief(answers: dict, compliance: str, reason: str) -> str:
-    users = answers["expected_daily_users"]
-    user_text = "미정" if users is None else f"{users:,}명 / 일"
-    budget = answers["monthly_budget"]
-    budget_text = (
-        "미정" if budget is None else f"{budget['amount']:,} {budget['currency']} / 월"
-    )
-    categories = answers["data_categories"]
-    data_text = (
-        "미정"
-        if categories is None
-        else (
-            ", ".join(DATA_LABELS[item] for item in categories)
-            or "모두 해당 없음 (사용자 명시)"
-        )
-    )
+    labels = {field: answer_label(field, value) for field, value in answers.items()}
+    needs_review = answers["handles_sensitive_data"] == "unknown"
     defaults = defaulted_fields(answers)
     defaults_text = ", ".join(f"`{field}`" for field in defaults) or "없음"
     normalized = json.dumps(answers, ensure_ascii=False, indent=2, allow_nan=False)
     return (
         "# 배포 브리프\n\n"
         "사용자 답변으로 생성했습니다. 미정 값은 후속 분석에서 가정으로 구분합니다.\n\n"
-        f"- 하루 예상 이용자: {user_text}\n"
-        f"- 월 인프라 예산: {budget_text}\n"
-        f"- 취급 데이터: {data_text}\n"
-        f"- 선호 배포 대상: {TARGET_LABELS[answers['preferred_target']]}\n"
-        f"- 가용성 요구: {AVAILABILITY_LABELS[answers['availability']]}\n\n"
+        f"- 하루 예상 이용자: {labels['expected_daily_users']}\n"
+        f"- 월 인프라 예산 (KRW): {labels['monthly_budget']}\n"
+        f"- 민감 데이터 취급: {labels['handles_sensitive_data']}\n"
+        f"- 선호 배포 대상: {labels['preferred_target']}\n"
+        f"- 가용성 요구: {labels['availability']}\n\n"
         "## 규제 분류\n\n"
         f"- compliance: `{compliance}`\n"
         f"- 근거: {reason}\n"
-        f"- 데이터 취급 여부 추가 확인: {'필요' if categories is None else '불필요'}\n\n"
+        f"- 데이터 취급 여부 추가 확인: {'필요' if needs_review else '불필요'}\n\n"
         "## 기본값과 미정 항목\n\n"
         f"- {defaults_text}\n"
         "- 규모·예산 미정은 제한 없음이나 0을 뜻하지 않습니다.\n"
+        "- 사용자 수와 예산은 선택한 범위를 유지합니다. 범위 상한을 정확한 답변으로 바꾸지 않습니다.\n"
+        "- 범위의 min/max는 포함 경계이며, max: null은 상한 미정입니다. 예산 무제한을 뜻하지 않습니다.\n"
         "- `auto`는 대상 추천 요청, `unknown`은 가용성 미정입니다.\n\n"
         "## 정규화된 답변\n\n"
         f"```json\n{normalized}\n```\n"
@@ -264,7 +233,7 @@ def save_brief(project_root: Path, value: object, *, dry_run: bool = False) -> d
         atomic_write(brief_path, brief_text)
     return {
         "compliance": compliance,
-        "needs_review": answers["data_categories"] is None,
+        "needs_review": answers["handles_sensitive_data"] == "unknown",
         "defaults_applied": defaulted_fields(answers),
         "brief_path": str(brief_path),
         "config_path": str(config_path),
@@ -277,19 +246,29 @@ def main() -> int:
         description="배포 답변을 검증하고 브리프와 초기 compliance를 저장합니다."
     )
     parser.add_argument(
-        "--project-root", type=Path, required=True, help="배포 대상 앱 루트"
+        "--project-root", type=Path, help="배포 대상 앱 루트; 저장 시 필수"
     )
     parser.add_argument(
-        "--answers", default="-", help="답변 JSON 파일 경로; 기본값 - 는 표준 입력"
+        "--answers", help="답변 JSON 파일 경로; 생략 또는 - 는 표준 입력"
     )
     parser.add_argument(
         "--dry-run", action="store_true", help="파일을 쓰지 않고 검증만 수행"
     )
+    parser.add_argument(
+        "--questions", action="store_true", help="선택형 질문 도구에 전달할 JSON 출력"
+    )
     args = parser.parse_args()
+    if args.questions:
+        if args.project_root is not None or args.answers is not None or args.dry_run:
+            parser.error("--questions는 저장 옵션과 함께 사용할 수 없습니다.")
+        print(json.dumps({"batches": question_batches()}, ensure_ascii=False, indent=2))
+        return 0
+    if args.project_root is None:
+        parser.error("저장하려면 --project-root가 필요합니다.")
     try:
         text = (
             sys.stdin.read()
-            if args.answers == "-"
+            if args.answers in (None, "-")
             else Path(args.answers).read_text(encoding="utf-8")
         )
         answers = json.loads(text, object_pairs_hook=unique_object)

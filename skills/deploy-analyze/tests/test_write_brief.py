@@ -7,6 +7,7 @@ import subprocess
 import sys
 import tempfile
 import unittest
+from itertools import pairwise
 from pathlib import Path
 
 from ruamel.yaml import YAML
@@ -17,9 +18,9 @@ brief = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(brief)
 
 ANSWERS = {
-    "expected_daily_users": 100,
-    "monthly_budget": {"amount": 100000, "currency": "KRW"},
-    "data_categories": ["personal"],
+    "expected_daily_users": {"min": 0, "max": 100},
+    "monthly_budget": {"min": 0, "max": 100000, "currency": "KRW"},
+    "handles_sensitive_data": "yes",
     "preferred_target": "aws",
     "availability": "demo",
 }
@@ -62,24 +63,23 @@ class BriefTests(unittest.TestCase):
             check=False,
         )
 
-    def test_each_data_category_requires_regulated(self):
-        for category in ("personal", "payment", "financial"):
-            with self.subTest(category=category):
-                self.answers["data_categories"] = [category]
-                result = self.save()
-                self.assertEqual(result["compliance"], "regulated")
-                self.assertFalse(result["needs_review"])
-                self.assertEqual(
-                    YAML(typ="safe").load(self.config), {"compliance": "regulated"}
-                )
-                self.assertIn(brief.DATA_LABELS[category], self.brief_path.read_text())
+    def test_yes_requires_regulated_without_inventing_data_categories(self):
+        result = self.save()
+        self.assertEqual(result["compliance"], "regulated")
+        self.assertFalse(result["needs_review"])
+        self.assertEqual(
+            YAML(typ="safe").load(self.config), {"compliance": "regulated"}
+        )
+        rendered = self.brief_path.read_text()
+        self.assertIn("민감 데이터 취급: 예", rendered)
+        self.assertNotIn("data_categories", rendered)
 
     def test_only_explicit_no_data_allows_none(self):
-        self.answers["data_categories"] = []
+        self.answers["handles_sensitive_data"] = "no"
         self.save()
         self.assertEqual(YAML(typ="safe").load(self.config)["compliance"], "none")
         self.assertIn(
-            "사용자가 개인정보·결제·금융 데이터를 모두 취급하지",
+            "사용자가 민감한 데이터를 저장하거나 처리하지",
             self.brief_path.read_text(),
         )
 
@@ -87,7 +87,7 @@ class BriefTests(unittest.TestCase):
         self.answers = {
             "expected_daily_users": None,
             "monthly_budget": None,
-            "data_categories": None,
+            "handles_sensitive_data": "unknown",
             "preferred_target": "auto",
             "availability": "unknown",
         }
@@ -97,16 +97,60 @@ class BriefTests(unittest.TestCase):
         self.assertEqual(set(result["defaults_applied"]), brief.FIELDS)
         rendered = self.brief_path.read_text()
         self.assertIn("하루 예상 이용자: 미정", rendered)
-        self.assertIn("월 인프라 예산: 미정", rendered)
+        self.assertIn("월 인프라 예산 (KRW): 미정", rendered)
         self.assertIn("데이터 취급 여부가 미정", rendered)
 
-    def test_zero_values_and_decimal_budget_are_supported(self):
-        self.answers["expected_daily_users"] = 0
-        for amount in (0, 12.5):
-            with self.subTest(amount=amount):
-                self.answers["monthly_budget"] = {"amount": amount, "currency": "USD"}
+    def test_all_range_choices_preserve_bounds_in_brief(self):
+        for question in brief.QUESTIONS[:2]:
+            field = question["field"]
+            for option in question["options"]:
+                with self.subTest(field=field, value=option["value"]):
+                    self.answers[field] = option["value"]
+                    self.save()
+                    rendered = self.brief_path.read_text()
+                    self.assertIn(option["label"], rendered)
+                    saved = json.loads(rendered.split("```json\n")[1].split("\n```")[0])
+                    self.assertEqual(saved[field], option["value"])
+
+    def test_ranges_cover_nonnegative_integers_without_gaps_or_overlap(self):
+        for question in brief.QUESTIONS[:2]:
+            with self.subTest(field=question["field"]):
+                ranges = [option["value"] for option in question["options"]]
+                self.assertEqual(ranges[0]["min"], 0)
+                self.assertIsNone(ranges[-1]["max"])
+                for previous, current in pairwise(ranges):
+                    self.assertEqual(previous["max"] + 1, current["min"])
+                for value in ranges:
+                    self.assertIs(type(value["min"]), int)
+                    if value["max"] is not None:
+                        self.assertGreaterEqual(value["max"], value["min"])
+        self.assertTrue(
+            all(
+                option["value"]["currency"] == "KRW"
+                for option in brief.QUESTIONS[1]["options"]
+            )
+        )
+
+    def test_unknown_sensitive_data_preserves_other_answers(self):
+        self.answers["handles_sensitive_data"] = "unknown"
+        result = self.save()
+        self.assertEqual(result["compliance"], "regulated")
+        self.assertTrue(result["needs_review"])
+        self.assertEqual(result["defaults_applied"], ["handles_sensitive_data"])
+
+    def test_only_four_supported_targets_can_be_saved(self):
+        for target in ("aws", "gcp", "onprem", "auto"):
+            with self.subTest(target=target):
+                self.answers["preferred_target"] = target
                 self.save()
-                self.assertIn(f"{amount} USD / 월", self.brief_path.read_text())
+                self.assertIn(
+                    f'"preferred_target": "{target}"', self.brief_path.read_text()
+                )
+        before = self.snapshot()
+        self.answers["preferred_target"] = "azure"
+        with self.assertRaises(brief.BriefError):
+            self.save()
+        self.assertEqual(self.snapshot(), before)
 
     def test_same_policy_preserves_config_bytes_and_refreshes_brief(self):
         original = '# 기존 설정\r\ntemplate_version: "1.0.0"\r\ncompliance: regulated # 보호\r\nservices: [be, fe]\r\n'
@@ -114,11 +158,11 @@ class BriefTests(unittest.TestCase):
         self.config.write_bytes(original.encode())
         self.save()
         first_brief = self.brief_path.read_bytes()
-        self.answers["expected_daily_users"] = 200
+        self.answers["expected_daily_users"] = {"min": 101, "max": 1000}
         self.save()
         self.assertEqual(self.config.read_bytes(), original.encode())
         self.assertNotEqual(first_brief, self.brief_path.read_bytes())
-        self.assertIn("200명 / 일", self.brief_path.read_text())
+        self.assertIn("101~1,000명", self.brief_path.read_text())
 
     def test_initial_policy_keeps_unrelated_values_quotes_and_comments(self):
         self.existing(
@@ -142,14 +186,14 @@ class BriefTests(unittest.TestCase):
         )
 
     def test_policy_changes_in_both_directions_leave_both_files_untouched(self):
-        for existing, categories in (
-            ("regulated", []),
-            ("none", ["personal"]),
-            ("none", None),
+        for existing, sensitive_data in (
+            ("regulated", "no"),
+            ("none", "yes"),
+            ("none", "unknown"),
         ):
-            with self.subTest(existing=existing, categories=categories):
+            with self.subTest(existing=existing, sensitive_data=sensitive_data):
                 self.existing(f"compliance: {existing}\n")
-                self.answers["data_categories"] = categories
+                self.answers["handles_sensitive_data"] = sensitive_data
                 before = self.snapshot()
                 with self.assertRaisesRegex(brief.BriefError, "사람이 검토"):
                     self.save()
@@ -161,19 +205,31 @@ class BriefTests(unittest.TestCase):
             ("expected_daily_users", True),
             ("expected_daily_users", 1.5),
             ("expected_daily_users", "100"),
+            ("expected_daily_users", 100),
+            ("expected_daily_users", {"min": 0, "max": 1000}),
+            ("expected_daily_users", {"min": False, "max": 100}),
+            ("expected_daily_users", {"min": 0.0, "max": 100}),
+            ("expected_daily_users", {"min": 0, "max": 100, "extra": 1}),
             ("monthly_budget", {"amount": -1, "currency": "KRW"}),
             ("monthly_budget", {"amount": True, "currency": "KRW"}),
             ("monthly_budget", {"amount": float("inf"), "currency": "KRW"}),
             ("monthly_budget", {"amount": float("nan"), "currency": "KRW"}),
             ("monthly_budget", {"amount": 1, "currency": "krw"}),
             ("monthly_budget", {"amount": 1}),
-            ("data_categories", "none"),
-            ("data_categories", False),
-            ("data_categories", ["none", "personal"]),
-            ("data_categories", ["personal", "personal"]),
-            ("data_categories", [{}]),
+            ("monthly_budget", {"min": 0, "max": 100000, "currency": "USD"}),
+            ("monthly_budget", {"min": 0, "max": 100000, "currency": "JPY"}),
+            ("monthly_budget", {"min": 0, "max": 100000, "currency": "krw"}),
+            ("monthly_budget", {"min": 0, "max": 500000, "currency": "KRW"}),
+            ("monthly_budget", {"min": 0, "max": float("inf"), "currency": "KRW"}),
+            ("monthly_budget", {"min": 0, "max": True, "currency": "KRW"}),
+            ("handles_sensitive_data", "none"),
+            ("handles_sensitive_data", False),
+            ("handles_sensitive_data", None),
+            ("handles_sensitive_data", ["personal"]),
             ("preferred_target", "azure"),
             ("preferred_target", []),
+            ("preferred_target", "직접 입력"),
+            ("preferred_target", "unknown"),
             ("availability", "99.99%"),
             ("availability", {}),
         ]
@@ -280,7 +336,7 @@ class BriefTests(unittest.TestCase):
     def test_cli_bad_json_and_duplicate_keys_fail_without_writes(self):
         for payload in (
             "{broken",
-            '{"data_categories": [], "data_categories": null}',
+            '{"handles_sensitive_data": "no", "handles_sensitive_data": "unknown"}',
             "[]",
         ):
             with self.subTest(payload=payload):
@@ -289,6 +345,43 @@ class BriefTests(unittest.TestCase):
                 self.assertIn("브리프 저장 실패", result.stderr)
                 self.assertEqual(result.stdout, "")
                 self.assertFalse(self.deploy.exists())
+
+    def test_cli_questions_emit_two_valid_native_menu_payloads(self):
+        result = subprocess.run(
+            [sys.executable, "-B", str(SCRIPT), "--questions"],
+            text=True,
+            capture_output=True,
+            check=False,
+            cwd=self.root,
+        )
+        self.assertEqual(result.returncode, 0, result.stderr)
+        batches = json.loads(result.stdout)["batches"]
+        self.assertEqual([len(batch["questions"]) for batch in batches], [4, 1])
+        questions = [question for batch in batches for question in batch["questions"]]
+        for question in questions:
+            self.assertEqual(
+                set(question), {"header", "question", "multiSelect", "options"}
+            )
+            self.assertLessEqual(len(question["header"]), 12)
+            self.assertFalse(question["multiSelect"])
+            self.assertTrue(2 <= len(question["options"]) <= 4)
+            for option in question["options"]:
+                self.assertEqual(set(option), {"label", "description"})
+        self.assertEqual(questions[0]["options"][0]["label"], "100명 이하")
+        self.assertEqual(
+            [option["label"] for option in questions[2]["options"]],
+            ["예", "아니오", "모름"],
+        )
+        self.assertEqual(
+            [option["label"] for option in questions[3]["options"]],
+            ["AWS", "GCP", "온프레미스", "추천"],
+        )
+        self.assertFalse(self.deploy.exists())
+
+    def test_cli_questions_reject_save_options(self):
+        result = self.cli("", "--questions")
+        self.assertEqual(result.returncode, 2)
+        self.assertFalse(self.deploy.exists())
 
 
 if __name__ == "__main__":
