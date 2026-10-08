@@ -1,0 +1,18 @@
+# 실제 값은 관리자 로컬의 team.auto.tfvars에 있다(커밋하지 않음). 이 파일은 이메일만 가린 사본이다.
+# 팀원을 바꿀 때는 team.auto.tfvars와 이 파일을 같이 고친다.
+
+member_account_email = "<redacted>+onetatchi@gmail.com"
+
+users = {
+  "soul.lee"      = { given_name = "Soul", family_name = "Lee", email = "<redacted>", role = "admin" }
+  "junbeom.bae"   = { given_name = "Junbeom", family_name = "Bae", email = "<redacted>", role = "admin" }
+  "hyeongrae.kim" = { given_name = "Hyeongrae", family_name = "Kim", email = "<redacted>", role = "admin" }
+  "gayeon.won"    = { given_name = "Gayeon", family_name = "Won", email = "<redacted>", role = "admin" }
+  "gyutae.bae"    = { given_name = "Gyutae", family_name = "Bae", email = "<redacted>", role = "readonly" }
+}
+
+# 이소울, 원가연
+budget_emails = [
+  "<redacted>",
+  "<redacted>",
+]
