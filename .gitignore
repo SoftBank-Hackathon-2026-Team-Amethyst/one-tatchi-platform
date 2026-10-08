@@ -16,3 +16,7 @@ charts/*/charts/
 
 # 비밀값
 .env
+
+# org 스택: 팀원 이메일
+org/*.auto.tfvars
+!org/*.auto.tfvars.example
