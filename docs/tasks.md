@@ -297,7 +297,7 @@ Claude Code는 `/todo-task`, Codex는 `$todo-task`로 이 순서를 따르는 �
 - [x] network · cluster · cluster_addons · registry · database · observability · ci_identity의 aws 구현 이식
 - [x] 사전 검증에서 해결한 문제 반영: 애드온 설치 순서, LB Controller Service webhook 끄기, Helm `replace`, DB 보안 그룹 `count`, OIDC immutable subject
 - [x] 출력값 이름이 벤더 중립인지 확인 (계약 준수)
-- [ ] demo-app용 `infra/envs/aws` 루트 예시 작성
+- [x] demo-app용 `infra/envs/aws` 루트 예시 작성
 - [ ] `terraform validate`, Trivy IaC 검사 통과
 
 **완료 기준** demo-app의 `infra/envs/aws`에서 원격 모듈로 plan · apply가 성공한다.
