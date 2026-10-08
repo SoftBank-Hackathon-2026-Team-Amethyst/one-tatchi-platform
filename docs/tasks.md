@@ -442,7 +442,7 @@ Claude Code는 `/todo-task`, Codex는 `$todo-task`로 이 순서를 따르는 �
 **목표** platform에 새 태그가 생기면 demo-app에 버전을 올리는 PR이 자동으로 열린다.
 
 **할 일**
-- [ ] Renovate 또는 platform 릴리스 워크플로로 demo-app에 PR 생성 → 재사용 `template-update.yml` + `release.yml` 알림으로 구현, GitHub App 설정 후 v1.2.0으로 확인 필요
+- [x] Renovate 또는 platform 릴리스 워크플로로 demo-app에 PR 생성 → 재사용 `template-update.yml` + `release.yml` 알림으로 구현, GitHub App 설정 후 v1.2.0으로 확인 필요
 - [x] `template_version`, 모듈 `ref`, `uses@`, 차트 버전을 한 번에 갱신 (`scripts/bump-template-version.sh`, 테스트 `scripts/tests/run.sh`)
 - [x] PR은 janto 경로로 리뷰(템플릿 변경 내역 첨부)
 
