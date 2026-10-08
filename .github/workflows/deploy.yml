@@ -137,8 +137,11 @@ jobs:
               active="http://$host/"
               preview="http://$host:8080/" ;;
             onprem)
-              # Cloudflare Tunnel이 FE Service로 바로 연결한다. green은 터널에 열지 않는다.
-              active="$(kubectl -n cloudflared logs deploy/cloudflared | grep -o 'https://[a-z0-9-]*\.trycloudflare\.com' | tail -1)/"
+              # Cloudflare Tunnel이 FE Service로 바로 연결한다. 환경별 터널(cloudflared-<네임스페이스>)이 있으면 그것을 쓴다.
+              # green은 터널에 열지 않는다.
+              tunnel="cloudflared-$NAMESPACE"
+              kubectl -n cloudflared get deploy "$tunnel" >/dev/null 2>&1 || tunnel=cloudflared
+              active="$(kubectl -n cloudflared logs "deploy/$tunnel" | grep -o 'https://[a-z0-9-]*\.trycloudflare\.com' | tail -1)/"
               preview="kubectl -n $NAMESPACE port-forward svc/$RELEASE-preview 8080:$(kubectl get svc "$RELEASE-preview" -n "$NAMESPACE" -o jsonpath='{.spec.ports[0].port}')" ;;
           esac
           echo "active=$active" >> "$GITHUB_OUTPUT"

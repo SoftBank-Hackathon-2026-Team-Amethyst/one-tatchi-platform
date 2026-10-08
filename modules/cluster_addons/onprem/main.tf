@@ -116,8 +116,17 @@ resource "helm_release" "secret_store" {
 }
 
 # ---------- Cloudflare Tunnel: 바깥 방향 연결로 고정 HTTPS 주소를 연다 ----------
+# tunnel(하나)은 Deployment "cloudflared", tunnels(환경별)는 "cloudflared-<이름>"으로 뜬다.
 locals {
-  named_tunnel = var.tunnel.token_secret != ""
+  tunnels = merge(
+    var.tunnel == null ? {} : { default = var.tunnel },
+    var.tunnels,
+  )
+}
+
+moved {
+  from = kubernetes_deployment_v1.cloudflared
+  to   = kubernetes_deployment_v1.cloudflared["default"]
 }
 
 resource "kubernetes_namespace_v1" "tunnel" {
@@ -127,22 +136,24 @@ resource "kubernetes_namespace_v1" "tunnel" {
 }
 
 resource "kubernetes_deployment_v1" "cloudflared" {
+  for_each = local.tunnels
+
   metadata {
-    name      = "cloudflared"
+    name      = each.key == "default" ? "cloudflared" : "cloudflared-${each.key}"
     namespace = kubernetes_namespace_v1.tunnel.metadata[0].name
   }
 
   spec {
     # Quick Tunnel은 복제본마다 다른 주소가 생기므로 1개로 고정한다.
-    replicas = local.named_tunnel ? var.tunnel.replicas : 1
+    replicas = each.value.token_secret != "" ? each.value.replicas : 1
 
     selector {
-      match_labels = { app = "cloudflared" }
+      match_labels = { app = "cloudflared", tunnel = each.key }
     }
 
     template {
       metadata {
-        labels = { app = "cloudflared" }
+        labels = { app = "cloudflared", tunnel = each.key }
       }
 
       spec {
@@ -161,16 +172,16 @@ resource "kubernetes_deployment_v1" "cloudflared" {
           image = var.cloudflared_image
           args = concat(
             ["tunnel", "--no-autoupdate", "--metrics", "0.0.0.0:2000"],
-            local.named_tunnel ? ["run"] : ["--url", var.tunnel.origin_url],
+            each.value.token_secret != "" ? ["run"] : ["--url", each.value.origin_url],
           )
 
           dynamic "env" {
-            for_each = local.named_tunnel ? [1] : []
+            for_each = each.value.token_secret != "" ? [1] : []
             content {
               name = "TUNNEL_TOKEN"
               value_from {
                 secret_key_ref {
-                  name = var.tunnel.token_secret
+                  name = each.value.token_secret
                   key  = "token"
                 }
               }
