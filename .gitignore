@@ -1,0 +1,18 @@
+# Terraform
+.terraform/
+*.tfstate
+*.tfstate.*
+*.tfplan
+crash.log
+
+# Helm
+charts/*/charts/
+*.tgz
+
+# OS · 에디터
+.DS_Store
+.idea/
+.vscode/
+
+# 비밀값
+.env
