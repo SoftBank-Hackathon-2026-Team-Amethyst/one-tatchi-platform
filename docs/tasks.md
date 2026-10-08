@@ -16,7 +16,8 @@
 3. 끝낸 할 일은 `- [ ]` → `- [x]`로 바꾸고, **코드 변경과 같은 PR**에 넣는다.
 4. 커밋 메시지와 PR 제목 앞에 작업 번호를 붙인다. 예: `[T3] k3d 클러스터 생성 스크립트 추가`
 5. PR 본문에 `Refs #이슈번호`, 할 일이 다 끝나고 **완료 기준**을 만족하면 `Closes #이슈번호`. CI가 통과하면 자동 머지(`gh pr merge --auto --squash`).
-6. 할 일을 바꾸거나 새로 생기면 이 문서를 고친다. 진행 상황은 이 문서에만 적고 `plan.html`에는 적지 않는다.
+6. [프로젝트 보드](https://github.com/orgs/SoftBank-Hackathon-2026-Team-Amethyst/projects/1)에서 작업 카드를 옮긴다: 시작하면 **In progress**, 마무리 PR을 열면 **In review**, 머지되면 **Done**.
+7. 할 일을 바꾸거나 새로 생기면 이 문서를 고친다. 진행 상황은 이 문서에만 적고 `plan.html`에는 적지 않는다.
 
 Claude Code는 `/todo-task`, Codex는 `$todo-task`로 이 순서를 따르는 스킬을 쓸 수 있다(`.claude/skills/todo-task`).
 
