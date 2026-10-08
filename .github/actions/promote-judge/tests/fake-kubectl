@@ -1,0 +1,8 @@
+#!/usr/bin/env bash
+# smoke 테스트용 가짜 kubectl. FAKE_MODE(ok | fail | slow)로 가짜 green의 응답을 고른다.
+here="$(cd "$(dirname "$0")" && pwd)"
+case "$1" in
+  get) echo 8000 ;;
+  port-forward) exec python3 "$here/fake_server.py" "${FAKE_MODE:-ok}" ;;
+  *) echo "fake-kubectl: 지원하지 않는 명령 $*" >&2; exit 1 ;;
+esac

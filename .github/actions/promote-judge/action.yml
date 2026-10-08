@@ -20,8 +20,8 @@ inputs:
     description: "auto: 판단대로 promote · abort 실행 (yolo) | manual: 실행하지 않고 근거와 버튼만 남김 (janto)"
     default: manual
   smoke-file:
-    description: smoke 요청 목록 파일 (대상 레포 기준 경로)
-    default: .deploy/smoke.yaml
+    description: smoke 요청 목록 JSON (대상 레포 기준 경로). 없으면 GET /health → 200만 확인한다
+    default: .deploy/smoke.json
   window-seconds:
     description: 관찰 창(초). 이 시간 동안 smoke 요청을 반복한다
     default: "30"

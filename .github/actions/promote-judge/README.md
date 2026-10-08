@@ -26,7 +26,7 @@ Blue-Green 배포에서 green(새 버전)을 승격할지 버릴지 정한다 (T
 | `target` | (필수) | `aws` \| `gcp` \| `onprem`. 알림 · 감사 로그 표기용 |
 | `environment` | (필수) | `test` \| `prod`. 알림 · 감사 로그 표기용 |
 | `mode` | `manual` | `auto`: 판단대로 실행 (yolo). `manual`: 근거와 버튼만 (janto) |
-| `smoke-file` | `.deploy/smoke.yaml` | smoke 요청 목록 |
+| `smoke-file` | `.deploy/smoke.json` | smoke 요청 목록. 형식은 아래 "smoke 파일" |
 | `window-seconds` | `30` | 관찰 창(초) |
 | `request-timeout-seconds` | `5` | 요청 하나의 제한 시간(초). 넘으면 실패 |
 | `max-error-rate` | `0` | 허용 에러율(%) |
@@ -44,6 +44,43 @@ Blue-Green 배포에서 green(새 버전)을 승격할지 버릴지 정한다 (T
 | `decision` | `promote` \| `abort` |
 | `reason` | 판단 근거 한두 문장 |
 | `report` | 지표 · 규칙 판정 · AI 판단 JSON 파일 경로 |
+
+## smoke 파일
+
+대상 레포의 `.deploy/smoke.json`. 서비스(release) 이름별로 요청 목록을 둔다.
+
+```json
+{
+  "demo-app-be": [
+    {"method": "GET", "path": "/health", "expect": 200},
+    {"method": "GET", "path": "/api/info", "expect": 200},
+    {"method": "POST", "path": "/api/guestbook", "expect": 200, "body": {"name": "smoke", "message": "hi"}}
+  ],
+  "demo-app-fe": [
+    {"method": "GET", "path": "/", "expect": 200}
+  ]
+}
+```
+
+- `method` 기본 `GET`, `expect` 기본 `200`, `body`는 있으면 JSON으로 보낸다.
+- 관찰 창 동안 첫 바퀴는 목록 전체, 이후에는 `GET`만 반복한다. 쓰기 요청은 한 번만 보낸다.
+- 파일이 없거나 그 서비스 항목이 없으면 `GET /health → 200`만 확인한다. 파일이 올바른 JSON이 아니면 smoke 단계가 실패하고 판단은 abort다.
+- FE green의 `/api`는 blue BE로 프록시되므로 FE 목록에는 FE 자체 경로만 넣는다.
+- green 접속은 `kubectl port-forward svc/<release>-preview` ([ADR 0003](../../../docs/adr/0003-green-access-port-forward.md)).
+
+결과 `smoke-results.jsonl`은 요청마다 한 줄이다. 연결 실패 · 시간 초과는 `status: 0`.
+
+```json
+{"pass":1,"method":"GET","path":"/health","expect":200,"status":200,"ms":12,"ok":true}
+```
+
+## 테스트
+
+```bash
+bash .github/actions/promote-judge/tests/run.sh
+```
+
+가짜 green(`tests/fake_server.py`)과 가짜 kubectl(`tests/fake-kubectl`)로 클러스터 없이 돈다.
 
 ## 기준값 근거
 
