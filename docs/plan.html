@@ -412,6 +412,15 @@ flowchart LR
     <tr><td>GHA 실행 권한</td><td>클라우드 · 레지스트리</td><td>demo-app 레포를 신뢰하는 OIDC 역할로 접근. state와 감사 로그는 S3. 온프레미스는 self-hosted runner</td></tr>
   </tbody>
 </table>
+<p class="small"><b>참조 검증 결과 (T21, v1.1.0)</b></p>
+<table>
+  <thead><tr><th style="width:16%">참조</th><th style="width:22%">결과</th><th>함정과 대응</th></tr></thead>
+  <tbody>
+    <tr><td>재사용 워크플로 <code>uses: …@v1</code></td><td>동작. demo-app <code>infra.yml</code>이 PR에서 plan, main에서 apply</td><td>재사용 워크플로 안의 <code>actions/checkout</code>은 호출한 레포(demo-app)를 받는다. 템플릿 파일(공통 액션)은 platform을 <code>.platform</code>에 한 번 더 checkout해서 쓴다. OIDC 토큰은 호출한 레포 기준(<code>sub</code>는 demo-app)으로 나오고, <code>job_workflow_ref</code>에 platform 워크플로가 찍혀 역할을 그 워크플로로만 제한할 수 있다</td></tr>
+    <tr><td>Terraform 모듈 <code>?ref=v1.1.0</code></td><td>동작. 맥북 루트(demo-app <code>infra/envs/onprem</code>)를 원격 모듈로 바꾸고 기존 state로 plan 변경 없음</td><td><code>//modules/…</code> 하위 경로를 받아도 레포 전체가 내려온다. 그래서 모듈 안의 <code>${path.module}/../../../charts</code> 상대 경로가 그대로 동작한다. 로컬 경로에서 원격으로 바꾸면 Helm 릴리스의 <code>chart</code> 경로 문자열만 한 번 바뀐다</td></tr>
+    <tr><td>App Chart <code>oci://ghcr.io/…/charts/app --version 1.1.0</code></td><td>동작. 로그인 없이 pull, 맥북 test에 배포</td><td>GHCR 패키지는 처음 올리면 private이라 org 설정에서 public 패키지를 허용하고 패키지마다 public으로 바꿔야 한다. <b>Helm 4</b>: 기본 server-side apply가 Argo Rollouts가 바꾼 Service <code>selector</code>와 충돌해 두 번째 배포부터 실패한다 → <code>--server-side=false</code>. <code>--wait</code>(watcher)는 Rollout 상태를 읽지 못해 Healthy여도 실패한다 → <code>--wait=legacy</code>를 쓰거나 Rollout phase를 직접 확인한다</td></tr>
+  </tbody>
+</table>
 <p class="small"><b>버전 맞추기</b>: 세 참조(워크플로, 모듈, 차트)의 태그는 demo-app의 <code>.deploy/config.yaml</code> → <code>template_version</code> 하나로 정한다. <b>템플릿 업데이트</b>: platform에서 수정 → 태그(v1.3.0) → demo-app에 버전을 올리는 PR(janto 경로로 리뷰) → 머지 후 새 템플릿으로 배포.</p>
 
 <p><b>janto가 정석 경로이고, yolo는 리뷰를 건너뛰는 예외 경로다.</b> 모드는 브랜치로 구분한다. janto는 일반 기능 브랜치에서 <code>main</code>으로 PR을 열고, yolo는 <code>yolo/*</code> 브랜치에 push한다. 검사는 두 모드 모두 생략할 수 없고, <code>main</code>에 들어간 것만 운영에 반영된다. <b>운영 승인 여부는 규제 여부가 정한다</b>(분석 결과로 <code>.deploy/config.yaml</code>의 <code>compliance</code>에 기록, AI는 수정 불가).</p>
