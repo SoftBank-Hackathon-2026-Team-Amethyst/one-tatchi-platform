@@ -105,12 +105,13 @@
 **목표** 팀이 AWS · GCP를 안전하게 쓸 수 있도록 계정과 권한을 준비한다.
 
 **할 일**
-- [ ] AWS 루트 계정 정리: MFA 설정, 루트 액세스 키 삭제
-- [ ] 팀원별 IAM 사용자 또는 IAM Identity Center 계정 발급 (최소 권한, 관리자는 소수)
-- [ ] AWS Budgets로 예산 경보 설정
-- [ ] GCP 프로젝트 생성, 결제 연결, 팀원 IAM 권한 부여
-- [ ] 자격증명 공유 규칙: 키 공유 금지, 각자 자기 계정으로 로그인
-- [ ] 계정 · 권한 현황 문서화
+- [x] AWS 루트 계정 정리: MFA 설정, 루트 액세스 키 삭제
+- [x] 팀원별 IAM Identity Center 계정 발급: 멤버 계정 `one-tatchi`, 권한 세트 `AdministratorAccess` 4명 · `ReadOnlyAccess` 1명, SCP 가드레일 (`org/`, ADR 0001)
+- [x] AWS Budgets로 예산 경보 설정 (월 $200, 크레딧 제외)
+- [ ] GCP 프로젝트 생성, 결제 연결, 팀원 IAM 권한 부여 → T4 시작 시로 보류
+- [x] 자격증명 공유 규칙: 키 공유 금지, 각자 자기 계정으로 로그인 (`docs/aws-setup.md`)
+- [x] 계정 · 권한 현황 문서화 (`docs/aws-setup.md`, `org/README.md`)
+- [ ] 팀원 5명 `aws sts get-caller-identity --profile onetatchi` 확인
 
 **완료 기준** 팀원 각자 자기 계정으로 AWS · GCP CLI를 쓸 수 있고, 루트 액세스 키가 없다.
 
@@ -613,5 +614,5 @@
 ## GitHub Project 등록 현황
 
 - 이슈는 `one-tatchi-platform` 레포, 보드는 조직 프로젝트 **Softbank 2026 project**
-- 등록된 이슈: T1~T22 (#1~#22). 새 작업 T23~T25와 담당자 지정은 아직 반영 전
+- 등록된 이슈: T1~T25 (#1~#25)
 - 라벨: `P0`/`P1`/`P2`, `area:infra`/`area:pipeline`/`area:skill`/`area:docs`, `stage:N`

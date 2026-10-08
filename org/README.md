@@ -15,7 +15,20 @@
 | `budgets.tf` | `one-tatchi` 월 예산 경보 (크레딧 제외 금액 기준) |
 | `state.tf` | 이 스택의 state 버킷 |
 
-콘솔에서만 되는 것: 루트 MFA, 크레딧 등록, Identity Center 활성화와 MFA · 인증 설정, Cost Explorer 활성화.
+결정 배경은 [ADR 0001](../docs/adr/0001-aws-account-structure.md).
+
+## 콘솔 설정 (Terraform 밖)
+
+API가 없어 콘솔에서 직접 바꾼 값. 바꾸면 이 표도 고친다.
+
+| 위치 | 설정 | 현재 값 |
+|---|---|---|
+| 관리 계정 루트 | MFA, 루트 액세스 키 | MFA 설정, 키 없음 |
+| Billing → Credits | 크레딧 | 30만원 등록, 조직 공유 |
+| IAM Identity Center | 인스턴스 | 조직 인스턴스, 서울(`ap-northeast-2`) |
+| Identity Center → Settings → Authentication | MFA | **끔** (ADR 0001) |
+| Identity Center → Settings → Authentication | Send email OTP for users created from API | 켬 |
+| Billing → Cost Explorer | 활성화 | 켬 |
 
 ## 규칙
 
