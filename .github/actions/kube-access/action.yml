@@ -31,9 +31,16 @@ runs:
         CLUSTER: ${{ inputs.cluster }}
         REGION: ${{ inputs.region }}
       run: |
-        # kubeconfig는 job 전용 파일에 둔다. self-hosted runner의 기본 kubeconfig를 건드리지 않는다.
+        # kubeconfig · 레지스트리 설정은 job 전용 파일에 둔다. self-hosted runner의 기본 설정을 건드리지 않는다.
         export KUBECONFIG="$RUNNER_TEMP/kubeconfig"
         echo "KUBECONFIG=$KUBECONFIG" >> "$GITHUB_ENV"
+        # Helm(oras)은 설정에 auths 항목이 없으면 macOS 키체인 도우미를 불러 launchd runner에서 실패한다.
+        # 빈 ghcr.io 항목을 두면 도우미 없이 공개 차트를 익명으로 받는다. image-push가 같은 Docker 설정에 인증을 덮어쓴다.
+        mkdir -p "$RUNNER_TEMP/docker" "$RUNNER_TEMP/helm"
+        echo '{"auths":{"ghcr.io":{}}}' > "$RUNNER_TEMP/docker/config.json"
+        echo '{"auths":{"ghcr.io":{}}}' > "$RUNNER_TEMP/helm/registry.json"
+        echo "DOCKER_CONFIG=$RUNNER_TEMP/docker" >> "$GITHUB_ENV"
+        echo "HELM_REGISTRY_CONFIG=$RUNNER_TEMP/helm/registry.json" >> "$GITHUB_ENV"
         case "$TARGET" in
           aws)
             aws eks update-kubeconfig --name "$CLUSTER" --region "$REGION" ;;
