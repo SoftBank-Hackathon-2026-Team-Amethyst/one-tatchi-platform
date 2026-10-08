@@ -19,6 +19,10 @@ on:
       dry-run:
         type: boolean
         default: false
+      slack-test:
+        description: Slack 연결 확인용 테스트 메시지를 보낸다
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -59,6 +63,9 @@ jobs:
             || gh pr create --head bot/sync-tasks --title "[sync] 보드 → tasks.md" \
                  --body "이슈의 할 일 체크와 담당을 tasks.md에 반영한다. sync-tasks 워크플로가 만들었다."
           gh pr merge bot/sync-tasks --auto --squash
+      - name: Slack 테스트 메시지
+        if: inputs.slack-test
+        run: echo "Slack 연결 테스트 (보드 동기화 알림이 이 채널로 온다)" >> moves.txt
       - name: Slack 알림
         if: hashFiles('moves.txt') != ''
         env:
