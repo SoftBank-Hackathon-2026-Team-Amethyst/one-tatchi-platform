@@ -17,12 +17,27 @@ metadata:
     alb.ingress.kubernetes.io/target-type: ip
     alb.ingress.kubernetes.io/group.name: {{ required "ingress.group is required" $.Values.ingress.group }}
     alb.ingress.kubernetes.io/group.order: {{ $.Values.ingress.order | quote }}
+    {{- if not $.Values.ingress.host }}
     alb.ingress.kubernetes.io/listen-ports: {{ printf "[{\"HTTP\": %v}]" $t.port | squote }}
+    {{- else if eq $t.suffix "" }}
+    alb.ingress.kubernetes.io/listen-ports: '[{"HTTP": 80}, {"HTTPS": 443}]'
+    alb.ingress.kubernetes.io/ssl-redirect: "443"
+    {{- else }}
+    alb.ingress.kubernetes.io/listen-ports: {{ printf "[{\"HTTPS\": %v}]" $t.port | squote }}
+    {{- end }}
+    {{- if $.Values.ingress.host }}
+    alb.ingress.kubernetes.io/ssl-policy: {{ $.Values.ingress.sslPolicy }}
+    {{- end }}
     alb.ingress.kubernetes.io/healthcheck-path: {{ $.Values.ingress.healthcheckPath }}
 spec:
   ingressClassName: {{ $.Values.ingress.className }}
   rules:
+    {{- if $.Values.ingress.host }}
+    - host: {{ $.Values.ingress.host | quote }}
+      http:
+    {{- else }}
     - http:
+    {{- end }}
         paths:
           {{- range $.Values.ingress.paths }}
           - path: {{ . }}

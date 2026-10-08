@@ -72,7 +72,7 @@ Claude Code는 `/todo-task`, Codex는 `$todo-task`로 이 순서를 따르는 �
 
 | 정할 것 | 영향 받는 작업 | 현재 가정 |
 |---|---|---|
-| 도메인 이름과 DNS 관리 위치 | T2 | 도메인 1개 구매, 운영 `<도메인>` / 테스트 `yolo.<도메인>` |
+| 도메인 이름과 DNS 관리 위치 | T2 | **결정**: 운영 `onetatchi.soulee.dev` / 테스트 `yolo.onetatchi.soulee.dev`. `soulee.dev`(Cloudflare)에서 Route53으로 위임 |
 | 온프레미스 데모 머신 | T3 | **결정: 원가연 맥북 (M2 · 16GB, k3d).** 시간이 남으면 리눅스 머신 |
 | 두 번째 클라우드 | T4 | GCP |
 | yolo의 main PR 생성 · 자동 머지 주체 | T8 | GHA 또는 에이전트 |
@@ -461,11 +461,12 @@ Claude Code는 `/todo-task`, Codex는 `$todo-task`로 이 순서를 따르는 �
 **목표** 운영은 `https://<도메인>`, 테스트는 `https://yolo.<도메인>`으로 누구나 접속한다.
 
 **할 일**
-- [ ] 도메인 구매, DNS 관리 위치 결정(Route53 또는 외부)
-- [ ] 와일드카드 인증서(ACM `*.<도메인>`)
-- [ ] App Chart(platform) Ingress에 `host` 값 추가
-- [ ] ALB HTTPS 리스너와 HTTP → HTTPS 리다이렉트
-- [ ] (선택) external-dns 애드온으로 DNS 레코드 자동 생성
+- [x] 도메인 구매, DNS 관리 위치 결정(Route53 또는 외부) → 구매 없이 `soulee.dev`(Cloudflare)의 하위 도메인 `onetatchi.soulee.dev`를 Route53 존으로 위임 (`bootstrap/dns.tf`, `modules/dns/aws`)
+- [x] 와일드카드 인증서(ACM `*.<도메인>`) → `onetatchi.soulee.dev` + `*.onetatchi.soulee.dev`, 서울 리전, DNS 검증 완료
+- [x] App Chart(platform) Ingress에 `host` 값 추가 (`ingress.host`, 비우면 기존 HTTP 동작 그대로)
+- [ ] ALB HTTPS 리스너와 HTTP → HTTPS 리다이렉트 (진행 중: 차트 annotation 반영, 실제 ALB 확인은 클러스터(T24) · T5 이후)
+- [ ] (선택) external-dns 애드온으로 DNS 레코드 자동 생성 (진행 중: `cluster_addons/aws`에 추가, `infra/envs/aws`에서 `dns_zone_id` 연결은 T24와 조율)
+- [ ] `deploy.yml`에 환경별 `host` 입력(`--set ingress.host`) 추가 — T5(원가연)와 조율
 
 **완료 기준** 두 주소가 HTTPS로 열리고 각각 test · prod로 연결된다.
 

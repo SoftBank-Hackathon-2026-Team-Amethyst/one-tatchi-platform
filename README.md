@@ -36,7 +36,8 @@ one-tatchi-platform/
 │   ├── database/       aws/ gcp/ onprem/
 │   ├── ci_identity/    aws/ gcp/ onprem/
 │   ├── observability/  aws/ gcp/ onprem/
-│   └── secret/         aws/ gcp/ onprem/
+│   ├── secret/         aws/ gcp/ onprem/
+│   └── dns/            aws/ gcp/ onprem/   # 서비스 도메인 존 + 와일드카드 인증서
 ├── charts/
 │   ├── app/                    # App Chart: 릴리스 전략 + 보안 설정 강제. 태그 시 GHCR(OCI)에 배포
 │   ├── service-base/           # 서비스 네임스페이스 + DB 시크릿 동기화
