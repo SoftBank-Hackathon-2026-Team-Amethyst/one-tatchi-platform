@@ -25,6 +25,10 @@ on:
         description: IaC 규정 검사 경로 (없으면 건너뜀)
         type: string
         default: ""
+      image-dirs:
+        description: 'Dockerfile이 있는 이미지 빌드 경로 JSON 배열. 빌드 후 Trivy로 검사. 예: ["be","fe"]'
+        type: string
+        default: "[]"
 
 permissions:
   contents: read
@@ -115,3 +119,73 @@ jobs:
           scan-ref: ${{ inputs.iac-path }}
           severity: HIGH,CRITICAL
           exit-code: "1"
+
+  # 아래 3종의 예외는 호출하는 레포 루트의 파일에 사유와 함께 적는다.
+  #   이미지 취약점 · 라이선스: .trivyignore  (항목 위에 사유 주석 필수)
+  #   시크릿: .gitleaks.toml 의 [allowlist] 또는 .gitleaksignore (사유 주석 필수)
+  # 차단 기준은 HIGH 이상. MEDIUM 이하는 리포트 step(exit-code 0)으로만 남긴다.
+
+  image-scan:
+    if: inputs.image-dirs != '[]'
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        dir: ${{ fromJSON(inputs.image-dirs) }}
+    steps:
+      - uses: actions/checkout@v7
+      - name: 이미지 빌드
+        run: docker build -t scan-target:${{ github.sha }} "${{ matrix.dir }}"
+      - name: 이미지 취약점 리포트 (Trivy, 전체 심각도)
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          scan-type: image
+          image-ref: scan-target:${{ github.sha }}
+          scanners: vuln
+          format: table
+          exit-code: "0"
+          trivyignores: .trivyignore
+      - name: 이미지 취약점 검사 (Trivy, HIGH 이상 차단)
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          scan-type: image
+          image-ref: scan-target:${{ github.sha }}
+          scanners: vuln
+          severity: HIGH,CRITICAL
+          ignore-unfixed: true
+          exit-code: "1"
+          trivyignores: .trivyignore
+
+  secret-scan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - name: 시크릿 유출 검사 (gitleaks)
+        run: |
+          docker run --rm -v "$PWD:/repo" ghcr.io/gitleaks/gitleaks:v8.24.3 \
+            detect --source /repo --redact --verbose
+
+  license-scan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: 라이선스 리포트 (Trivy, 전체 심각도)
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          scan-type: fs
+          scan-ref: ${{ inputs.scan-path }}
+          scanners: license
+          format: table
+          exit-code: "0"
+          trivyignores: .trivyignore
+      - name: 라이선스 검사 (Trivy, HIGH 이상 차단)
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          scan-type: fs
+          scan-ref: ${{ inputs.scan-path }}
+          scanners: license
+          severity: HIGH,CRITICAL
+          exit-code: "1"
+          trivyignores: .trivyignore
