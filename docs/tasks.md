@@ -232,7 +232,7 @@ Claude Code는 `/todo-task`, Codex는 `$todo-task`로 이 순서를 따르는 �
 - [x] `modules/`: 기능 8개(secret 포함) 이동, aws는 사전 검증한 코드. 계약 정리 · 다듬기는 T24
 - [x] `charts/`: App Chart · service-base · platform-config, 태그 시 `helm push`로 `oci://ghcr.io/<org>/charts`에 배포(`release.yml`)
 - [x] 첫 태그 `v1.0.0` 달기 (`release.yml` 성공, 차트 3개 GHCR에 올라감)
-- [ ] GHCR 차트 패키지 3개 public 전환 (웹 UI에서만 가능)
+- [x] GHCR 차트 패키지 3개 public 전환 (org 설정에서 public 패키지 허용 후 웹 UI로 전환, 로그인 없이 `helm pull` 확인)
 - [x] `.github/workflows/`: 재사용 워크플로 `checks.yml` · `infra.yml` · `deploy.yml`(`on: workflow_call`), 레포 자체 `ci.yml` · `release.yml`
 - [ ] 재사용 `report.yml`(yolo 배포 리포트, T10과 맞춤)
 - [x] `bootstrap/` 이동
