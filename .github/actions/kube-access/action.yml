@@ -1,16 +1,23 @@
 name: kube-access
-description: Deploy 역할로 AWS에 로그인하고 EKS kubeconfig와 kubectl argo rollouts 플러그인을 준비한다.
+description: 배포 대상 클러스터의 kubeconfig와 helm · kubectl argo rollouts 플러그인을 준비한다. 벤더별 차이는 여기에만 둔다.
 inputs:
-  role-arn:
-    required: true
-  region:
-    required: true
+  target:
+    description: "배포 대상: aws | gcp | onprem"
+    default: aws
   cluster:
+    description: "aws: EKS 클러스터 이름, onprem: runner의 kube context 이름 (예: k3d-onetouch)"
     required: true
+  role-arn:
+    description: aws만. Deploy 역할 ARN
+    default: ""
+  region:
+    description: aws만. 리전
+    default: ""
 runs:
   using: composite
   steps:
-    - uses: aws-actions/configure-aws-credentials@v6
+    - if: inputs.target == 'aws'
+      uses: aws-actions/configure-aws-credentials@v6
       with:
         role-to-assume: ${{ inputs.role-arn }}
         aws-region: ${{ inputs.region }}
@@ -19,8 +26,29 @@ runs:
         # deploy.yml이 Helm 4 플래그(--server-side)를 쓴다. 메이저가 바뀌면 같이 확인한다.
         version: v4.3.0
     - shell: bash
+      env:
+        TARGET: ${{ inputs.target }}
+        CLUSTER: ${{ inputs.cluster }}
+        REGION: ${{ inputs.region }}
       run: |
-        aws eks update-kubeconfig --name "${{ inputs.cluster }}" --region "${{ inputs.region }}"
-        curl -fsSLo /tmp/kubectl-argo-rollouts \
-          https://github.com/argoproj/argo-rollouts/releases/download/v1.10.0/kubectl-argo-rollouts-linux-amd64
-        sudo install -m 0755 /tmp/kubectl-argo-rollouts /usr/local/bin/kubectl-argo-rollouts
+        # kubeconfig는 job 전용 파일에 둔다. self-hosted runner의 기본 kubeconfig를 건드리지 않는다.
+        export KUBECONFIG="$RUNNER_TEMP/kubeconfig"
+        echo "KUBECONFIG=$KUBECONFIG" >> "$GITHUB_ENV"
+        case "$TARGET" in
+          aws)
+            aws eks update-kubeconfig --name "$CLUSTER" --region "$REGION" ;;
+          onprem)
+            # 클러스터는 runner와 같은 맥북에 있다. runner 계정의 kube context를 복사해 쓴다.
+            KUBECONFIG="$HOME/.kube/config" kubectl config view --raw --minify --context "$CLUSTER" > "$KUBECONFIG" ;;
+          *)
+            echo "::error::지원하지 않는 배포 대상: $TARGET (aws | onprem)"; exit 1 ;;
+        esac
+        kubectl cluster-info >/dev/null
+
+        os="$(uname -s | tr '[:upper:]' '[:lower:]')"
+        arch="$(uname -m)"; case "$arch" in x86_64) arch=amd64 ;; aarch64) arch=arm64 ;; esac
+        mkdir -p "$RUNNER_TEMP/bin"
+        curl -fsSLo "$RUNNER_TEMP/bin/kubectl-argo-rollouts" \
+          "https://github.com/argoproj/argo-rollouts/releases/download/v1.10.0/kubectl-argo-rollouts-$os-$arch"
+        chmod +x "$RUNNER_TEMP/bin/kubectl-argo-rollouts"
+        echo "$RUNNER_TEMP/bin" >> "$GITHUB_PATH"

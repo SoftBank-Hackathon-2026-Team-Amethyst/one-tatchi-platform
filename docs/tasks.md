@@ -241,7 +241,7 @@ Claude Code는 `/todo-task`, Codex는 `$todo-task`로 이 순서를 따르는 �
 - [x] `charts/`: App Chart · service-base · platform-config, 태그 시 `helm push`로 `oci://ghcr.io/<org>/charts`에 배포(`release.yml`)
 - [x] 첫 태그 `v1.0.0` 달기 (`release.yml` 성공, 차트 3개 GHCR에 올라감)
 - [x] GHCR 차트 패키지 3개 public 전환 (org 설정에서 public 패키지 허용 후 웹 UI로 전환, 로그인 없이 `helm pull` 확인)
-- [x] `.github/workflows/`: 재사용 워크플로 `checks.yml` · `infra.yml` · `deploy.yml`(`on: workflow_call`), 레포 자체 `ci.yml` · `release.yml`
+- [x] `.github/workflows/`: 재사용 워크플로 `checks.yml` · `infra.yml` · `deploy.yml`(`on: workflow_call`), 레포 자체 `ci.yml` · `release.yml` (`deploy.yml`은 AWS 전용으로 옮겼다. 대상 입력은 T5에서 추가)
 - [ ] 재사용 `report.yml`(yolo 배포 리포트, T10과 맞춤)
 - [x] `bootstrap/` 이동
 - [ ] `skills/` 이동 (T13과 맞춤)
