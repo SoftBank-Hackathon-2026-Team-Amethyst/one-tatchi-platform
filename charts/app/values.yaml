@@ -47,7 +47,12 @@ ingress:
   paths:
     - /
   healthcheckPath: /health
-  # blueGreen일 때 green을 이 포트로 미리 볼 수 있다.
+  # 접속 호스트 (예: 운영 onetatchi.soulee.dev, 테스트 yolo.onetatchi.soulee.dev).
+  # 넣으면 HTTPS(443)로 열고 HTTP(80)는 443으로 리다이렉트한다. 인증서는 LB Controller가 host로 ACM에서 찾는다.
+  # 비우면 host 없이 HTTP(80)만 연다 (도메인이 없는 환경).
+  host: ""
+  sslPolicy: ELBSecurityPolicy-TLS13-1-2-2021-06
+  # blueGreen일 때 green을 이 포트로 미리 볼 수 있다. host가 있으면 HTTPS로 연다.
   previewPort: 8080
 
 migration:
