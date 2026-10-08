@@ -1,0 +1,171 @@
+name: template-update
+
+# 대상 레포(demo-app)가 호출한다. 이 레포의 새 태그를 확인해 대상 레포의 템플릿 버전 표기
+# (template_version, uses@, template-ref, chart-version, 모듈 ?ref=)를 한 번에 올리는 PR을 연다.
+# PR은 janto 경로로 리뷰한다(본문에 CHANGELOG 구간 첨부).
+#
+# GITHUB_TOKEN으로 만든 PR에는 CI가 돌지 않아 GitHub App 토큰을 쓴다.
+# App 권한: Contents · Pull requests · Workflows 쓰기 (워크플로 파일의 uses@를 고치므로 Workflows 필요)
+on:
+  workflow_call:
+    inputs:
+      version:
+        description: 올릴 버전(vX.Y.Z). 비우면 이 레포의 최신 태그
+        type: string
+        default: ""
+      platform-repo:
+        description: 템플릿 레포
+        type: string
+        default: SoftBank-Hackathon-2026-Team-Amethyst/one-tatchi-platform
+      app-client-id:
+        description: GitHub App Client ID
+        type: string
+        required: true
+    secrets:
+      app-private-key:
+        required: true
+
+permissions:
+  contents: read
+
+concurrency:
+  group: template-update-${{ github.repository }}
+  cancel-in-progress: false
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/create-github-app-token@v3
+        id: app
+        with:
+          client-id: ${{ inputs.app-client-id }}
+          private-key: ${{ secrets.app-private-key }}
+
+      - uses: actions/checkout@v7
+        with:
+          token: ${{ steps.app.outputs.token }}
+
+      - name: 현재 · 목표 버전
+        id: ver
+        env:
+          GH_TOKEN: ${{ steps.app.outputs.token }}
+          PLATFORM: ${{ inputs.platform-repo }}
+          INPUT_VERSION: ${{ inputs.version }}
+        run: |
+          current="$(sed -nE 's/^template_version:[[:space:]]*["'\'']?(v[0-9]+\.[0-9]+\.[0-9]+).*/\1/p' .deploy/config.yaml 2>/dev/null || true)"
+          if [ -z "$current" ]; then
+            # 아직 에이전트가 배포 설정을 만들기 전인 레포. 올릴 것이 없다
+            echo "::warning::.deploy/config.yaml에 template_version(vX.Y.Z)이 없어 건너뛴다"
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          target="$INPUT_VERSION"
+          if [ -z "$target" ]; then
+            target="$(gh api "repos/$PLATFORM/tags" --paginate -q '.[].name' | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | sort -V | tail -1)"
+          fi
+          if ! echo "$target" | grep -qE '^v[0-9]+\.[0-9]+\.[0-9]+$'; then
+            echo "::error::목표 버전 형식이 vX.Y.Z가 아니다: $target"
+            exit 1
+          fi
+
+          branch="template/$target"
+          skip=false
+          if [ "$(printf '%s\n%s\n' "$current" "$target" | sort -V | tail -1)" = "$current" ]; then
+            echo "이미 최신이다: $current (목표 $target)"
+            skip=true
+          elif [ "$(gh pr list --head "$branch" --state open --json number -q length)" != "0" ]; then
+            echo "이미 열린 PR이 있다: $branch"
+            skip=true
+          fi
+
+          major=false
+          [ "${current%%.*}" != "${target%%.*}" ] && major=true
+
+          {
+            echo "current=$current"
+            echo "target=$target"
+            echo "branch=$branch"
+            echo "skip=$skip"
+            echo "major=$major"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: 템플릿 스크립트 가져오기
+        if: steps.ver.outputs.skip == 'false'
+        uses: actions/checkout@v7
+        with:
+          repository: ${{ inputs.platform-repo }}
+          ref: ${{ steps.ver.outputs.target }}
+          path: .template-src
+          persist-credentials: false
+          sparse-checkout: scripts
+
+      - name: 버전 올리기
+        if: steps.ver.outputs.skip == 'false'
+        env:
+          CURRENT: ${{ steps.ver.outputs.current }}
+          TARGET: ${{ steps.ver.outputs.target }}
+        run: |
+          mv .template-src "$RUNNER_TEMP/platform"
+          bash "$RUNNER_TEMP/platform/scripts/bump-template-version.sh" "$TARGET" .
+          bash "$RUNNER_TEMP/platform/scripts/changelog-between.sh" "$CURRENT" "$TARGET" "$RUNNER_TEMP/platform/CHANGELOG.md" > "$RUNNER_TEMP/changes.md"
+          git status --short
+
+      - name: PR 열기
+        if: steps.ver.outputs.skip == 'false'
+        env:
+          GH_TOKEN: ${{ steps.app.outputs.token }}
+          APP_SLUG: ${{ steps.app.outputs.app-slug }}
+          CURRENT: ${{ steps.ver.outputs.current }}
+          TARGET: ${{ steps.ver.outputs.target }}
+          BRANCH: ${{ steps.ver.outputs.branch }}
+          MAJOR: ${{ steps.ver.outputs.major }}
+          PLATFORM: ${{ inputs.platform-repo }}
+        run: |
+          if git diff --quiet; then
+            echo "바뀐 파일이 없다"
+            exit 0
+          fi
+
+          bot_id="$(gh api "/users/${APP_SLUG}[bot]" -q .id)"
+          git config user.name "${APP_SLUG}[bot]"
+          git config user.email "${bot_id}+${APP_SLUG}[bot]@users.noreply.github.com"
+
+          git switch -c "$BRANCH"
+          git commit -qam "Bump template to $TARGET"
+          git push -f origin "$BRANCH"
+
+          {
+            echo "템플릿(\`$PLATFORM\`)을 **$CURRENT → $TARGET**로 올린다."
+            echo
+            if [ "$MAJOR" = "true" ]; then
+              echo "> [!WARNING]"
+              echo "> 메이저 버전이 바뀌었다. 모듈 입력 · 출력, 워크플로 입력, 차트 값 이름이 달라졌을 수 있으니 아래 변경 내역을 보고 수정한 뒤 머지한다."
+              echo
+            fi
+            echo "## 바뀐 파일"
+            echo
+            echo '```'
+            git diff --stat HEAD~1
+            echo '```'
+            echo
+            echo "## 템플릿 변경 내역"
+            echo
+            if [ -s "$RUNNER_TEMP/changes.md" ]; then
+              sed -E 's/^## /### /' "$RUNNER_TEMP/changes.md"
+            else
+              echo "CHANGELOG에 항목이 없다: https://github.com/$PLATFORM/blob/$TARGET/CHANGELOG.md"
+            fi
+            echo
+            echo "## 리뷰"
+            echo
+            echo "- janto 경로로 리뷰한다: 검사 · plan 결과를 확인하고 머지한다."
+            echo "- 이 PR은 \`template-update\` 워크플로가 만들었다."
+          } > "$RUNNER_TEMP/body.md"
+
+          # schedule 이벤트에는 repository 정보가 없어 API로 기본 브랜치를 읽는다
+          base="$(gh api "repos/$GITHUB_REPOSITORY" -q .default_branch)"
+          gh pr create --base "$base" --head "$BRANCH" \
+            --title "Bump template to $TARGET" \
+            --body-file "$RUNNER_TEMP/body.md"

@@ -1,0 +1,23 @@
+name: deploy
+on:
+  push:
+    branches: [main]
+jobs:
+  checks:
+    uses: SoftBank-Hackathon-2026-Team-Amethyst/one-tatchi-platform/.github/workflows/checks.yml@v1.1.0
+    with:
+      node-dirs: '["be", "fe"]'
+  deploy-test:
+    needs: checks
+    uses: SoftBank-Hackathon-2026-Team-Amethyst/one-tatchi-platform/.github/workflows/deploy.yml@v1.1.0
+    with:
+      environment: test
+      chart-version: 1.1.0
+      template-ref: v1.1.0
+  notify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: SoftBank-Hackathon-2026-Team-Amethyst/one-tatchi-platform/.github/actions/slack-notify@v1.1.0
+        with:
+          tool-version: 1.0.0

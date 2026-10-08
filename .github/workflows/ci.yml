@@ -1,6 +1,6 @@
 name: ci
 
-# 이 레포(템플릿) 자체 검사: Terraform 포맷 · 검증, Helm 차트 lint, IaC 규정 검사.
+# 이 레포(템플릿) 자체 검사: Terraform 포맷 · 검증, Helm 차트 lint, IaC 규정 검사, scripts/ 테스트.
 on:
   pull_request:
   push:
@@ -40,6 +40,12 @@ jobs:
           helm lint charts/app --set image.repository=r --set image.tag=t
           helm lint charts/service-base --set namespace=x --set secret.secretName=x-env --set secret.remoteKey=x
           helm lint charts/platform-config
+
+  scripts:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - run: bash scripts/tests/run.sh
 
   iac-scan:
     runs-on: ubuntu-latest
