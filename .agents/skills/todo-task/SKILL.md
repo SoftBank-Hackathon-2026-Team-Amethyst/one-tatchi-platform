@@ -41,10 +41,14 @@ description: 원터치 배포 팀 작업 진행. docs/tasks.md에서 내 작업�
 ## 4. 체크하고 PR 올리기
 
 1. 끝낸 할 일을 `- [ ]` → `- [x]`로 바꾼다. 일부만 했으면 체크하지 않고 할 일 문장 끝에 `(진행 중: 무엇까지)`를 붙인다.
-2. 할 일이 바뀌었거나 새로 생겼으면 그 작업 섹션을 고친다. 진행 상황은 `docs/tasks.md`에만 적는다.
+2. 할 일이 바뀌었거나 새로 생겼으면 그 작업 섹션을 고친다. 진행 상황은 `docs/tasks.md`에 적는다.
+   이슈 본문의 **할 일** 체크리스트도 같이 맞춘다: `.agents/skills/todo-task/scripts/issue-sync.sh T3` (할 일을 다른 작업으로 넘겼으면 두 작업 모두)
 3. 코드 변경과 체크 변경을 **같은 커밋**에 넣는다. 메시지 앞에 작업 번호: `[T3] k3d 클러스터 생성 스크립트 추가`
 4. 이슈 번호는 `gh issue list --search "[T3]" --state all`로 찾는다. PR 본문에 `Refs #번호`, 할 일이 다 끝나고 **완료 기준**을 만족하면 `Closes #번호`.
 5. 사용자에게 확인받은 뒤 브랜치를 push하고 PR을 연다: `gh pr create --title "[T3] …" --body "…"`.
+   - 브랜치 이름은 작업 번호로 시작한다(`t3-…`). 어떤 작업인지 이름만 보고 알 수 있게 한다.
+   - PR 본문 첫 줄에 연결된 작업을 이슈 링크로 적는다: `**작업:** [T3 온프레미스 구현체](https://github.com/SoftBank-Hackathon-2026-Team-Amethyst/one-tatchi-platform/issues/6)`
+   - demo-app처럼 다른 레포에 올리는 PR도 같다. 링크는 one-tatchi-platform 이슈로 걸고, `Refs`는 `SoftBank-Hackathon-2026-Team-Amethyst/one-tatchi-platform#6` 형식으로 쓴다.
 6. 자동 머지를 건다: `gh pr merge --auto --squash`. CI(`terraform` · `charts` · `iac-scan`)가 실패하면 고쳐서 같은 브랜치에 다시 push한다.
 
 ## 5. 보드 옮기기
