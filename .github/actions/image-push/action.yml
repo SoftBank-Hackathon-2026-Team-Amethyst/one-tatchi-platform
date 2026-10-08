@@ -44,7 +44,11 @@ runs:
             exists() { aws ecr describe-images --repository-name "$NAME" --image-ids imageTag="$TAG" >/dev/null 2>&1; } ;;
           onprem)
             repo="ghcr.io/$(echo "$OWNER" | tr '[:upper:]' '[:lower:]')/$NAME"
-            echo "$GH_TOKEN" | docker login ghcr.io -u "$GITHUB_ACTOR" --password-stdin
+            # docker login은 macOS에서 키체인에 저장하려다 launchd 서비스(runner)에서 실패한다.
+            # 설정 파일에 auths가 있으면 Docker CLI가 기본 키체인 저장소를 고르지 않으므로 직접 적는다.
+            # RUNNER_TEMP는 job이 끝나면 지워진다.
+            printf '{"auths":{"ghcr.io":{"auth":"%s"}}}' "$(printf '%s:%s' "$GITHUB_ACTOR" "$GH_TOKEN" | base64 | tr -d '\n')" \
+              > "$DOCKER_CONFIG/config.json"
             exists() { docker manifest inspect "$repo:$TAG" >/dev/null 2>&1; } ;;
           *)
             echo "::error::지원하지 않는 배포 대상: $TARGET (aws | onprem)"; exit 1 ;;
