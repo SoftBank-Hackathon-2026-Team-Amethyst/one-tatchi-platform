@@ -2,9 +2,15 @@ name: deploy
 
 # 재사용 워크플로: 이미지를 빌드하고 App Chart(OCI)로 test 또는 prod에 Blue-Green 배포한다.
 # green이 뜨면 Paused(승격 대기)에서 멈춘다. 승격 판단은 별도 단계(T7)가 맡는다.
+# 배포 대상(target)마다 다른 부분은 공통 액션 kube-access(클러스터 접속) · image-push(레지스트리)와
+# 아래 "주소" 단계에만 있다. 나머지 단계와 App Chart는 모든 대상에서 같다.
 on:
   workflow_call:
     inputs:
+      target:
+        description: "배포 대상: aws | onprem (gcp는 T4)"
+        type: string
+        default: aws
       environment:
         description: "GitHub environment 이름 (test | prod). prod는 승인 규칙이 걸린다"
         type: string
@@ -15,10 +21,11 @@ on:
           [{"name":"demo-app-be","path":"be","values":"deploy/values-be.yaml","migration":"db/init.sql"},
            {"name":"demo-app-fe","path":"fe","values":"deploy/values-fe.yaml"}]
           배열 순서대로 하나씩 배포한다 (BE를 먼저).
+          deploy/<target>/values.yaml이 있으면 모든 서비스에 덧붙인다.
         type: string
         required: true
       cluster:
-        description: EKS 클러스터 이름
+        description: "aws: EKS 클러스터 이름, onprem: runner의 kube context 이름"
         type: string
         required: true
       namespace:
@@ -26,9 +33,9 @@ on:
         type: string
         required: true
       ingress-group:
-        description: ALB를 공유할 Ingress 그룹 이름
+        description: aws만. ALB를 공유할 Ingress 그룹 이름
         type: string
-        required: true
+        default: ""
       chart-version:
         description: App Chart 버전 (template_version과 같게)
         type: string
@@ -47,11 +54,16 @@ on:
 
 jobs:
   deploy:
-    runs-on: ubuntu-latest
+    # onprem은 맥북의 self-hosted runner(바깥 방향 연결)에서 돈다. push 이벤트로만 호출한다.
+    runs-on: ${{ inputs.target == 'onprem' && fromJSON('["self-hosted","onprem"]') || 'ubuntu-latest' }}
     # environment를 지정하면 GitHub Deployments에 배포 기록이 남고, prod는 승인을 기다린다.
     environment:
       name: ${{ inputs.environment }}
       url: ${{ steps.urls.outputs.active }}
+    # 같은 대상 · 환경 · 서비스의 배포는 동시에 돌지 않는다 (NFR-4). 대기 중인 배포는 최신 것 하나만 남는다.
+    concurrency:
+      group: deploy-${{ inputs.target }}-${{ inputs.environment }}-${{ matrix.service.name }}
+      cancel-in-progress: false
     strategy:
       max-parallel: 1
       matrix:
@@ -60,6 +72,7 @@ jobs:
       RELEASE: ${{ matrix.service.name }}
       TAG: ${{ github.sha }}
       NAMESPACE: ${{ inputs.namespace }}
+      TARGET: ${{ inputs.target }}
     steps:
       - uses: actions/checkout@v7
       - uses: actions/checkout@v7
@@ -69,72 +82,88 @@ jobs:
           path: .platform
       - uses: ./.platform/.github/actions/kube-access
         with:
+          target: ${{ inputs.target }}
+          cluster: ${{ inputs.cluster }}
           role-arn: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
           region: ${{ vars.AWS_REGION }}
-          cluster: ${{ inputs.cluster }}
-      - id: ecr
-        uses: aws-actions/amazon-ecr-login@v2
-      - name: 이미지 빌드 · push
-        env:
-          IMAGE: ${{ steps.ecr.outputs.registry }}/${{ matrix.service.name }}
-        run: |
-          # 태그 덮어쓰기 금지(immutable)라 재실행 시 이미 있으면 건너뛴다.
-          if aws ecr describe-images --repository-name "$RELEASE" --image-ids imageTag="$TAG" >/dev/null 2>&1; then
-            echo "image $IMAGE:$TAG already exists"
-          else
-            docker build -t "$IMAGE:$TAG" "${{ matrix.service.path }}"
-            docker push "$IMAGE:$TAG"
-          fi
+      - id: image
+        uses: ./.platform/.github/actions/image-push
+        with:
+          target: ${{ inputs.target }}
+          name: ${{ matrix.service.name }}
+          path: ${{ matrix.service.path }}
+          tag: ${{ github.sha }}
       - name: helm upgrade (green 생성)
-        # Helm 4 기본 server-side apply는 Argo Rollouts가 바꾼 Service selector와 충돌해 두 번째 배포부터 실패한다.
         env:
-          IMAGE: ${{ steps.ecr.outputs.registry }}/${{ matrix.service.name }}
+          IMAGE: ${{ steps.image.outputs.repository }}
+          VALUES: ${{ matrix.service.values }}
           MIGRATION: ${{ matrix.service.migration }}
+          INGRESS_GROUP: ${{ inputs.ingress-group }}
         run: |
           extra=()
+          if [ -f "deploy/$TARGET/values.yaml" ]; then extra+=(-f "deploy/$TARGET/values.yaml"); fi
           if [ -n "$MIGRATION" ]; then extra+=(--set-file migration.sql="$MIGRATION"); fi
+          if [ -n "$INGRESS_GROUP" ]; then extra+=(--set ingress.group="$INGRESS_GROUP"); fi
+          # Helm 4 기본 server-side apply는 Argo Rollouts가 바꾼 Service selector와 충돌해 두 번째 배포부터 실패한다.
           helm upgrade --install "$RELEASE" "${{ inputs.chart-repo }}/app" \
             --version "${{ inputs.chart-version }}" \
             --namespace "$NAMESPACE" \
-            -f "${{ matrix.service.values }}" \
+            -f "$VALUES" \
+            "${extra[@]}" \
             --set image.repository="$IMAGE" \
             --set image.tag="$TAG" \
-            --set ingress.group="${{ inputs.ingress-group }}" \
-            "${extra[@]}" \
             --server-side=false \
             --timeout 10m
       - name: green 대기 (Paused) 또는 Healthy
         run: |
-          for i in $(seq 1 60); do
+          for _ in $(seq 1 60); do
             phase="$(kubectl get rollout "$RELEASE" -n "$NAMESPACE" -o jsonpath='{.status.phase}')"
             echo "phase=$phase"
             case "$phase" in
-              Paused|Healthy) break ;;
+              Paused|Healthy) kubectl argo rollouts get rollout "$RELEASE" -n "$NAMESPACE"; exit 0 ;;
               Degraded) kubectl argo rollouts get rollout "$RELEASE" -n "$NAMESPACE"; exit 1 ;;
             esac
             sleep 10
           done
           kubectl argo rollouts get rollout "$RELEASE" -n "$NAMESPACE"
+          echo "::error::10분 안에 Paused · Healthy가 되지 않았다"
+          exit 1
       - id: urls
+        name: 주소
         run: |
-          host="$(kubectl get ingress "$RELEASE" -n "$NAMESPACE" -o jsonpath='{.status.loadBalancer.ingress[0].hostname}')"
-          echo "active=http://$host/" >> "$GITHUB_OUTPUT"
+          case "$TARGET" in
+            aws)
+              host="$(kubectl get ingress "$RELEASE" -n "$NAMESPACE" -o jsonpath='{.status.loadBalancer.ingress[0].hostname}')"
+              active="http://$host/"
+              preview="http://$host:8080/" ;;
+            onprem)
+              # Cloudflare Tunnel이 FE Service로 바로 연결한다. green은 터널에 열지 않는다.
+              active="$(kubectl -n cloudflared logs deploy/cloudflared | grep -o 'https://[a-z0-9-]*\.trycloudflare\.com' | tail -1)/"
+              preview="kubectl -n $NAMESPACE port-forward svc/$RELEASE-preview 8080:$(kubectl get svc "$RELEASE-preview" -n "$NAMESPACE" -o jsonpath='{.spec.ports[0].port}')" ;;
+          esac
+          echo "active=$active" >> "$GITHUB_OUTPUT"
           {
             echo "slack<<END"
-            echo "active (blue): http://$host/"
-            echo "preview (green): http://$host:8080/"
+            echo "active (blue): $active"
+            echo "preview (green): $preview"
             echo "END"
           } >> "$GITHUB_OUTPUT"
           {
-            echo "### $RELEASE @ \`${TAG::7}\` → ${{ inputs.environment }}"
-            echo "- active (blue): http://$host/"
-            echo "- preview (green): http://$host:8080/"
+            echo "### $RELEASE @ \`${TAG::7}\` → $TARGET / ${{ inputs.environment }}"
+            echo "- active (blue): $active"
+            echo "- preview (green): $preview"
           } >> "$GITHUB_STEP_SUMMARY"
+      # 감사 로그는 모든 대상이 같은 S3 버킷(Object Lock)에 남긴다. aws는 kube-access에서 이미 로그인했다.
+      - if: always() && inputs.target != 'aws'
+        uses: aws-actions/configure-aws-credentials@v6
+        with:
+          role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION }}
       - if: always()
         uses: ./.platform/.github/actions/audit-log
         with:
           action: deploy
-          target: ${{ matrix.service.name }}@${{ inputs.environment }}
+          target: ${{ matrix.service.name }}@${{ inputs.target }}.${{ inputs.environment }}
           result: ${{ job.status }}
           bucket: ${{ vars.AUDIT_LOG_BUCKET }}
       - if: always()
@@ -143,7 +172,7 @@ jobs:
           token: ${{ secrets.SLACK_BOT_TOKEN }}
           channel: ${{ vars.SLACK_CHANNEL_ID }}
           action: deploy
-          target: ${{ matrix.service.name }}@${{ inputs.environment }}
+          target: ${{ matrix.service.name }}@${{ inputs.target }}.${{ inputs.environment }}
           result: ${{ job.status }}
           details: ${{ steps.urls.outputs.slack }}
           buttons: ${{ job.status == 'success' && 'promote abort' || '' }}
