@@ -10,6 +10,8 @@
 
 ## Unreleased
 
+## v1.6.0
+
 - 운영 관문 (T6): `deploy.yml`이 운영 배포(`environment: prod`) 때 `.deploy/config.yaml`의 `compliance`를 읽어 environment를 고른다. `regulated`(또는 값 없음) → `prod`(사람 승인), `none` → `prod-auto`(자동 반영). 대상 레포에 `prod-auto` environment(main 브랜치만)가 있어야 하고, bootstrap `deploy_environments`에 `prod-auto`를 추가했다
 - `checks.yml`: `config-guard` 잡 추가. `.deploy/config.yaml` 형식(`compliance: regulated | none`, `template_version: vX.Y.Z`)을 검사하고, yolo 경로나 AI가 만든 커밋이 `compliance` · `.github/CODEOWNERS`를 바꾸면 실패한다
 
