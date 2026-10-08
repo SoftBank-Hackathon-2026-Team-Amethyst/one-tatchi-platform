@@ -294,9 +294,9 @@ Claude Code는 `/todo-task`, Codex는 `$todo-task`로 이 순서를 따르는 �
 **목표** one-tatchi-platform의 `modules/*/aws`를 사전 검증한 코드 기준으로 완성한다.
 
 **할 일**
-- [ ] network · cluster · cluster_addons · registry · database · observability · ci_identity의 aws 구현 이식
-- [ ] 사전 검증에서 해결한 문제 반영: 애드온 설치 순서, LB Controller Service webhook 끄기, Helm `replace`, DB 보안 그룹 `count`, OIDC immutable subject
-- [ ] 출력값 이름이 벤더 중립인지 확인 (계약 준수)
+- [x] network · cluster · cluster_addons · registry · database · observability · ci_identity의 aws 구현 이식
+- [x] 사전 검증에서 해결한 문제 반영: 애드온 설치 순서, LB Controller Service webhook 끄기, Helm `replace`, DB 보안 그룹 `count`, OIDC immutable subject
+- [x] 출력값 이름이 벤더 중립인지 확인 (계약 준수)
 - [ ] demo-app용 `infra/envs/aws` 루트 예시 작성
 - [ ] `terraform validate`, Trivy IaC 검사 통과
 
