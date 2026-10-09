@@ -523,11 +523,11 @@ Claude Code는 `/todo-task`, Codex는 `$todo-task`로 이 순서를 따르는 �
 **목표** green의 지표를 보고 promote 또는 abort를 정하고 근거를 남긴다.
 
 **할 일**
-- [ ] 관찰 창 동안 preview Service에 port-forward로 smoke 요청 실행 (`.deploy/smoke.json` + GET 반복, ADR 0003). green은 승격 전 사용자 트래픽이 없으므로 이게 판단 근거가 된다
-- [ ] 관찰 창(기본 30초, 입력 `window-seconds`) 동안 smoke 결과 · 에러율 · p95 · 재시작 · 헬스체크 조회
+- [x] 관찰 창 동안 preview Service에 port-forward로 smoke 요청 실행 (`.deploy/smoke.json` + GET 반복, ADR 0003). green은 승격 전 사용자 트래픽이 없으므로 이게 판단 근거가 된다
+- [x] 관찰 창(기본 30초, 입력 `window-seconds`) 동안 smoke 결과 · 에러율 · p95 · 재시작 · 헬스체크 조회
 - [x] 판단 기준값 정의(12장 미결정 2번). 기본값과 근거는 `.github/actions/promote-judge/README.md`
 - [x] LLM 호출(Claude API, 모델 `claude-sonnet-5-5`) → `{decision, reason}` JSON, API 키는 demo-app Secret → `secrets: inherit`
-- [ ] `kubectl argo rollouts promote / abort`. yolo는 자동, janto는 AI 판단을 알림에 남기고 사람이 Slack 버튼(`rollout.yml`)으로 실행
+- [x] `kubectl argo rollouts promote / abort`. yolo는 자동, janto는 AI 판단을 알림에 남기고 사람이 Slack 버튼(`rollout.yml`)으로 실행
 - [x] 호출 실패 시 안전한 기본값(abort), 규칙 판정에 거부권(ADR 0004)
 
 **완료 기준** 정상 버전은 promote, 일부러 500을 내는 버전은 abort된다.
