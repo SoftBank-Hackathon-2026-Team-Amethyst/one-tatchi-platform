@@ -290,7 +290,7 @@ Claude Code는 `/todo-task`, Codex는 `$todo-task`로 이 순서를 따르는 �
 **할 일**
 - [ ] launchd `caffeinate -s`로 AC 전원에서 잠금 중 연속 실행. Docker 로그인 시작, 기기별 runner·클러스터·state 분리와 두 맥북의 30분 잠금 검증
 - [ ] 재부팅·로그인 후 추가 명령 없이 10분 내 자동 복구와 데이터 보존 확인: k3d 노드 · self-hosted runner(launchd) · cloudflared가 다시 뜨고, 바뀐 터널 주소를 확인하는 방법을 README에
-- [ ] 공개 서비스와 환경별 현재 터널을 대조하고 없음·대상 불일치·조회 오류·URL 누락 시 배포 실패. 내부 BE는 외부 주소가 없어도 정상
+- [x] 공개 서비스와 환경별 현재 터널을 대조하고 없음·대상 불일치·조회 오류·URL 누락 시 배포 실패. 내부 BE는 외부 주소가 없어도 정상
 - [ ] checks에서 `linux/amd64` + `linux/arm64`를 한 번 빌드·각각 검사. 같은 run의 OCI artifact와 digest로 배포하고 test에서 승격한 동일 digest만 prod에 반영
 - [ ] ephemeral 입력·write-only Secret·exec 인증으로 DB 비밀번호와 k3d 관리자 인증정보의 state 저장 제거. 기존 비밀번호·데이터를 보존하며 암호화 복구 백업 후 state·plan·backup 이전 검증 (NFR-2)
 - [x] database: 기존 StatefulSet·PVC·접속 규격 유지, Helm Postgres로 교체하지 않는 결정과 이유를 ADR에 기록
