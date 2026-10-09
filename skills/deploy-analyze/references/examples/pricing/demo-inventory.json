@@ -1,0 +1,1375 @@
+{
+  "schema_version": "1",
+  "input_id": "demo-config-snapshot-20261009",
+  "created_at": "2026-10-09T00:00:00Z",
+  "template_version": "v1.14.0",
+  "monthly_hours": "730",
+  "monthly_budget": {
+    "min": 0,
+    "max": 100000,
+    "currency": "KRW"
+  },
+  "budget_basis": "total",
+  "fx": null,
+  "candidates": [
+    {
+      "candidate_id": "demo-aws",
+      "target": "aws",
+      "region": "ap-northeast-2",
+      "configuration_status": "confirmed",
+      "assumptions": [
+        "Configuration snapshot only; live state and runtime overrides have not been queried. Catalog selectors and unmeasured usage remain unconfirmed."
+      ],
+      "values": {
+        "nodes": {
+          "root": {
+            "value": {
+              "min": 3,
+              "desired": 3,
+              "max": 3
+            },
+            "source": {
+              "path": "demo-app/infra/envs/aws/main.tf",
+              "ref": "18673c9f3b40baa02e9cb8e79cb74aa3c8b465e7",
+              "note": "Explicit node_count takes priority over module desired=2."
+            }
+          },
+          "module_default": {
+            "value": {
+              "min": 2,
+              "desired": 2,
+              "max": 3
+            },
+            "source": {
+              "path": "modules/cluster/aws/variables.tf",
+              "ref": "v1.14.0",
+              "note": "Referenced module default; overridden by environment root."
+            }
+          }
+        },
+        "node_types": {
+          "root": {
+            "value": [
+              "t3.medium"
+            ],
+            "source": {
+              "path": "demo-app/infra/envs/aws/main.tf",
+              "ref": "18673c9f3b40baa02e9cb8e79cb74aa3c8b465e7",
+              "note": "Explicit Linux AL2023 node type."
+            }
+          }
+        },
+        "nat_count": {
+          "root": {
+            "value": 1,
+            "source": {
+              "path": "demo-app/infra/envs/aws/main.tf",
+              "ref": "18673c9f3b40baa02e9cb8e79cb74aa3c8b465e7",
+              "note": "single_nat=true; one shared NAT."
+            }
+          }
+        },
+        "db_class": {
+          "root": {
+            "value": "db.t4g.micro",
+            "source": {
+              "path": "demo-app/infra/envs/aws/main.tf",
+              "ref": "18673c9f3b40baa02e9cb8e79cb74aa3c8b465e7",
+              "note": "One shared RDS instance."
+            }
+          }
+        },
+        "db_count": {
+          "root": {
+            "value": 1,
+            "source": {
+              "path": "demo-app/infra/envs/aws/main.tf",
+              "ref": "18673c9f3b40baa02e9cb8e79cb74aa3c8b465e7",
+              "note": "database module is outside the environment loop."
+            }
+          }
+        },
+        "db_storage": {
+          "root": {
+            "value": {
+              "min": "20",
+              "max": "20"
+            },
+            "source": {
+              "path": "demo-app/infra/envs/aws/main.tf",
+              "ref": "18673c9f3b40baa02e9cb8e79cb74aa3c8b465e7",
+              "note": "20 GB gp3 storage."
+            }
+          }
+        },
+        "alb_count": {
+          "assumption": {
+            "value": 1,
+            "source": {
+              "path": "documented-assumption",
+              "ref": null,
+              "note": "One shared ingress group is the configured intent; verify controller-created load balancers before final quote."
+            }
+          }
+        },
+        "node_disk_usage": {
+          "assumption": {
+            "value": null,
+            "source": {
+              "path": "documented-assumption",
+              "ref": null,
+              "note": "Upstream EKS launch-template disk default is not pinned in this snapshot; storage usage is unknown."
+            }
+          }
+        },
+        "repositories": {
+          "root": {
+            "value": 2,
+            "source": {
+              "path": "demo-app/infra/envs/aws/main.tf",
+              "ref": "18673c9f3b40baa02e9cb8e79cb74aa3c8b465e7",
+              "note": "BE/FE repositories, shared across test/prod."
+            }
+          }
+        }
+      },
+      "resources": [
+        {
+          "resource_id": "aws-cluster",
+          "resource_kind": "eks",
+          "shared": true,
+          "environments": [
+            "test",
+            "prod"
+          ],
+          "items": [
+            {
+              "item_id": "aws-cluster-cluster_hours",
+              "billing_dimension": "cluster_hours",
+              "attributes": {},
+              "quantity": 1,
+              "unit": "hour",
+              "cost_type": "fixed",
+              "monthly_usage": {
+                "min": "730",
+                "max": "730"
+              },
+              "incremental_usage": null,
+              "source": {
+                "path": "resource-mapping.md",
+                "ref": "v1.14.0",
+                "note": "Catalog selector or usage must be confirmed before a complete quote."
+              }
+            }
+          ]
+        },
+        {
+          "resource_id": "aws-nodes",
+          "resource_kind": "ec2",
+          "shared": true,
+          "environments": [
+            "test",
+            "prod"
+          ],
+          "items": [
+            {
+              "item_id": "aws-nodes-instance_hours",
+              "billing_dimension": "instance_hours",
+              "attributes": {
+                "instance_type": {
+                  "value_from": "node_types",
+                  "member": 0
+                },
+                "operating_system": "Linux",
+                "tenancy": "Shared"
+              },
+              "quantity": {
+                "value_from": "nodes",
+                "member": "desired"
+              },
+              "unit": "hour",
+              "cost_type": "fixed",
+              "monthly_usage": {
+                "min": "730",
+                "max": "730"
+              },
+              "incremental_usage": null,
+              "source": {
+                "path": "demo-app/infra/envs/aws/main.tf",
+                "ref": "18673c9f3b40baa02e9cb8e79cb74aa3c8b465e7",
+                "note": "node_count.desired=3; do not derive quantity from replicas."
+              }
+            }
+          ]
+        },
+        {
+          "resource_id": "aws-node-disks",
+          "resource_kind": "ebs",
+          "shared": true,
+          "environments": [
+            "test",
+            "prod"
+          ],
+          "items": [
+            {
+              "item_id": "aws-node-disks-storage",
+              "billing_dimension": "storage",
+              "attributes": {},
+              "quantity": {
+                "value_from": "nodes",
+                "member": "desired"
+              },
+              "unit": "gb_month",
+              "cost_type": "fixed",
+              "monthly_usage": {
+                "value_from": "node_disk_usage"
+              },
+              "incremental_usage": null,
+              "source": {
+                "path": "resource-mapping.md",
+                "ref": "v1.14.0",
+                "note": "Catalog selector or usage must be confirmed before a complete quote."
+              }
+            }
+          ]
+        },
+        {
+          "resource_id": "aws-nat",
+          "resource_kind": "nat",
+          "shared": true,
+          "environments": [
+            "test",
+            "prod"
+          ],
+          "items": [
+            {
+              "item_id": "aws-nat-gateway_hours",
+              "billing_dimension": "gateway_hours",
+              "attributes": {},
+              "quantity": {
+                "value_from": "nat_count"
+              },
+              "unit": "hour",
+              "cost_type": "fixed",
+              "monthly_usage": {
+                "min": "730",
+                "max": "730"
+              },
+              "incremental_usage": null,
+              "source": {
+                "path": "resource-mapping.md",
+                "ref": "v1.14.0",
+                "note": "Catalog selector or usage must be confirmed before a complete quote."
+              }
+            },
+            {
+              "item_id": "aws-nat-processed_data",
+              "billing_dimension": "processed_data",
+              "attributes": {},
+              "quantity": {
+                "value_from": "nat_count"
+              },
+              "unit": "gb",
+              "cost_type": "variable",
+              "monthly_usage": null,
+              "incremental_usage": null,
+              "source": {
+                "path": "resource-mapping.md",
+                "ref": "v1.14.0",
+                "note": "Catalog selector or usage must be confirmed before a complete quote."
+              }
+            }
+          ]
+        },
+        {
+          "resource_id": "aws-alb",
+          "resource_kind": "alb",
+          "shared": true,
+          "environments": [
+            "test",
+            "prod"
+          ],
+          "items": [
+            {
+              "item_id": "aws-alb-load_balancer_hours",
+              "billing_dimension": "load_balancer_hours",
+              "attributes": {},
+              "quantity": {
+                "value_from": "alb_count"
+              },
+              "unit": "hour",
+              "cost_type": "fixed",
+              "monthly_usage": {
+                "min": "730",
+                "max": "730"
+              },
+              "incremental_usage": null,
+              "source": {
+                "path": "resource-mapping.md",
+                "ref": "v1.14.0",
+                "note": "Catalog selector or usage must be confirmed before a complete quote."
+              }
+            },
+            {
+              "item_id": "aws-alb-lcu_hours",
+              "billing_dimension": "lcu_hours",
+              "attributes": {},
+              "quantity": {
+                "value_from": "alb_count"
+              },
+              "unit": "lcu_hour",
+              "cost_type": "variable",
+              "monthly_usage": null,
+              "incremental_usage": null,
+              "source": {
+                "path": "resource-mapping.md",
+                "ref": "v1.14.0",
+                "note": "Catalog selector or usage must be confirmed before a complete quote."
+              }
+            }
+          ]
+        },
+        {
+          "resource_id": "aws-db",
+          "resource_kind": "rds",
+          "shared": true,
+          "environments": [
+            "test",
+            "prod"
+          ],
+          "items": [
+            {
+              "item_id": "aws-db-instance_hours",
+              "billing_dimension": "instance_hours",
+              "attributes": {
+                "instance_class": {
+                  "value_from": "db_class"
+                },
+                "engine": "PostgreSQL",
+                "deployment": "Single-AZ"
+              },
+              "quantity": {
+                "value_from": "db_count"
+              },
+              "unit": "hour",
+              "cost_type": "fixed",
+              "monthly_usage": {
+                "min": "730",
+                "max": "730"
+              },
+              "incremental_usage": null,
+              "source": {
+                "path": "demo-app/infra/envs/aws/main.tf",
+                "ref": "18673c9f3b40baa02e9cb8e79cb74aa3c8b465e7",
+                "note": "Shared physical DB is counted once, not once per namespace."
+              }
+            },
+            {
+              "item_id": "aws-db-storage",
+              "billing_dimension": "storage",
+              "attributes": {
+                "engine": "PostgreSQL",
+                "deployment": "Single-AZ"
+              },
+              "quantity": {
+                "value_from": "db_count"
+              },
+              "unit": "gb_month",
+              "cost_type": "fixed",
+              "monthly_usage": {
+                "value_from": "db_storage"
+              },
+              "incremental_usage": null,
+              "source": {
+                "path": "resource-mapping.md",
+                "ref": "v1.14.0",
+                "note": "Catalog selector or usage must be confirmed before a complete quote."
+              }
+            }
+          ]
+        },
+        {
+          "resource_id": "aws-registry",
+          "resource_kind": "ecr",
+          "shared": true,
+          "environments": [
+            "test",
+            "prod"
+          ],
+          "items": [
+            {
+              "item_id": "aws-registry-storage",
+              "billing_dimension": "storage",
+              "attributes": {},
+              "quantity": {
+                "value_from": "repositories"
+              },
+              "unit": "gb_month",
+              "cost_type": "variable",
+              "monthly_usage": null,
+              "incremental_usage": null,
+              "source": {
+                "path": "resource-mapping.md",
+                "ref": "v1.14.0",
+                "note": "Catalog selector or usage must be confirmed before a complete quote."
+              }
+            }
+          ]
+        },
+        {
+          "resource_id": "aws-observability",
+          "resource_kind": "logs",
+          "shared": true,
+          "environments": [
+            "test",
+            "prod"
+          ],
+          "items": [
+            {
+              "item_id": "aws-observability-ingestion",
+              "billing_dimension": "ingestion",
+              "attributes": {},
+              "quantity": 1,
+              "unit": "gb",
+              "cost_type": "variable",
+              "monthly_usage": null,
+              "incremental_usage": null,
+              "source": {
+                "path": "resource-mapping.md",
+                "ref": "v1.14.0",
+                "note": "Catalog selector or usage must be confirmed before a complete quote."
+              }
+            },
+            {
+              "item_id": "aws-observability-storage",
+              "billing_dimension": "storage",
+              "attributes": {},
+              "quantity": 1,
+              "unit": "gb_month",
+              "cost_type": "variable",
+              "monthly_usage": null,
+              "incremental_usage": null,
+              "source": {
+                "path": "resource-mapping.md",
+                "ref": "v1.14.0",
+                "note": "Catalog selector or usage must be confirmed before a complete quote."
+              }
+            }
+          ]
+        },
+        {
+          "resource_id": "aws-egress",
+          "resource_kind": "internet_egress",
+          "shared": true,
+          "environments": [
+            "test",
+            "prod"
+          ],
+          "items": [
+            {
+              "item_id": "aws-egress-transfer",
+              "billing_dimension": "transfer",
+              "attributes": {},
+              "quantity": 1,
+              "unit": "gb",
+              "cost_type": "variable",
+              "monthly_usage": null,
+              "incremental_usage": null,
+              "source": {
+                "path": "resource-mapping.md",
+                "ref": "v1.14.0",
+                "note": "Catalog selector or usage must be confirmed before a complete quote."
+              }
+            }
+          ]
+        },
+        {
+          "resource_id": "aws-addresses",
+          "resource_kind": "aws_public_ipv4",
+          "shared": true,
+          "environments": [
+            "test",
+            "prod"
+          ],
+          "items": [
+            {
+              "item_id": "aws-addresses-address_hours",
+              "billing_dimension": "address_hours",
+              "attributes": {},
+              "quantity": 1,
+              "unit": "hour",
+              "cost_type": "variable",
+              "monthly_usage": null,
+              "incremental_usage": null,
+              "source": {
+                "path": "resource-mapping.md",
+                "ref": "v1.14.0",
+                "note": "Catalog selector or usage must be confirmed before a complete quote."
+              }
+            }
+          ]
+        },
+        {
+          "resource_id": "aws-metrics",
+          "resource_kind": "aws_metrics",
+          "shared": true,
+          "environments": [
+            "test",
+            "prod"
+          ],
+          "items": [
+            {
+              "item_id": "aws-metrics-metrics",
+              "billing_dimension": "metrics",
+              "attributes": {},
+              "quantity": 1,
+              "unit": "request",
+              "cost_type": "variable",
+              "monthly_usage": null,
+              "incremental_usage": null,
+              "source": {
+                "path": "resource-mapping.md",
+                "ref": "v1.14.0",
+                "note": "Catalog selector or usage must be confirmed before a complete quote."
+              }
+            }
+          ]
+        },
+        {
+          "resource_id": "aws-secrets",
+          "resource_kind": "aws_secrets",
+          "shared": true,
+          "environments": [
+            "test",
+            "prod"
+          ],
+          "items": [
+            {
+              "item_id": "aws-secrets-storage",
+              "billing_dimension": "storage",
+              "attributes": {},
+              "quantity": 1,
+              "unit": "gb_month",
+              "cost_type": "variable",
+              "monthly_usage": null,
+              "incremental_usage": null,
+              "source": {
+                "path": "resource-mapping.md",
+                "ref": "v1.14.0",
+                "note": "Catalog selector or usage must be confirmed before a complete quote."
+              }
+            }
+          ]
+        },
+        {
+          "resource_id": "aws-audit",
+          "resource_kind": "aws_audit_storage",
+          "shared": true,
+          "environments": [
+            "test",
+            "prod"
+          ],
+          "items": [
+            {
+              "item_id": "aws-audit-storage",
+              "billing_dimension": "storage",
+              "attributes": {},
+              "quantity": 1,
+              "unit": "gb_month",
+              "cost_type": "variable",
+              "monthly_usage": null,
+              "incremental_usage": null,
+              "source": {
+                "path": "resource-mapping.md",
+                "ref": "v1.14.0",
+                "note": "Catalog selector or usage must be confirmed before a complete quote."
+              }
+            }
+          ]
+        }
+      ],
+      "excluded_resources": {},
+      "traffic": {
+        "scenario": "final",
+        "source": {
+          "path": "demo-app/deploy/aws/values.yaml",
+          "ref": "18673c9f3b40baa02e9cb8e79cb74aa3c8b465e7",
+          "note": "Requests from deploy values; test/prod and simultaneous Blue-Green are counted as an upper scenario."
+        },
+        "workloads": [
+          {
+            "name": "demo-app-be",
+            "replicas": 1,
+            "environments": [
+              "test",
+              "prod"
+            ],
+            "blue_green_multiplier": 2,
+            "cpu_millicores": 100,
+            "memory_mib": "128"
+          },
+          {
+            "name": "demo-app-fe",
+            "replicas": 1,
+            "environments": [
+              "test",
+              "prod"
+            ],
+            "blue_green_multiplier": 2,
+            "cpu_millicores": 50,
+            "memory_mib": "32"
+          }
+        ]
+      },
+      "capacity": null,
+      "operating_costs": {}
+    },
+    {
+      "candidate_id": "demo-gcp",
+      "target": "gcp",
+      "region": "asia-northeast3",
+      "configuration_status": "confirmed",
+      "assumptions": [
+        "Configuration snapshot only; live state and runtime overrides have not been queried. Catalog selectors and unmeasured usage remain unconfirmed.",
+        "Referenced node disk is 30 GB; SQL tier db-g1-small and initial storage 20 GB are confirmed configuration defaults, not live usage."
+      ],
+      "values": {
+        "nodes": {
+          "module_default": {
+            "value": {
+              "min": 3,
+              "desired": 3,
+              "max": 3
+            },
+            "source": {
+              "path": "modules/cluster/gcp/variables.tf",
+              "ref": "v1.14.0",
+              "note": "TOTAL nodes across zones; do not multiply by zone count."
+            }
+          }
+        },
+        "node_types": {
+          "module_default": {
+            "value": [
+              "e2-standard-2"
+            ],
+            "source": {
+              "path": "modules/cluster/gcp/variables.tf",
+              "ref": "v1.14.0",
+              "note": "Referenced GKE default machine type."
+            }
+          }
+        },
+        "node_disk_gb": {
+          "module_default": {
+            "value": 30,
+            "source": {
+              "path": "modules/cluster/gcp/main.tf",
+              "ref": "v1.14.0",
+              "note": "pd-standard disk_size_gb=30 per node."
+            }
+          }
+        },
+        "db_class": {
+          "module_default": {
+            "value": "db-g1-small",
+            "source": {
+              "path": "modules/database/gcp/variables.tf",
+              "ref": "v1.14.0",
+              "note": "Shared-core SQL tier: use instance-hours, not assumed dedicated CPU/RAM pricing."
+            }
+          }
+        },
+        "db_storage_gb": {
+          "module_default": {
+            "value": 20,
+            "source": {
+              "path": "modules/database/gcp/variables.tf",
+              "ref": "v1.14.0",
+              "note": "SQL PD_SSD initial disk is 20 GB; billing unit conversion must be checked."
+            }
+          }
+        },
+        "db_count": {
+          "root": {
+            "value": 1,
+            "source": {
+              "path": "demo-app/infra/envs/gcp/main.tf",
+              "ref": "18673c9f3b40baa02e9cb8e79cb74aa3c8b465e7",
+              "note": "Single database module outside test/prod service-base loop."
+            }
+          }
+        },
+        "cpu_usage": {
+          "assumption": {
+            "value": {
+              "min": "1460",
+              "max": "1460"
+            },
+            "source": {
+              "path": "documented-assumption",
+              "ref": null,
+              "note": "2 vCPU x 730 hours per e2-standard-2 node; confirm resource specification with selected SKU."
+            }
+          }
+        },
+        "memory_usage": {
+          "assumption": {
+            "value": {
+              "min": "5840",
+              "max": "5840"
+            },
+            "source": {
+              "path": "documented-assumption",
+              "ref": null,
+              "note": "8 GiB x 730 hours per e2-standard-2 node; confirm resource specification with selected SKU."
+            }
+          }
+        },
+        "disk_usage": {
+          "assumption": {
+            "value": null,
+            "source": {
+              "path": "documented-assumption",
+              "ref": null,
+              "note": "30 GB disk is known, but charged GiB-month interpretation has not been confirmed."
+            }
+          }
+        },
+        "sql_disk_usage": {
+          "assumption": {
+            "value": null,
+            "source": {
+              "path": "documented-assumption",
+              "ref": null,
+              "note": "20 GB SQL disk is known, but catalog billing unit and autosize growth are not measured."
+            }
+          }
+        },
+        "ingress_per_env": {
+          "assumption": {
+            "value": 2,
+            "source": {
+              "path": "documented-assumption",
+              "ref": null,
+              "note": "Active and preview GCE ingresses per namespace; live forwarding rules and fees need verification."
+            }
+          }
+        },
+        "repositories": {
+          "root": {
+            "value": 2,
+            "source": {
+              "path": "demo-app/infra/envs/gcp/main.tf",
+              "ref": "18673c9f3b40baa02e9cb8e79cb74aa3c8b465e7",
+              "note": "BE/FE repositories, shared across test/prod."
+            }
+          }
+        }
+      },
+      "resources": [
+        {
+          "resource_id": "gcp-cluster",
+          "resource_kind": "gke",
+          "shared": true,
+          "environments": [
+            "test",
+            "prod"
+          ],
+          "items": [
+            {
+              "item_id": "gcp-cluster-cluster_hours",
+              "billing_dimension": "cluster_hours",
+              "attributes": {},
+              "quantity": 1,
+              "unit": "hour",
+              "cost_type": "fixed",
+              "monthly_usage": {
+                "min": "730",
+                "max": "730"
+              },
+              "incremental_usage": null,
+              "source": {
+                "path": "resource-mapping.md",
+                "ref": "v1.14.0",
+                "note": "Catalog selector or usage must be confirmed before a complete quote."
+              }
+            }
+          ]
+        },
+        {
+          "resource_id": "gcp-nodes",
+          "resource_kind": "gke_node",
+          "shared": true,
+          "environments": [
+            "test",
+            "prod"
+          ],
+          "items": [
+            {
+              "item_id": "gcp-nodes-cpu_hours",
+              "billing_dimension": "cpu_hours",
+              "attributes": {},
+              "quantity": {
+                "value_from": "nodes",
+                "member": "desired"
+              },
+              "unit": "vcpu_hour",
+              "cost_type": "fixed",
+              "monthly_usage": {
+                "value_from": "cpu_usage"
+              },
+              "incremental_usage": null,
+              "source": {
+                "path": "resource-mapping.md",
+                "ref": "v1.14.0",
+                "note": "Catalog selector or usage must be confirmed before a complete quote."
+              }
+            },
+            {
+              "item_id": "gcp-nodes-memory_hours",
+              "billing_dimension": "memory_hours",
+              "attributes": {},
+              "quantity": {
+                "value_from": "nodes",
+                "member": "desired"
+              },
+              "unit": "gib_hour",
+              "cost_type": "fixed",
+              "monthly_usage": {
+                "value_from": "memory_usage"
+              },
+              "incremental_usage": null,
+              "source": {
+                "path": "resource-mapping.md",
+                "ref": "v1.14.0",
+                "note": "Catalog selector or usage must be confirmed before a complete quote."
+              }
+            }
+          ]
+        },
+        {
+          "resource_id": "gcp-node-disks",
+          "resource_kind": "gcp_disk",
+          "shared": true,
+          "environments": [
+            "test",
+            "prod"
+          ],
+          "items": [
+            {
+              "item_id": "gcp-node-disks-storage",
+              "billing_dimension": "storage",
+              "attributes": {},
+              "quantity": {
+                "value_from": "nodes",
+                "member": "desired"
+              },
+              "unit": "gib_month",
+              "cost_type": "fixed",
+              "monthly_usage": {
+                "value_from": "disk_usage"
+              },
+              "incremental_usage": null,
+              "source": {
+                "path": "modules/cluster/gcp/main.tf",
+                "ref": "v1.14.0",
+                "note": "30GB pd-standard per node is known; monthly billing quantity is unconfirmed. Declared size: 30 GB."
+              }
+            }
+          ]
+        },
+        {
+          "resource_id": "gcp-nat",
+          "resource_kind": "cloud_nat",
+          "shared": true,
+          "environments": [
+            "test",
+            "prod"
+          ],
+          "items": [
+            {
+              "item_id": "gcp-nat-gateway_hours",
+              "billing_dimension": "gateway_hours",
+              "attributes": {},
+              "quantity": 1,
+              "unit": "hour",
+              "cost_type": "fixed",
+              "monthly_usage": null,
+              "incremental_usage": null,
+              "source": {
+                "path": "modules/network/gcp/main.tf",
+                "ref": "v1.14.0",
+                "note": "One Cloud NAT router; VM-based billing quantities/caps require catalog confirmation."
+              }
+            },
+            {
+              "item_id": "gcp-nat-processed_data",
+              "billing_dimension": "processed_data",
+              "attributes": {},
+              "quantity": 1,
+              "unit": "gib",
+              "cost_type": "variable",
+              "monthly_usage": null,
+              "incremental_usage": null,
+              "source": {
+                "path": "resource-mapping.md",
+                "ref": "v1.14.0",
+                "note": "Catalog selector or usage must be confirmed before a complete quote."
+              }
+            }
+          ]
+        },
+        {
+          "resource_id": "gcp-ingress-test",
+          "resource_kind": "gcp_load_balancer",
+          "shared": false,
+          "environments": [
+            "test"
+          ],
+          "items": [
+            {
+              "item_id": "gcp-ingress-test-load_balancer_hours",
+              "billing_dimension": "load_balancer_hours",
+              "attributes": {},
+              "quantity": {
+                "value_from": "ingress_per_env"
+              },
+              "unit": "hour",
+              "cost_type": "fixed",
+              "monthly_usage": {
+                "min": "730",
+                "max": "730"
+              },
+              "incremental_usage": null,
+              "source": {
+                "path": "resource-mapping.md",
+                "ref": "v1.14.0",
+                "note": "Catalog selector or usage must be confirmed before a complete quote."
+              }
+            },
+            {
+              "item_id": "gcp-ingress-test-processed_data",
+              "billing_dimension": "processed_data",
+              "attributes": {},
+              "quantity": {
+                "value_from": "ingress_per_env"
+              },
+              "unit": "gib",
+              "cost_type": "variable",
+              "monthly_usage": null,
+              "incremental_usage": null,
+              "source": {
+                "path": "resource-mapping.md",
+                "ref": "v1.14.0",
+                "note": "Catalog selector or usage must be confirmed before a complete quote."
+              }
+            }
+          ]
+        },
+        {
+          "resource_id": "gcp-ingress-prod",
+          "resource_kind": "gcp_load_balancer",
+          "shared": false,
+          "environments": [
+            "prod"
+          ],
+          "items": [
+            {
+              "item_id": "gcp-ingress-prod-load_balancer_hours",
+              "billing_dimension": "load_balancer_hours",
+              "attributes": {},
+              "quantity": {
+                "value_from": "ingress_per_env"
+              },
+              "unit": "hour",
+              "cost_type": "fixed",
+              "monthly_usage": {
+                "min": "730",
+                "max": "730"
+              },
+              "incremental_usage": null,
+              "source": {
+                "path": "resource-mapping.md",
+                "ref": "v1.14.0",
+                "note": "Catalog selector or usage must be confirmed before a complete quote."
+              }
+            },
+            {
+              "item_id": "gcp-ingress-prod-processed_data",
+              "billing_dimension": "processed_data",
+              "attributes": {},
+              "quantity": {
+                "value_from": "ingress_per_env"
+              },
+              "unit": "gib",
+              "cost_type": "variable",
+              "monthly_usage": null,
+              "incremental_usage": null,
+              "source": {
+                "path": "resource-mapping.md",
+                "ref": "v1.14.0",
+                "note": "Catalog selector or usage must be confirmed before a complete quote."
+              }
+            }
+          ]
+        },
+        {
+          "resource_id": "gcp-db",
+          "resource_kind": "cloud_sql",
+          "shared": true,
+          "environments": [
+            "test",
+            "prod"
+          ],
+          "items": [
+            {
+              "item_id": "gcp-db-instance_hours",
+              "billing_dimension": "instance_hours",
+              "attributes": {},
+              "quantity": {
+                "value_from": "db_count"
+              },
+              "unit": "hour",
+              "cost_type": "fixed",
+              "monthly_usage": {
+                "min": "730",
+                "max": "730"
+              },
+              "incremental_usage": null,
+              "source": {
+                "path": "modules/database/gcp/variables.tf",
+                "ref": "v1.14.0",
+                "note": "db-g1-small defaults; exact SQL shared-core catalog selector still unconfirmed."
+              }
+            },
+            {
+              "item_id": "gcp-db-storage",
+              "billing_dimension": "storage",
+              "attributes": {},
+              "quantity": {
+                "value_from": "db_count"
+              },
+              "unit": "gib_month",
+              "cost_type": "fixed",
+              "monthly_usage": {
+                "value_from": "sql_disk_usage"
+              },
+              "incremental_usage": null,
+              "source": {
+                "path": "resource-mapping.md",
+                "ref": "v1.14.0",
+                "note": "Catalog selector or usage must be confirmed before a complete quote."
+              }
+            }
+          ]
+        },
+        {
+          "resource_id": "gcp-registry",
+          "resource_kind": "artifact_registry",
+          "shared": true,
+          "environments": [
+            "test",
+            "prod"
+          ],
+          "items": [
+            {
+              "item_id": "gcp-registry-storage",
+              "billing_dimension": "storage",
+              "attributes": {},
+              "quantity": {
+                "value_from": "repositories"
+              },
+              "unit": "gib_month",
+              "cost_type": "variable",
+              "monthly_usage": null,
+              "incremental_usage": null,
+              "source": {
+                "path": "resource-mapping.md",
+                "ref": "v1.14.0",
+                "note": "Catalog selector or usage must be confirmed before a complete quote."
+              }
+            }
+          ]
+        },
+        {
+          "resource_id": "gcp-observability",
+          "resource_kind": "gcp_logs",
+          "shared": true,
+          "environments": [
+            "test",
+            "prod"
+          ],
+          "items": [
+            {
+              "item_id": "gcp-observability-ingestion",
+              "billing_dimension": "ingestion",
+              "attributes": {},
+              "quantity": 1,
+              "unit": "gib",
+              "cost_type": "variable",
+              "monthly_usage": null,
+              "incremental_usage": null,
+              "source": {
+                "path": "resource-mapping.md",
+                "ref": "v1.14.0",
+                "note": "Catalog selector or usage must be confirmed before a complete quote."
+              }
+            },
+            {
+              "item_id": "gcp-observability-storage",
+              "billing_dimension": "storage",
+              "attributes": {},
+              "quantity": 1,
+              "unit": "gib_month",
+              "cost_type": "variable",
+              "monthly_usage": null,
+              "incremental_usage": null,
+              "source": {
+                "path": "resource-mapping.md",
+                "ref": "v1.14.0",
+                "note": "Catalog selector or usage must be confirmed before a complete quote."
+              }
+            }
+          ]
+        },
+        {
+          "resource_id": "gcp-egress",
+          "resource_kind": "gcp_internet_egress",
+          "shared": true,
+          "environments": [
+            "test",
+            "prod"
+          ],
+          "items": [
+            {
+              "item_id": "gcp-egress-transfer",
+              "billing_dimension": "transfer",
+              "attributes": {},
+              "quantity": 1,
+              "unit": "gib",
+              "cost_type": "variable",
+              "monthly_usage": null,
+              "incremental_usage": null,
+              "source": {
+                "path": "resource-mapping.md",
+                "ref": "v1.14.0",
+                "note": "Catalog selector or usage must be confirmed before a complete quote."
+              }
+            }
+          ]
+        },
+        {
+          "resource_id": "gcp-addresses",
+          "resource_kind": "gcp_public_ipv4",
+          "shared": true,
+          "environments": [
+            "test",
+            "prod"
+          ],
+          "items": [
+            {
+              "item_id": "gcp-addresses-address_hours",
+              "billing_dimension": "address_hours",
+              "attributes": {},
+              "quantity": 1,
+              "unit": "hour",
+              "cost_type": "variable",
+              "monthly_usage": null,
+              "incremental_usage": null,
+              "source": {
+                "path": "resource-mapping.md",
+                "ref": "v1.14.0",
+                "note": "Catalog selector or usage must be confirmed before a complete quote."
+              }
+            }
+          ]
+        },
+        {
+          "resource_id": "gcp-metrics",
+          "resource_kind": "gcp_metrics",
+          "shared": true,
+          "environments": [
+            "test",
+            "prod"
+          ],
+          "items": [
+            {
+              "item_id": "gcp-metrics-metrics",
+              "billing_dimension": "metrics",
+              "attributes": {},
+              "quantity": 1,
+              "unit": "request",
+              "cost_type": "variable",
+              "monthly_usage": null,
+              "incremental_usage": null,
+              "source": {
+                "path": "resource-mapping.md",
+                "ref": "v1.14.0",
+                "note": "Catalog selector or usage must be confirmed before a complete quote."
+              }
+            }
+          ]
+        },
+        {
+          "resource_id": "gcp-secrets",
+          "resource_kind": "gcp_secrets",
+          "shared": true,
+          "environments": [
+            "test",
+            "prod"
+          ],
+          "items": [
+            {
+              "item_id": "gcp-secrets-storage",
+              "billing_dimension": "storage",
+              "attributes": {},
+              "quantity": 1,
+              "unit": "gb_month",
+              "cost_type": "variable",
+              "monthly_usage": null,
+              "incremental_usage": null,
+              "source": {
+                "path": "resource-mapping.md",
+                "ref": "v1.14.0",
+                "note": "Catalog selector or usage must be confirmed before a complete quote."
+              }
+            }
+          ]
+        },
+        {
+          "resource_id": "gcp-audit",
+          "resource_kind": "gcp_audit_storage",
+          "shared": true,
+          "environments": [
+            "test",
+            "prod"
+          ],
+          "items": [
+            {
+              "item_id": "gcp-audit-storage",
+              "billing_dimension": "storage",
+              "attributes": {},
+              "quantity": 1,
+              "unit": "gb_month",
+              "cost_type": "variable",
+              "monthly_usage": null,
+              "incremental_usage": null,
+              "source": {
+                "path": "resource-mapping.md",
+                "ref": "v1.14.0",
+                "note": "Catalog selector or usage must be confirmed before a complete quote."
+              }
+            }
+          ]
+        }
+      ],
+      "excluded_resources": {},
+      "traffic": {
+        "scenario": "default",
+        "source": {
+          "path": "demo-app/.deploy/plan.yaml",
+          "ref": "18673c9f3b40baa02e9cb8e79cb74aa3c8b465e7",
+          "note": "GCP values omit replicas; App Chart v1.14.0 defaults to 2. Final GCP traffic recommendation has not been produced."
+        },
+        "workloads": [
+          {
+            "name": "demo-app-be",
+            "replicas": 2,
+            "environments": [
+              "test",
+              "prod"
+            ],
+            "blue_green_multiplier": 2,
+            "cpu_millicores": 100,
+            "memory_mib": "128"
+          },
+          {
+            "name": "demo-app-fe",
+            "replicas": 2,
+            "environments": [
+              "test",
+              "prod"
+            ],
+            "blue_green_multiplier": 2,
+            "cpu_millicores": 50,
+            "memory_mib": "32"
+          }
+        ]
+      },
+      "capacity": null,
+      "operating_costs": {}
+    },
+    {
+      "candidate_id": "demo-onprem",
+      "target": "onprem",
+      "region": null,
+      "configuration_status": "confirmed",
+      "assumptions": [
+        "Existing k3d hardware. Onprem PostgreSQL is separate for test and prod. Cloud fee zero is not total operating cost zero."
+      ],
+      "values": {},
+      "resources": [],
+      "excluded_resources": {},
+      "traffic": {
+        "scenario": "final",
+        "source": {
+          "path": "demo-app/deploy/onprem/values.yaml",
+          "ref": "18673c9f3b40baa02e9cb8e79cb74aa3c8b465e7",
+          "note": "Requests from deploy values; test/prod and simultaneous Blue-Green are counted as an upper scenario."
+        },
+        "workloads": [
+          {
+            "name": "demo-app-be",
+            "replicas": 1,
+            "environments": [
+              "test",
+              "prod"
+            ],
+            "blue_green_multiplier": 2,
+            "cpu_millicores": 100,
+            "memory_mib": "128"
+          },
+          {
+            "name": "demo-app-fe",
+            "replicas": 1,
+            "environments": [
+              "test",
+              "prod"
+            ],
+            "blue_green_multiplier": 2,
+            "cpu_millicores": 50,
+            "memory_mib": "32"
+          }
+        ]
+      },
+      "capacity": null,
+      "operating_costs": {
+        "power": {
+          "monthly_krw": null,
+          "source": {
+            "path": "user-input",
+            "ref": null,
+            "note": "No monthly power cost supplied."
+          }
+        },
+        "hardware": {
+          "monthly_krw": null,
+          "source": {
+            "path": "user-input",
+            "ref": null,
+            "note": "No monthly hardware cost supplied."
+          }
+        },
+        "labor": {
+          "monthly_krw": null,
+          "source": {
+            "path": "user-input",
+            "ref": null,
+            "note": "No monthly labor cost supplied."
+          }
+        }
+      }
+    }
+  ]
+}

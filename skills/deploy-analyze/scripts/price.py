@@ -86,7 +86,22 @@ def main(argv=None):
         query = commands.add_parser("lookup")
         query.add_argument("--input", required=True)
         query.add_argument("--output", required=True)
+        mapping = commands.add_parser("map")
+        mapping.add_argument("--inventory", required=True)
+        mapping.add_argument("--output", required=True)
+        mapping.add_argument("--assessment", required=True)
         args = parser.parse_args(argv)
+        if args.command == "map":
+            from pricing_map import load_inventory, map_inventory
+            path = output_path(args.inventory, args.output)
+            audit_path = output_path(args.inventory, args.assessment)
+            if path == audit_path:
+                raise InputError("map: output and assessment must differ")
+            mapped, assessment = map_inventory(load_inventory(args.inventory))
+            write_result(path, mapped)
+            write_result(audit_path, assessment)
+            print(json.dumps(dict(status=assessment["status"], output=str(path), issues=assessment["issues"]), ensure_ascii=False))
+            return 3 if assessment["status"] == "partial" else 0
         data = load_input(args.input)
         if args.command == "validate":
             response, code = dict(status="complete", output=None, issues=[]), 0

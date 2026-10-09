@@ -46,6 +46,10 @@ python <skill-dir>/scripts/price.py calculate --input <app-root>/.deploy/analysi
 
 예산 초과는 실행 실패가 아니다. 완전한 계산 결과가 예산을 넘더라도 종료 코드는 0이며 `budget.status`로 표시한다. 예산이나 환율 미정만으로 USD 계산 자체를 partial로 만들지는 않는다.
 
+## C4 자원 목록 매핑
+
+price.py map --inventory <inventory.json> --output <pricing-input.json> --assessment <resource-assessment.json>으로 스킬이 명시한 자원 목록을 가격 입력으로 변환한다. [자원 매핑 계약](resource-mapping.md)에 출처 우선순위·필수 자원·공유 범위·replicas와 노드 증설 구분을 정의한다. 이 명령은 네트워크나 Terraform을 실행하지 않는다. 부분 매핑은 종료 코드 3과 미정 항목을 남긴다. 산출물 둘의 해시를 맞춰 확인해야 하며 단가 조회 성공과는 구분한다.
+
 ## C2 AWS 조회 사용법과 지원 범위
 
 의존성은 스킬의 requirements.txt에 있다. 다음 명령은 실제 앱 입력을 검증하거나 단가를 조회한다.
