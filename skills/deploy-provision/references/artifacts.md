@@ -119,14 +119,15 @@ platform 모듈을 `?ref=@@TEMPLATE_VERSION@@`로 참조하는 Terraform 루트.
 
 platform 재사용 워크플로를 **호출만** 한다. 검사 단계를 끄는 입력은 없다.
 
-- `deploy.yml`: `pull_request` → checks, `push yolo/**` → checks → test, `push main` → checks → test → prod, `workflow_dispatch` → 대상 골라 재배포. yolo 브랜치에서는 `promote-mode: auto`(AI 판단대로 실행), 그 외 `manual`(사람이 Slack 버튼). **호출부 입력은 참조하는 템플릿 버전에 있는 것만 넘긴다.** 없는 입력을 넘기면 워크플로가 `startup_failure`로 시작하지 못한다(`promote-mode`는 v1.9.0부터). 각 입력이 생긴 버전은 platform `CHANGELOG.md`.
+- `deploy.yml`: `pull_request` → checks, `push yolo/**` → checks → test, `push main` → checks → test → prod, `workflow_dispatch` → 대상 골라 재배포. yolo 브랜치에서는 `promote-mode: auto`(AI 판단대로 실행), 그 외 `manual`(사람이 Slack 버튼). **호출부 입력은 참조하는 템플릿 버전에 있는 것만 넘긴다.** 없는 입력을 넘기면 워크플로가 `startup_failure`로 시작하지 못한다(`promote-mode`는 v1.9.0부터, `branch` 모드와 `yolo-auto-merge`는 v1.14.0부터). 각 입력이 생긴 버전은 platform `CHANGELOG.md`.
+- v1.14.0부터 test 호출에 `yolo-auto-merge: true`, test/prod에 `promote-mode: branch`를 넘긴다. yolo 승격 뒤 PR 검사 → rebase 자동 머지, main에서는 새 SHA로 test 재검증 → 같은 이미지로 prod 배포한다. janto main은 manual을 유지한다. `render.sh`는 이전 버전에서 이 입력을 조정한다.
 - `infra.yml`(aws): `infra/**` PR → plan 코멘트, main → apply.
 - `template-update.yml`: 새 태그 알림 → 버전 올리는 PR.
 - 호출부의 `with:` 값만 바꾼다. 새 job을 끼워 검사를 건너뛰게 만들지 않는다.
 
 ### `.github/CODEOWNERS`
 
-`.deploy/config.yaml`과 `CODEOWNERS` 자신을 사람 리뷰 대상으로 묶는다(T6). 이미 있으면 그대로 둔다. AI 계정을 오너로 넣지 않는다.
+`.deploy/config.yaml`과 `CODEOWNERS` 자신을 사람 리뷰 대상으로 묶는다(T6). 이미 있으면 그대로 둔다. AI 계정을 오너로 넣지 않는다. `.deploy/plan.yaml`을 보호 경로에 추가하지 않는다. 다만 레포 전체에 요구되는 일반 리뷰 규칙은 그대로 적용된다.
 
 ### `.deploy/log/`
 

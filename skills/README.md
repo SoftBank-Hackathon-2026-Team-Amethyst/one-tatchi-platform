@@ -6,8 +6,8 @@
 |---|---|
 | `/janto-deploy` | 정석 진입점. 브리프 → 분석 → 산출물 → **기능 브랜치 + main PR**. 리뷰 지점 1(추천 인프라)에서 사람 확인 |
 | `/yolo-deploy` | 예외 진입점. 질문 없이 분석 → 산출물 → **`yolo/<기능>` push** → 검사 · test 배포를 지켜본다. 검사 실패는 AI가 고쳐 다시 push (최대 3회, T14) |
-| `deploy-analyze` | 브리프 질문 5개(T15) + 분석기 5개(코드베이스 · 서비스 · 트래픽 · 보안 · 예산) → `.deploy/report.md`, `.deploy/config.yaml` |
-| `deploy-provision` | 산출물 생성(Dockerfile, 값 파일, `infra/envs/<대상>`, `.deploy/config.yaml`, `.deploy/smoke.json`, 워크플로 호출부). 템플릿은 태그로만 참조 |
+| `deploy-analyze` | 브리프 질문 5개(T15) + 분석기 5개(코드베이스 · 서비스 · 트래픽 · 보안 · 예산) → `.deploy/report.md`, `.deploy/plan.yaml`(계획), `.deploy/config.yaml`(보호 값) |
+| `deploy-provision` | 산출물 생성(Dockerfile, 값 파일, `infra/envs/<대상>`, `.deploy/plan.yaml`, `.deploy/config.yaml`, `.deploy/smoke.json`, 워크플로 호출부). 템플릿은 태그로만 참조 |
 | `deploy-release` | 파이프라인의 승격(`rollout.yml promote`)을 요청한다 |
 | `deploy-rollback` | 파이프라인의 취소 · 되돌리기(`rollout.yml abort \| undo`)를 요청한다 |
 

@@ -1,6 +1,6 @@
 ---
 name: deploy-analyze
-description: 웹앱 배포 전에 사용자 수, 예산, 데이터 취급, 배포 대상 선호, 가용성을 질문해 브리프와 초기 compliance를 저장하고, 코드베이스 · 서비스 · 트래픽 · 보안 · 예산 분석기 5개로 배포 대상과 구성을 추천하는 분석 보고서(.deploy/report.md)와 배포 설정(.deploy/config.yaml)을 만든다. janto-deploy / yolo-deploy의 첫 단계이거나, 어디에 어떻게 배포할지 판단이 필요할 때 쓴다.
+description: 웹앱 배포 전에 사용자 수, 예산, 데이터 취급, 배포 대상 선호, 가용성을 질문해 브리프와 초기 compliance를 저장하고, 코드베이스 · 서비스 · 트래픽 · 보안 · 예산 분석기 5개로 배포 대상과 구성을 추천하는 분석 보고서(.deploy/report.md)와 배포 계획(.deploy/plan.yaml)을 만든다. janto-deploy / yolo-deploy의 첫 단계이거나, 어디에 어떻게 배포할지 판단이 필요할 때 쓴다.
 ---
 
 # 배포 분석 (브리프 + 분석기)

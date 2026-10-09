@@ -46,6 +46,8 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       - run: bash scripts/tests/run.sh
+      - run: python3 -B -m unittest discover -s .github/actions/yolo-pr/tests -v
+      - run: bash skills/deploy-provision/tests/run.sh
 
   slack-bot:
     runs-on: ubuntu-latest

@@ -8,9 +8,12 @@
 
 릴리스 방법: 이 파일에 항목을 추가하고 main에 머지한 뒤 `git tag vX.Y.Z && git push origin vX.Y.Z`. `release.yml`이 차트를 GHCR에 올리고 메이저 태그(`v1`)를 옮긴 뒤, 대상 레포(demo-app)에 알려 버전 업데이트 PR이 열리게 한다. 버전 항목 제목은 `## vX.Y.Z` 형식을 지킨다(PR 본문에 그 구간이 붙는다).
 
-## Unreleased
+## v1.14.0
 
-- `skills/`: 스킬 인계값(`target`, `services`)을 `.deploy/config.yaml`에서 `.deploy/plan.yaml`로 분리. `config.yaml`은 CODEOWNERS 리뷰 대상이라 janto 산출물 PR마다 오너 승인이 붙었다. `check-artifacts.sh`가 `config.yaml`에 인계값이 있으면 실패 (T13)
+- `deploy.yml` (T8): `yolo-auto-merge: true`로 test의 모든 서비스가 해당 커밋으로 승격됐음을 확인한 뒤 GitHub App으로 main PR을 만든다. PR 검사 완료를 기다리고 `--match-head-commit`으로 검증한 head에 rebase 자동 머지를 요청한다. 일반 리뷰와 CODEOWNERS 규칙은 유지한다.
+- `promote-mode: branch`: yolo push 및 yolo PR이 머지된 main push는 auto, janto와 수동 재실행은 manual. GitHub rebase는 SHA를 바꾸므로 main에서 test를 다시 검증한 뒤 같은 이미지를 prod에 쓴다.
+- 스킬 호출부는 참조 버전에 맞춰 새 입력을 렌더한다. yolo 실행 기록은 push 전에 쓰고, 완료 기록을 위한 재push 대신 Actions artifact와 PR에 결과를 남긴다.
+- `target·services`는 `.deploy/plan.yaml`, 보호 값 `compliance·template_version`은 `.deploy/config.yaml`로 분리한다 (T13).
 
 ## v1.13.1
 

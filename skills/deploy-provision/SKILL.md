@@ -1,6 +1,6 @@
 ---
 name: deploy-provision
-description: 분석 결과(.deploy/plan.yaml, .deploy/report.md)로 대상 레포에 배포 산출물을 만든다. Dockerfile, App Chart 값 파일, infra/envs/<대상> Terraform 루트(원격 모듈 태그 참조), .deploy/smoke.json, 재사용 워크플로 호출부, CODEOWNERS. 아무것도 apply하지 않는다. janto-deploy / yolo-deploy의 산출물 단계이거나, 설정이 바뀐 뒤 산출물을 다시 맞출 때 쓴다.
+description: 분석 결과(.deploy/plan.yaml, .deploy/report.md)로 대상 레포에 배포 산출물을 만든다. Dockerfile, App Chart 값 파일, 대상별 Terraform Terraform 루트(원격 모듈 태그 참조), .deploy/smoke.json, 재사용 워크플로 호출부, CODEOWNERS. 아무것도 apply하지 않는다. janto-deploy / yolo-deploy의 산출물 단계이거나, 설정이 바뀐 뒤 산출물을 다시 맞출 때 쓴다.
 ---
 
 # deploy-provision
@@ -63,6 +63,7 @@ description: 분석 결과(.deploy/plan.yaml, .deploy/report.md)로 대상 레�
 
 호출한 스킬이 PR 본문이나 마무리 보고에 적는다.
 
+- yolo 자동 PR: `BOT_CLIENT_ID` 변수와 `BOT_PRIVATE_KEY` 시크릿. GitHub App은 대상 레포에 설치하고 Contents · Pull requests 쓰기, Actions 읽기 권한을 준다. 저장소 auto-merge와 rebase merge가 활성화돼 있어야 한다. 리뷰 정책은 우회하지 않는다.
 - GitHub Variables: `DEPLOY_TARGET`, AWS면 `AWS_REGION` · `AWS_PLAN_ROLE_ARN` · `AWS_DEPLOY_ROLE_ARN` · `TF_STATE_BUCKET` · `AUDIT_LOG_BUCKET`(bootstrap 출력), Slack 알림이면 `SLACK_CHANNEL_ID`와 시크릿 `SLACK_BOT_TOKEN`, AI 승격 판단이면 시크릿 `ANTHROPIC_API_KEY`
 - Environments: `test`, `prod`(승인자 지정), `prod-auto`(main만)
 - 온프레미스: self-hosted runner(라벨 `onprem`) 등록, `infra/envs/onprem`을 그 기기에서 `terraform apply`(state는 기기에만)
