@@ -1,0 +1,89 @@
+{
+  "schema_version": "1",
+  "input_id": "example-t16-c1",
+  "created_at": "2026-10-09T00:00:00Z",
+  "template_version": "v1.16.0",
+  "monthly_hours": "730",
+  "monthly_budget": {
+    "min": 100001,
+    "max": 500000,
+    "currency": "KRW"
+  },
+  "budget_basis": "total",
+  "fx": {
+    "usd_to_krw": "1400",
+    "as_of": "2026-10-09",
+    "source": "계약 검증용 합성 환율, 실제 환율 아님"
+  },
+  "candidates": [
+    {
+      "candidate_id": "aws-example",
+      "target": "aws",
+      "region": "ap-northeast-2",
+      "configuration_status": "assumed",
+      "assumptions": [
+        "단가 · 환율 · 구성은 합성값이다.",
+        "실제 견적에 필요한 다른 자원은 이 계약 예시 범위에 포함하지 않았다.",
+        "기존 공유 자원을 증설 없이 사용하므로 이 예시의 증분은 0이다."
+      ],
+      "items": [
+        {
+          "item_id": "nodes",
+          "resource_id": "nodes",
+          "resource_kind": "ec2",
+          "billing_dimension": "instance_hours",
+          "attributes": {
+            "instance_type": "t3.medium",
+            "operating_system": "Linux",
+            "tenancy": "Shared"
+          },
+          "quantity": 2,
+          "shared": true,
+          "cost_type": "fixed",
+          "unit": "hour",
+          "monthly_usage": {
+            "min": "730",
+            "max": "730"
+          },
+          "incremental_usage": {
+            "min": "0",
+            "max": "0"
+          },
+          "source": {
+            "path": "synthetic-example",
+            "ref": null,
+            "note": "계약 검증용 구성. 실제 demo-app 구성이나 전체 AWS 견적을 나타내지 않음"
+          }
+        },
+        {
+          "item_id": "db",
+          "resource_id": "db",
+          "resource_kind": "rds",
+          "billing_dimension": "instance_hours",
+          "attributes": {
+            "instance_class": "db.t4g.micro",
+            "engine": "PostgreSQL",
+            "deployment": "Single-AZ"
+          },
+          "quantity": 1,
+          "shared": true,
+          "cost_type": "fixed",
+          "unit": "hour",
+          "monthly_usage": {
+            "min": "730",
+            "max": "730"
+          },
+          "incremental_usage": {
+            "min": "0",
+            "max": "0"
+          },
+          "source": {
+            "path": "synthetic-example",
+            "ref": null,
+            "note": "계약 검증용 구성. 실제 demo-app 구성이나 전체 AWS 견적을 나타내지 않음"
+          }
+        }
+      ]
+    }
+  ]
+}

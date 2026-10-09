@@ -1,0 +1,59 @@
+{
+  "schema_version": "1",
+  "input_id": "example-t16-c1",
+  "input_sha256": "7ea587990492fa42c945b067f4cfcae653878db0295e62f938ae67e7cbcc4441",
+  "queried_at": "2026-10-09T00:01:00Z",
+  "status": "partial",
+  "candidates": [
+    {
+      "candidate_id": "aws-example",
+      "target": "aws",
+      "region": "ap-northeast-2",
+      "items": [
+        {
+          "item_id": "nodes",
+          "status": "available",
+          "price": {
+            "sku": "synthetic-nodes",
+            "provider_service": "synthetic-example",
+            "currency": "USD",
+            "source": "계약 검증용 합성 단가, API 조회 아님",
+            "effective_at": "2026-10-09T00:00:00Z",
+            "unit": "hour",
+            "source_unit": "hour",
+            "source_usage_per_unit": "1",
+            "tiers": [
+              {
+                "from": "0",
+                "to": null,
+                "unit_price": "0.1"
+              }
+            ]
+          },
+          "issue": null
+        },
+        {
+          "item_id": "db",
+          "status": "unavailable",
+          "price": null,
+          "issue": {
+            "candidate_id": "aws-example",
+            "item_id": "db",
+            "code": "permission_denied",
+            "message": "합성 오류: DB 가격 조회 권한 없음",
+            "retryable": false
+          }
+        }
+      ]
+    }
+  ],
+  "issues": [
+    {
+      "candidate_id": "aws-example",
+      "item_id": "db",
+      "code": "permission_denied",
+      "message": "합성 오류: DB 가격 조회 권한 없음",
+      "retryable": false
+    }
+  ]
+}
