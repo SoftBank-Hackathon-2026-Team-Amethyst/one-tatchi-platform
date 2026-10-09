@@ -95,6 +95,16 @@ class GitHub:
             "POST", f"/repos/{self.repository}/issues/{number}/comments", json={"body": body}
         )
 
+    def run_head_sha(self, run_id: int) -> str:
+        return self._request("GET", f"/repos/{self.repository}/actions/runs/{run_id}").json()[
+            "head_sha"
+        ]
+
+    def commit_comment(self, sha: str, body: str) -> None:
+        self._request(
+            "POST", f"/repos/{self.repository}/commits/{sha}/comments", json={"body": body}
+        )
+
     def run_url(self, run_id: int) -> str:
         return f"https://github.com/{self.repository}/actions/runs/{run_id}"
 
