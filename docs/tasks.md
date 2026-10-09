@@ -645,7 +645,7 @@ Claude Code는 `/todo-task`, Codex는 `$todo-task`로 이 순서를 따르는 �
 **할 일**
 - [x] 기존 봇(알림 + promote · abort · undo 버튼, Socket Mode)을 platform `slack-bot/`으로 이식, 대상 레포 · 워크플로 이름을 설정값으로
 - [ ] PR 머지 버튼: janto PR의 검사 통과 · plan 결과를 알리고, 버튼을 누르면 봇이 머지 API 호출. 누른 사람을 PR 코멘트로 남김
-- [ ] 운영 승인 · 거절 버튼: 봇을 GitHub App으로 만들고 demo-app `prod` environment의 승인 규칙(custom deployment protection rule)으로 등록, 버튼으로 승인 · 거절
+- [x] 운영 승인 · 거절 버튼: 봇을 GitHub App으로 만들고 demo-app `prod` environment의 승인 규칙(custom deployment protection rule)으로 등록, 버튼으로 승인 · 거절
 - [ ] 누를 수 있는 사람 제한(`ALLOWED_USER_IDS`), 요청자를 감사 로그 `requested_by`에 기록
 - [ ] 알림 흐름 정리: PR 준비 → 테스트 배포 완료(승격 · 취소) → 운영 승인 대기(승인 · 거절) → 운영 반영 결과(되돌리기)
 
