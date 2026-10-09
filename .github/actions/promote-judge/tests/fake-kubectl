@@ -1,0 +1,28 @@
+#!/usr/bin/env bash
+# promote-judge 테스트용 가짜 kubectl.
+#   FAKE_MODE       port-forward로 띄울 가짜 green의 응답 (ok | fail | slow)
+#   FAKE_PODS_FILE  get pods가 돌려줄 JSON 파일 (없으면 Ready 파드 2개, 재시작 0)
+#   FAKE_NO_ROLLOUT 값이 있으면 get rollout이 실패한다
+#   FAKE_CALLS_FILE argo rollouts 호출을 한 줄씩 남길 파일
+#   FAKE_STATUS     argo rollouts status 결과 (ok | fail, 기본 ok)
+here="$(cd "$(dirname "$0")" && pwd)"
+case "$1 $2" in
+  "get svc") echo 8000 ;;
+  "get rollout")
+    [ -n "${FAKE_NO_ROLLOUT:-}" ] && { echo 'Error from server (NotFound)' >&2; exit 1; }
+    echo '{"status":{"currentPodHash":"green123","blueGreen":{"previewSelector":"green123","activeSelector":"blue456"}}}' ;;
+  "get pods")
+    case "$*" in *rollouts-pod-template-hash=green123*) ;; *) echo '{"items":[]}'; exit 0 ;; esac
+    if [ -n "${FAKE_PODS_FILE:-}" ]; then cat "$FAKE_PODS_FILE"; else
+      echo '{"items":[
+        {"status":{"conditions":[{"type":"Ready","status":"True"}],"containerStatuses":[{"restartCount":0}]}},
+        {"status":{"conditions":[{"type":"Ready","status":"True"}],"containerStatuses":[{"restartCount":0}]}}]}'
+    fi ;;
+  "argo rollouts")
+    shift 2
+    [ -z "${FAKE_CALLS_FILE:-}" ] || echo "$*" >> "$FAKE_CALLS_FILE"
+    [ "$1" = status ] && [ "${FAKE_STATUS:-ok}" = fail ] && { echo 'Error: rollout aborted' >&2; exit 1; }
+    exit 0 ;;
+  port-forward*) exec python3 "$here/fake_server.py" "${FAKE_MODE:-ok}" ;;
+  *) echo "fake-kubectl: 지원하지 않는 명령 $*" >&2; exit 1 ;;
+esac

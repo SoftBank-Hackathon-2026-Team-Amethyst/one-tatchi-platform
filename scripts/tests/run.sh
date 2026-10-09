@@ -42,4 +42,7 @@ expected=$'## v1.2.0\n\n- 둘째\n\n## v1.1.0\n\n- 첫째\n'
 actual="$(bash "$scripts/changelog-between.sh" v1.0.0 v1.2.0 "$tmp/CHANGELOG.md")"$'\n'
 [[ "$actual" == "$expected" ]] || { echo "기대:"; echo "$expected"; echo "실제:"; echo "$actual"; exit 1; } >&2
 
+echo "== promote-judge 액션 (T7)"
+bash "$(dirname "$scripts")/.github/actions/promote-judge/tests/run.sh" >/dev/null
+
 echo "통과"
