@@ -293,7 +293,7 @@ Claude Code는 `/todo-task`, Codex는 `$todo-task`로 이 순서를 따르는 �
 - [ ] 공개 서비스와 환경별 현재 터널을 대조하고 없음·대상 불일치·조회 오류·URL 누락 시 배포 실패. 내부 BE는 외부 주소가 없어도 정상
 - [ ] checks에서 `linux/amd64` + `linux/arm64`를 한 번 빌드·각각 검사. 같은 run의 OCI artifact와 digest로 배포하고 test에서 승격한 동일 digest만 prod에 반영
 - [ ] ephemeral 입력·write-only Secret·exec 인증으로 DB 비밀번호와 k3d 관리자 인증정보의 state 저장 제거. 기존 비밀번호·데이터를 보존하며 암호화 복구 백업 후 state·plan·backup 이전 검증 (NFR-2)
-- [ ] database: 기존 StatefulSet·PVC·접속 규격 유지, Helm Postgres로 교체하지 않는 결정과 이유를 ADR에 기록
+- [x] database: 기존 StatefulSet·PVC·접속 규격 유지, Helm Postgres로 교체하지 않는 결정과 이유를 ADR에 기록
 - [ ] (시간이 남으면) 리눅스 머신에서 같은 절차 확인
 
 **완료 기준** 두 맥북 각각 잠금·화면 꺼짐을 포함한 30분 동안 test · prod와 runner가 중단·재시작 없이 동작한다. 별도 재부팅·로그인 뒤 추가 명령 없이 10분 내 복구되고 데이터가 유지된다. 터널이 없을 때 배포가 실패한다.
