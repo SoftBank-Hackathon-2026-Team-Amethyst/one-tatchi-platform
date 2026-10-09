@@ -8,6 +8,10 @@
 
 릴리스 방법: 이 파일에 항목을 추가하고 main에 머지한 뒤 `git tag vX.Y.Z && git push origin vX.Y.Z`. `release.yml`이 차트를 GHCR에 올리고 메이저 태그(`v1`)를 옮긴 뒤, 대상 레포(demo-app)에 알려 버전 업데이트 PR이 열리게 한다. 버전 항목 제목은 `## vX.Y.Z` 형식을 지킨다(PR 본문에 그 구간이 붙는다).
 
+## v1.8.0
+
+- `deploy.yml`: 입력 `host` 추가 (aws). 서비스 도메인으로 HTTPS(ACM) + 80→443 리다이렉트, 주소도 `https://<host>/`로 알린다. 비우면 지금처럼 ALB 주소로 HTTP (T2)
+
 ## v1.7.0
 
 - `deploy.yml`: 서비스마다 job을 나누던 matrix를 없애고 환경당 job 하나에서 배열 순서대로 배포한다. environment 승인이 job마다 걸려 prod 승인을 서비스 수만큼 받아야 했다(BE 승인 후 FE가 다시 승인 대기). 감사 로그 · Slack 대상은 `all@<대상>.<환경>`, concurrency는 대상 · 환경 단위 (T5)
