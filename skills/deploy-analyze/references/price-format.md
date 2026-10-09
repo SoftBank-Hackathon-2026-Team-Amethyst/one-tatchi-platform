@@ -1,6 +1,6 @@
 # 가격 조회 · 비용 계산 계약 (T16 / C1)
 
-이 문서는 배포 분석 도구의 구성 입력, 단가 조회 결과, 비용 계산 결과와 실패 처리 계약을 정의한다. 스킬 원본은 platform에, 실제 분석 산출물은 대상 앱의 `.deploy/analysis/`에 둔다. C1은 계약과 예시를 추가하는 커밋이다. C2에서 입력 검증과 AWS 단가 조회를 구현했고 C3에서 GCP 단가 조회를 연결했다. 비용 계산은 C5에서 추가한다.
+이 문서는 배포 분석 도구의 구성 입력, 단가 조회 결과, 비용 계산 결과와 실패 처리 계약을 정의한다. 스킬 원본은 platform에, 실제 분석 산출물은 대상 앱의 `.deploy/analysis/`에 둔다. C1은 계약과 예시를 추가하는 커밋이다. C2에서 입력 검증과 AWS 단가 조회를 구현했고 C3에서 GCP 단가 조회를 연결했다. C5에서 월 비용 계산과 대안 견적 비교를 구현했다.
 
 ## 확정한 도구 구성
 
@@ -21,7 +21,7 @@
 
 ## CLI 계약
 
-validate와 AWS · GCP lookup은 실행할 수 있다. calculate는 C5에서 구현할 인터페이스이며 아직 실행할 수 없다. `<skill-dir>`은 설치된 deploy-analyze 디렉터리다. 모든 파일 경로를 명시하며 작업 디렉터리에서 앱 루트를 추측하지 않는다.
+validate, map, AWS · GCP lookup, calculate와 compare를 실행할 수 있다. `<skill-dir>`은 설치된 deploy-analyze 디렉터리다. 모든 파일 경로를 명시하며 작업 디렉터리에서 앱 루트를 추측하지 않는다.
 
 ```sh
 python <skill-dir>/scripts/price.py validate --input <app-root>/.deploy/analysis/pricing-input.json
@@ -49,6 +49,12 @@ python <skill-dir>/scripts/price.py calculate --input <app-root>/.deploy/analysi
 ## C4 자원 목록 매핑
 
 price.py map --inventory <inventory.json> --output <pricing-input.json> --assessment <resource-assessment.json>으로 스킬이 명시한 자원 목록을 가격 입력으로 변환한다. [자원 매핑 계약](resource-mapping.md)에 출처 우선순위·필수 자원·공유 범위·replicas와 노드 증설 구분을 정의한다. 이 명령은 네트워크나 Terraform을 실행하지 않는다. 부분 매핑은 종료 코드 3과 미정 항목을 남긴다. 산출물 둘의 해시를 맞춰 확인해야 하며 단가 조회 성공과는 구분한다.
+
+## C5 월 비용 계산과 대안 비교
+
+calculate --input <pricing-input.json> --prices <prices.json> --assessment <resource-assessment.json> --output <costs.json>으로 비용을 계산한다. assessment는 C4 입력에서 함께 사용하고 수동 입력에서는 생략할 수 있다. compare --baseline <costs.json> --alternative <alternative-costs.json> --output <savings.json>은 두 완전한 비교 범위의 USD 차액을 계산한다. [계산 계약](cost-calculation.md)에 구간 집계·증분·환율·예산 판정과 제한을 설명한다. 두 명령 모두 네트워크를 사용하지 않는다.
+
+계산 결과의 issue에는 unknown_usage, unknown_incremental_usage, unsupported_aggregation, unknown_aggregation_baseline과 C4 평가 사유가 포함될 수 있다. compare는 unknown_savings를 사용한다. tier_baseline_usage는 공급자 조회 필터가 아닌 계산용 십진 문자열 attributes이며 같은 SKU의 값은 일치해야 한다.
 
 ## C2 AWS 조회 사용법과 지원 범위
 
@@ -82,7 +88,7 @@ usage_type은 공급자 카탈로그에서 확인한 정확한 usagetype 문자�
 
 Hrs · hrs · Hours는 hour, GB-Mo · GB-month는 gb_month, GB는 gb, Requests는 request, LCU-Hrs는 lcu_hour로 정규화한다. 변환 계수는 1이다. 단위가 맞지 않거나 조건부 appliesTo가 있는 항목은 미조회로 남긴다. GB를 GiB로 임의 변환하지 않는다.
 
-C3에서 GCP 조회를 연결했다. 온프레미스의 비어 있지 않은 항목은 unsupported_resource로 남긴다. 어느 공급자의 조회가 실패해도 다른 공급자의 성공 결과는 보존한다. 온프레미스의 빈 items는 조회할 클라우드 항목이 없어 complete이며 운영 비용 미산정 가정은 입력에 유지한다. 비용과 예산 판정은 아직 생성하지 않는다.
+C3에서 GCP 조회를 연결했다. 온프레미스의 비어 있지 않은 항목은 unsupported_resource로 남긴다. 어느 공급자의 조회가 실패해도 다른 공급자의 성공 결과는 보존한다. 온프레미스의 빈 items는 조회할 클라우드 항목이 없어 complete이며 운영 비용 미산정 가정은 입력에 유지한다. lookup 자체는 비용과 예산 판정을 생성하지 않는다. calculate로 이어서 계산한다.
 
 로컬 테스트:
 
@@ -122,13 +128,13 @@ CPU와 메모리는 각각 별도 item_id와 billing_dimension으로 기록한�
 
 공개 유료 구성의 기본 단가를 조회한다. 크레딧 · 약정 · 계정별 할인은 적용하지 않는다. 전체 단가가 0인 무료 SKU는 기본 후보에서 제외하고, 0원 구간이 있는 SKU는 무료 한도의 자격과 공유 범위가 확인되지 않아 unsupported_resource로 남긴다. 유료 SKU를 확정하지 못하면 가격을 임의 대체하지 않는다.
 
-provider_details는 GCP price의 추가 근거다. 키는 usage_unit, base_unit, base_unit_conversion_factor, display_quantity, currency_conversion_rate, aggregation, effective_time, tiers다. 수치는 십진 문자열로 보존하며 tiers는 원본 시작 사용량 from, 정수부 units 문자열, nanos 정수를 담는다. aggregation은 공급자 aggregationLevel · aggregationInterval · aggregationCount 또는 null이다. 실제 계산기는 계정/프로젝트와 일/월 집계 범위를 확인해야 하며, 특히 일 단위 구간 요금을 월 사용량에 그대로 적용하면 안 된다. 이 처리는 C5에서 구현한다.
+provider_details는 GCP price의 추가 근거다. 키는 usage_unit, base_unit, base_unit_conversion_factor, display_quantity, currency_conversion_rate, aggregation, effective_time, tiers다. 수치는 십진 문자열로 보존하며 tiers는 원본 시작 사용량 from, 정수부 units 문자열, nanos 정수를 담는다. aggregation은 공급자 aggregationLevel · aggregationInterval · aggregationCount 또는 null이다. C5는 일 단위·여러 기간 구간을 미산정 처리하고, 계정/프로젝트 월 구간에는 tier_baseline_usage를 요구한다.
 
 [gcp-input.json](examples/pricing/gcp-input.json)과 [gcp-prices-complete.json](examples/pricing/gcp-prices-complete.json)은 합성 서울 CPU 단가의 입력 · 결과 견본이다. 실제 API 조회 근거가 아니다.
 
 ## 공통 형식과 파일 연결
 
-현재 입력 · 단가 · 계산 결과 예시의 `schema_version`은 `"2"`다. C3에서 GCP 원본 가격 근거를 보존할 provider_details를 추가하면서 버전을 올렸다. 입력 검증기는 기존 버전 `"1"` 입력도 지원하고 해시는 원래 입력 그대로 계산한다. lookup 출력은 항상 버전 `"2"`이며 계산 결과의 버전 2 구현은 C5에서 진행한다. 지원하지 않는 버전, 중복 JSON 키, 필수 키 누락, 정의되지 않은 키, 잘못된 타입은 오류다. 확장을 추가하면 계약 버전을 갱신한다.
+현재 입력 · 단가 · 계산 결과 예시의 `schema_version`은 `"2"`다. C3에서 GCP 원본 가격 근거를 보존할 provider_details를 추가하면서 버전을 올렸다. 입력 검증기는 기존 버전 `"1"` 입력도 지원하고 해시는 원래 입력 그대로 계산한다. lookup 출력은 항상 버전 `"2"`이며 calculate도 비용 결과를 버전 "2"로 생성한다. 지원하지 않는 버전, 중복 JSON 키, 필수 키 누락, 정의되지 않은 키, 잘못된 타입은 오류다. 확장을 추가하면 계약 버전을 갱신한다.
 
 - 금액 · 사용량 · 수량은 음수가 아닌 유한 십진 문자열이다. 지수 표기, NaN, Infinity와 쉼표를 허용하지 않는다. 개수 `quantity`는 양의 정수다.
 - 조회 · 생성 시각은 UTC RFC 3339 문자열, 기준일은 `YYYY-MM-DD`다.
@@ -184,7 +190,7 @@ provider_details는 GCP price의 추가 근거다. 키는 usage_unit, base_unit,
 
 - status가 `available`이면 price를 기록하고 issue는 null이다.
 - status가 `unavailable`이면 price는 null이고 issue에 원인을 남긴다.
-- price 필수 키: `sku`, `provider_service`, `currency`, `source`, `effective_at`, `unit`, `source_unit`, `source_usage_per_unit`, `tiers`. 버전 2에서는 선택 키 provider_details를 추가한다. AWS는 기존 필수 키를 유지하고 GCP는 provider_details에 원본 가격 · 변환 · 집계 근거를 기록한다.
+- price 필수 키: `sku`, `provider_service`, `currency`, `source`, `effective_at`, `unit`, `source_unit`, `source_usage_per_unit`, `tiers`. 버전 2에서는 선택 키 provider_details를 추가한다. AWS는 기존 필수 키를 유지하고 GCP 버전 2 유료 결과에는 provider_details가 필요하다. 원본 가격 · 변환 · 집계 근거를 기록한다.
 - currency는 USD다. source는 조회 API 식별자 또는 공식 자료 URL이다. 조회 시각과 가격 적용 시점을 구분한다.
 - source_usage_per_unit은 정규화 단위 1에 해당하는 원본 사용량의 양의 십진 문자열이다. tiers의 단가는 이미 정규화 단위당 USD로 변환되어 있어 계산기에서 중복 환산하지 않는다.
 - tiers는 `{from, to, unit_price}` 배열이다. 경계와 금액은 십진 문자열이며 마지막 to만 null이다. 첫 구간은 0에서 시작하고 구간은 빈틈 · 겹침 없이 오름차순이다. 구간 경계는 정규화 사용량 기준이다. 단일 요금도 `[0, 무한대)` 구간 하나로 표현한다.
@@ -212,7 +218,7 @@ summary는 다음 키를 가진다.
 
 계산은 단가 × quantity × 자원 하나의 사용량을 기반으로 하되 SKU별 구간 요금을 적용한다. 0원은 실제 0원 SKU, 명시한 0 사용량 또는 기존 온프레미스 장비의 클라우드 비용 범위에서만 사용할 수 있다. onprem의 빈 items는 클라우드 비용 범위에서 USD 0으로 집계하며 운영 비용 미산정을 assumptions에 표시한다. 이를 전체 운영비 0원으로 설명하지 않는다.
 
-budget 키는 `basis`, `range_krw`, `status`, `reason`이다. basis와 range_krw는 입력을 보존한다. 예산 경계와 구체적인 계산 정책은 C5에서 구현하지만 다음 상태를 구분한다.
+budget 키는 `basis`, `range_krw`, `status`, `reason`이다. basis와 range_krw는 입력을 보존한다. 예산 경계와 구체적인 계산 정책은 [C5 계산 계약](cost-calculation.md)에 정의하며 다음 상태를 구분한다.
 
 - `over`: 비교 가능한 비용 하한이 예산 상한보다 크다. 누락이 있어도 알려진 비용만으로 초과가 증명되면 over가 가능하며, 결과의 부분 상태는 유지한다.
 - `within`: 비교 범위가 완전하고 환율과 예산 상한이 있으며 비용 상한이 예산 상한 이하이다.
@@ -239,5 +245,5 @@ budget 키는 `basis`, `range_krw`, `status`, `reason`이다. basis와 range_krw
 
 
 - C1 검증: JSON 파싱, 입력 · 결과의 필드와 식별자 연결, 해시 일치, 합성 비용 재계산, partial의 null · 누락 사유, 입력 오류 예시를 확인한다.
-- C2 · C3 검증: 입력 검증, AWS · GCP 응답 정규화, ADC 보존과 공급자별 실패 처리는 자동 테스트로 확인한다. C5에서는 계산기와 결과 연결 검증을 추가한다. 이 계약을 구현하는 CLI와 검증기의 정상 · 부분 실패 · 입력 오류, 단위 · 구간 요금, 해시 불일치 · 기존 파일 보존 테스트를 추가한다.
+- C2 · C3 검증: 입력 검증, AWS · GCP 응답 정규화, ADC 보존과 공급자별 실패 처리는 자동 테스트로 확인한다. C5 계산기와 대안 비교·해시 연결도 자동 테스트로 확인한다. 이 계약을 구현하는 CLI와 검증기의 정상 · 부분 실패 · 입력 오류, 단위 · 구간 요금, 해시 불일치 · 기존 파일 보존 테스트를 추가한다.
 - C7 검증: 실제 API 단가 · 조회 시각과 demo-app 분석 보고서를 검증한다. C1 예시를 실제 조회 증거로 사용하지 않는다.

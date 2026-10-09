@@ -145,12 +145,12 @@ class AWSPrices:
         attrs = item["attributes"]
         if any(key not in attrs for key in required):
             raise LookupError("unsupported_resource", "AWS lookup requires explicit resource attributes: " + ", ".join(required))
-        unknown = set(attrs) - set(ALIASES) - {"rate_code"}
+        unknown = set(attrs) - set(ALIASES) - {"rate_code", "tier_baseline_usage"}
         if unknown:
             raise LookupError("unsupported_resource", "AWS lookup attributes are not supported")
         filters = dict(defaults)
         for key, value in attrs.items():
-            if key == "rate_code":
+            if key in {"rate_code", "tier_baseline_usage"}:
                 continue
             field = ALIASES[key]
             if field in filters and filters[field] != value:

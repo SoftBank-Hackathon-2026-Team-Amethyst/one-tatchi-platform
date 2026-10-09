@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Single entry point for validated price lookup (calculation follows in C5)."""
+"""Single entry point for resource mapping, price lookup and offline costing."""
 
 import argparse
 import json
@@ -79,7 +79,7 @@ def lookup(data, provider=None, gcp_provider=None):
 
 def main(argv=None):
     try:
-        parser = Parser(description="Validate a pricing input or look up AWS/GCP public On-Demand prices")
+        parser = Parser(description="Map resources, look up AWS/GCP prices, calculate and compare monthly costs")
         commands = parser.add_subparsers(dest="command", required=True)
         validate = commands.add_parser("validate")
         validate.add_argument("--input", required=True)
@@ -90,6 +90,15 @@ def main(argv=None):
         mapping.add_argument("--inventory", required=True)
         mapping.add_argument("--output", required=True)
         mapping.add_argument("--assessment", required=True)
+        calculation = commands.add_parser("calculate")
+        calculation.add_argument("--input", required=True)
+        calculation.add_argument("--prices", required=True)
+        calculation.add_argument("--output", required=True)
+        calculation.add_argument("--assessment")
+        comparison = commands.add_parser("compare")
+        comparison.add_argument("--baseline", required=True)
+        comparison.add_argument("--alternative", required=True)
+        comparison.add_argument("--output", required=True)
         args = parser.parse_args(argv)
         if args.command == "map":
             from pricing_map import load_inventory, map_inventory
@@ -102,12 +111,27 @@ def main(argv=None):
             write_result(audit_path, assessment)
             print(json.dumps(dict(status=assessment["status"], output=str(path), issues=assessment["issues"]), ensure_ascii=False))
             return 3 if assessment["status"] == "partial" else 0
+        if args.command == "compare":
+            from pricing_calculate import compare_costs, load_document
+            path = output_path(args.baseline, args.output)
+            output_path(args.alternative, args.output)
+            result = compare_costs(load_document(args.baseline), load_document(args.alternative))
+            write_result(path, result)
+            print(json.dumps(dict(status=result["status"], output=str(path), issues=result["issues"]), ensure_ascii=False))
+            return 3 if result["status"] == "partial" else 0
         data = load_input(args.input)
         if args.command == "validate":
             response, code = dict(status="complete", output=None, issues=[]), 0
         else:
             path = output_path(args.input, args.output)
-            result = lookup(data)
+            if args.command == "calculate":
+                from pricing_calculate import calculate, load_document
+                output_path(args.prices, args.output)
+                if args.assessment:
+                    output_path(args.assessment, args.output)
+                result = calculate(data, load_document(args.prices), load_document(args.assessment) if args.assessment else None)
+            else:
+                result = lookup(data)
             write_result(path, result)
             code = 3 if result["status"] == "partial" else 0
             response = dict(status=result["status"], output=str(path), issues=result["issues"])

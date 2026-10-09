@@ -96,6 +96,11 @@ class AWSLookupTests(unittest.TestCase):
         self.assertEqual(result["unit"], "hour")
         self.assertEqual(result["tiers"], [{"from": "0", "to": None, "unit_price": "0.052"}])
 
+    def test_aggregation_baseline_is_not_an_aws_product_filter(self):
+        self.node['attributes']['tier_baseline_usage']='100'
+        result=self.query(self.node,fixture('ec2.json'))
+        self.assertEqual(result['sku'],'EC2-EXAMPLE')
+
     def test_rds_selects_engine_size_and_deployment(self):
         result = self.query(self.db, fixture("rds.json"))
         self.assertEqual(result["provider_service"], "AmazonRDS")

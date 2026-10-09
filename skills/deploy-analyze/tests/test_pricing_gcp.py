@@ -76,6 +76,11 @@ class GCPLookupTests(unittest.TestCase):
         self.assertEqual(session.get.call_args.kwargs['params']['currencyCode'], 'USD')
         self.assertEqual(session.get.call_args.kwargs['timeout'], (5,15))
 
+    def test_aggregation_baseline_is_not_a_gcp_catalog_selector(self):
+        self.item['attributes']['tier_baseline_usage']='100'
+        result,_=self.query(fixture('cpu.json'))
+        self.assertEqual(result['sku'],'CPU-EXAMPLE')
+
     def test_memory_separate_from_cpu_and_catalog_cached(self):
         cpu, memory = fixture('cpu.json'), fixture('memory.json')
         provider, session = prepare(cpu, memory)

@@ -250,7 +250,7 @@ def map_inventory(inventory):
             attrs = item["attributes"]
             if output["target"] == "aws":
                 definition = AWS_PROFILES.get(profile)
-                ready = definition is not None and all(key in attrs for key in definition[1]) and set(attrs) <= set(AWS_ATTRIBUTES) | {"rate_code"}
+                ready = definition is not None and all(key in attrs for key in definition[1]) and set(attrs) <= set(AWS_ATTRIBUTES) | {"rate_code", "tier_baseline_usage"}
             elif output["target"] == "gcp":
                 ready = profile in GCP_PROFILES and all(key in attrs for key in ("resource_family", "resource_group")) and any(key in attrs for key in ("description", "sku_id")) and set(attrs) <= GCP_ATTRIBUTES and attrs.get("usage_type", "OnDemand") == "OnDemand"
             else:

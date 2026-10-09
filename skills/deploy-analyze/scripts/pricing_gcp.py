@@ -34,7 +34,7 @@ PROFILES = {
     ("gcp_logs", "storage"): "Cloud Logging",
     ("gcp_internet_egress", "transfer"): "Compute Engine",
 }
-ATTRIBUTES = {"resource_family", "resource_group", "usage_type", "description", "sku_id", "service_id"}
+ATTRIBUTES = {"resource_family", "resource_group", "usage_type", "description", "sku_id", "service_id", "tier_baseline_usage"}
 # (provider base unit, canonical usage in base units, allowed source units).
 GIB = Decimal(1073741824)
 MONTH_SECONDS = Decimal(730 * 3600)
