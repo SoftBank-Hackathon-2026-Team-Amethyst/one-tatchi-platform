@@ -11,6 +11,8 @@ Python 3.9+, Docker Desktop, k3d, kubectl, Terraform 1.11+, Helm 4를 설치하�
 배포 runner의 공통 스크립트에는 jq·yq v4·gh도 필요하다.
 GitHub의 **demo-app → Settings → Actions → Runners → New self-hosted runner** 안내로 공식 runner를 등록한다.
 runner 디렉터리는 임시 폴더·Actions `_work` 밖의 고정 경로로 정한다. `svc.sh install`은 실행하지 않는다.
+runner 설치 경로와 작업 경로(`--work`, 기본 `_work`)에는 **공백을 넣지 않는다**. 예: `~/.local/share/one-tatchi/runners/secondary`.
+실기에서 `Library/Application Support/.../runner` 아래의 작업 경로를 Actions Bash 단계가 공백에서 잘라 실행하는 오류를 확인했다. 관리 도구/launchd 설정의 `Application Support` 경로는 그대로 사용할 수 있다.
 이미 공식 서비스를 사용 중이면 `./svc.sh stop && ./svc.sh uninstall`로 기존 서비스만 해제한 뒤 이 도구로 연결한다.
 runner 등록·클러스터·DB·PVC는 삭제하지 않는다.
 
@@ -32,7 +34,7 @@ GitHub 변수 `ONPREM_CLUSTER`(기본값 `k3d-onetouch`)와 `ONPREM_SECONDARY_CL
   "api_port": 6558,
   "service": "demo-app",
   "terraform_root": "/absolute/path/demo-app/infra/envs/onprem",
-  "runner_dir": "/absolute/path/actions-runner-secondary",
+  "runner_dir": "/Users/your-user/.local/share/one-tatchi/runners/secondary",
   "environments": ["test", "prod"]
 }
 ```

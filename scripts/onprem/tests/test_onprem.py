@@ -117,6 +117,18 @@ class LifecycleTests(unittest.TestCase):
             with self.assertRaisesRegex(RuntimeError, "state is missing"):
                 ctl.check_ownership(self.config(Path(tmp)), True)
 
+    def test_runner_and_absolute_work_paths_must_not_contain_spaces(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            for dirname, work in (("runner space", "_work"), ("runner", str(root / "work space"))):
+                runner = root / dirname
+                runner.mkdir(exist_ok=True)
+                (runner / ".runner").write_text(json.dumps({"workFolder": work}), encoding="utf-8-sig")
+                with self.subTest(dirname=dirname), self.assertRaisesRegex(RuntimeError, "whitespace"):
+                    ctl.validate_runner_paths(runner)
+            (root / "runner/.runner").write_text('{"workFolder":"_work"}', encoding="utf-8-sig")
+            ctl.validate_runner_paths(root / "runner")
+
     def test_state_must_match_cluster(self):
         with tempfile.TemporaryDirectory() as tmp:
             config = self.config(Path(tmp))
@@ -127,11 +139,17 @@ class LifecycleTests(unittest.TestCase):
 
     def test_stop_only_unloads_owned_services(self):
         with tempfile.TemporaryDirectory() as tmp, patch.object(ctl, "run") as run:
-            run.return_value.returncode = 0
+            stopped = set()
+            def launchctl(args, **kwargs):
+                if args[1] == "bootout":
+                    stopped.add(args[2])
+                return subprocess.CompletedProcess(args, int(args[1] == "print" and args[2] in stopped))
+            run.side_effect = launchctl
             config = self.config(Path(tmp))
             ctl.stop_services(config)
             calls = [c.args[0] for c in run.call_args_list]
             self.assertEqual(sum(c[1] == "bootout" for c in calls), 3)
+            self.assertEqual(sum(c[1] == "print" for c in calls), 6)
             self.assertTrue(all(c[0] == "launchctl" for c in calls))
 
     def test_existing_database_password_is_preserved(self):

@@ -10,6 +10,11 @@
 
 ## Unreleased
 
+## v2.0.1
+
+- macOS runner의 설치/작업 경로에 공백이 있으면 설치 전에 중단한다. 실제 Actions Bash 단계에서 경로가 잘려 실행에 실패한 사례를 반영하고 공백 없는 고정 경로를 안내한다 (T27).
+- stop은 launchd 작업의 실제 해제까지 기다린다. 바로 start할 때 아직 종료 중인 runner를 실행 중으로 오인하지 않는다.
+
 ## v2.0.0
 
 - **호환되지 않는 변경 (T27):** onprem은 Terraform 1.11+와 관리 도구의 ephemeral 인증/DB 비밀번호 입력을 요구한다. cluster의 인증서/개인키 출력과 DB random_password state를 제거한다. 기존 state는 암호화 백업을 검증한 뒤 이전한다.
