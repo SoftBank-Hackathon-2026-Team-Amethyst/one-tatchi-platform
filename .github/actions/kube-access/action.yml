@@ -11,7 +11,16 @@ inputs:
     description: aws만. Deploy 역할 ARN
     default: ""
   region:
-    description: aws만. 리전
+    description: AWS 또는 GCP 리전
+    default: ""
+  project:
+    description: GCP 프로젝트 ID
+    default: ""
+  workload-identity-provider:
+    description: GCP deploy WIF provider
+    default: ""
+  service-account:
+    description: GCP deploy 서비스 계정 이메일
     default: ""
 runs:
   using: composite
@@ -25,11 +34,22 @@ runs:
       with:
         # deploy.yml이 Helm 4 플래그(--server-side)를 쓴다. 메이저가 바뀌면 같이 확인한다.
         version: v4.3.0
+    - if: inputs.target == 'gcp'
+      uses: google-github-actions/auth@v3
+      with:
+        workload_identity_provider: ${{ inputs.workload-identity-provider }}
+        service_account: ${{ inputs.service-account }}
+        project_id: ${{ inputs.project }}
+    - if: inputs.target == 'gcp'
+      uses: google-github-actions/setup-gcloud@v3
+      with:
+        install_components: gke-gcloud-auth-plugin
     - shell: bash
       env:
         TARGET: ${{ inputs.target }}
         CLUSTER: ${{ inputs.cluster }}
         REGION: ${{ inputs.region }}
+        GCP_PROJECT: ${{ inputs.project }}
       run: |
         # kubeconfig · 레지스트리 설정은 job 전용 파일에 둔다. self-hosted runner의 기본 설정을 건드리지 않는다.
         export KUBECONFIG="$RUNNER_TEMP/kubeconfig"
@@ -44,11 +64,13 @@ runs:
         case "$TARGET" in
           aws)
             aws eks update-kubeconfig --name "$CLUSTER" --region "$REGION" ;;
+          gcp)
+            gcloud container clusters get-credentials "$CLUSTER" --region "$REGION" --project "$GCP_PROJECT" ;;
           onprem)
             # 클러스터는 runner와 같은 맥북에 있다. runner 계정의 kube context를 복사해 쓴다.
             KUBECONFIG="$HOME/.kube/config" kubectl config view --raw --minify --context "$CLUSTER" > "$KUBECONFIG" ;;
           *)
-            echo "::error::지원하지 않는 배포 대상: $TARGET (aws | onprem)"; exit 1 ;;
+            echo "::error::지원하지 않는 배포 대상: $TARGET (aws | gcp | onprem)"; exit 1 ;;
         esac
         kubectl cluster-info >/dev/null
 

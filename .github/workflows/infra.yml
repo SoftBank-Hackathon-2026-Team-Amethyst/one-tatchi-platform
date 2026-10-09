@@ -5,6 +5,10 @@ name: infra
 on:
   workflow_call:
     inputs:
+      target:
+        description: "인프라 대상: aws | gcp"
+        type: string
+        default: aws
       working-directory:
         description: "Terraform 루트 경로. 예: infra/envs/aws"
         type: string
@@ -44,16 +48,29 @@ jobs:
           terraform_version: ${{ env.TF_VERSION }}
           terraform_wrapper: false
       - uses: aws-actions/configure-aws-credentials@v6
+        if: inputs.target == 'aws'
         with:
           # plan은 읽기 전용 역할, apply는 반영 역할
           role-to-assume: ${{ inputs.mode == 'apply' && vars.AWS_DEPLOY_ROLE_ARN || vars.AWS_PLAN_ROLE_ARN }}
           aws-region: ${{ vars.AWS_REGION }}
           role-duration-seconds: ${{ inputs.mode == 'apply' && 7200 || 3600 }}
+      - if: inputs.target == 'gcp'
+        uses: google-github-actions/auth@v3
+        with:
+          workload_identity_provider: ${{ inputs.mode == 'apply' && vars.GCP_WIF_PROVIDER || vars.GCP_PLAN_WIF_PROVIDER }}
+          service_account: ${{ inputs.mode == 'apply' && vars.GCP_DEPLOY_IDENTITY || vars.GCP_PLAN_IDENTITY }}
+          project_id: ${{ vars.GCP_PROJECT }}
+      - if: inputs.target == 'gcp'
+        uses: google-github-actions/setup-gcloud@v3
+        with:
+          install_components: gke-gcloud-auth-plugin
       - name: terraform init · validate
         working-directory: ${{ inputs.working-directory }}
+        env:
+          STATE_BUCKET: ${{ inputs.target == 'gcp' && vars.GCP_TF_STATE_BUCKET || vars.TF_STATE_BUCKET }}
         run: |
           terraform fmt -check -recursive
-          terraform init -input=false -backend-config="bucket=${{ vars.TF_STATE_BUCKET }}"
+          terraform init -input=false -backend-config="bucket=$STATE_BUCKET"
           terraform validate
       - id: plan
         if: inputs.mode == 'plan'
@@ -77,7 +94,7 @@ jobs:
             await github.rest.issues.createComment({ ...context.repo, issue_number: context.issue.number, body });
       - name: LB Controller webhook 자가 복구
         # LB Controller 파드가 준비되지 않은 상태에서 webhook만 남아 있으면 모든 Service 생성이 막힌다.
-        if: inputs.mode == 'apply' && inputs.cluster != ''
+        if: inputs.target == 'aws' && inputs.mode == 'apply' && inputs.cluster != ''
         run: |
           if ! aws eks describe-cluster --name "${{ inputs.cluster }}" >/dev/null 2>&1; then exit 0; fi
           aws eks update-kubeconfig --name "${{ inputs.cluster }}"
@@ -90,6 +107,11 @@ jobs:
         if: inputs.mode == 'apply'
         working-directory: ${{ inputs.working-directory }}
         run: terraform apply -input=false -auto-approve -lock-timeout=10m
+      - if: inputs.target == 'gcp' && inputs.mode == 'apply' && always()
+        uses: aws-actions/configure-aws-credentials@v6
+        with:
+          role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION }}
       - if: inputs.mode == 'apply' && always()
         uses: ./.platform/.github/actions/audit-log
         with:

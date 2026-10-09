@@ -9,6 +9,10 @@ metadata:
   name: {{ . }}
   labels:
     {{- include "app.labels" $ | nindent 4 }}
+  {{- with $.Values.service.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
 spec:
   selector:
     {{- include "app.selector" $ | nindent 4 }}

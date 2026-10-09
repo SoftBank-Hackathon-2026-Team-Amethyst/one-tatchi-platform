@@ -49,3 +49,4 @@ echo "== deploy-provision 템플릿 · 산출물 검사 (T13)"
 bash "$(dirname "$scripts")/skills/deploy-provision/tests/run.sh" >/dev/null
 
 echo "통과"
+bash "$(dirname "$scripts")/.github/actions/image-push/tests/run.sh"

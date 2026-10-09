@@ -10,6 +10,12 @@
 
 ## Unreleased
 
+## v1.13.0
+
+- GCP 구현체(T4): GKE · Artifact Registry · Cloud SQL · Secret Manager · Cloud Monitoring과 WIF/GCS bootstrap을 추가한다. 기존 AWS · onprem 기본 설정은 유지한다.
+- `infra` · `kube-access` · `image-push` · `deploy` · `rollout`에 GCP 인증, state, 이미지 주소, 클러스터 접속 분기를 추가한다.
+- App Chart에 선택적인 Service/Ingress annotations를 추가해 GKE 기본 Ingress와 NEG를 지원한다. ALB 기본 렌더링은 유지한다.
+
 ## v1.12.0
 
 - `deploy.yml`: prod 배포 전에 같은 커밋이 test에서 승격(stable)됐는지 확인하고 기다린다. 입력 `require-test-promotion`(기본 true), `test-namespace`(기본 test), `promotion-wait-seconds`(기본 600). Paused(승격 대기)인 test를 두고 운영으로 넘어가던 흐름을 막는다 (T5, 리뷰 지점 3)

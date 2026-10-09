@@ -13,6 +13,7 @@ metadata:
   labels:
     {{- include "app.labels" $ | nindent 4 }}
   annotations:
+    {{- if eq $.Values.ingress.className "alb" }}
     alb.ingress.kubernetes.io/scheme: internet-facing
     alb.ingress.kubernetes.io/target-type: ip
     alb.ingress.kubernetes.io/group.name: {{ required "ingress.group is required" $.Values.ingress.group }}
@@ -29,8 +30,14 @@ metadata:
     alb.ingress.kubernetes.io/ssl-policy: {{ $.Values.ingress.sslPolicy }}
     {{- end }}
     alb.ingress.kubernetes.io/healthcheck-path: {{ $.Values.ingress.healthcheckPath }}
+    {{- end }}
+    {{- with $.Values.ingress.annotations }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
 spec:
+  {{- if $.Values.ingress.className }}
   ingressClassName: {{ $.Values.ingress.className }}
+  {{- end }}
   rules:
     {{- if $.Values.ingress.host }}
     - host: {{ $.Values.ingress.host | quote }}

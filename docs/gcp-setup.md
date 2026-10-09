@@ -80,3 +80,5 @@ Terraform은 `application-default` 자격증명을 그대로 쓴다.
 | `API ... has not been used in project` | 위 표에 없는 API다. 원가연에게 켜 달라고 요청 |
 | Terraform이 `could not find default credentials` | `gcloud auth application-default login` |
 | 다른 프로젝트에 리소스가 생김 | `gcloud config get-value project`로 현재 프로젝트 확인 |
+
+T4 모듈 배포와 기존 ADC를 유지하는 단기 토큰 인증 방법은 [GCP 배포 안내](gcp-deploy.md)를 따른다.
