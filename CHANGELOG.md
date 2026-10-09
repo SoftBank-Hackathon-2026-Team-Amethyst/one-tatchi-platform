@@ -10,6 +10,8 @@
 
 ## Unreleased
 
+## v1.16.0
+
 - `slack-bot` · `deploy.yml` (T26): 운영 승인 · 거절 버튼을 누른 사람을 배포 커밋에 표지 코멘트로 남기고, 운영 배포 감사 로그의 `requested_by`에 기록한다. 표지가 없으면 지금처럼 actor로 남는다. 봇 `deploy/values.yaml`에 `ALLOWED_USER_IDS`(팀원 5명)를 넣는다.
 - `yolo-deploy`: push SHA에 맞는 Actions 실행 추적, 보호 경로 검사, 최대 3회 수정 커밋·push 및 중단 후 상태 복원 도구 추가. 기록만을 위한 추가 배포 제거 (T14)
 
