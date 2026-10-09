@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # 서비스 이미지를 빌드해 배포 대상 레지스트리에 올리고, 저장소 주소(태그 제외)를 stdout 마지막 줄에 출력한다.
-# 같은 태그가 있으면 건너뛴다 (태그 덮어쓰기 금지, test에서 만든 이미지를 prod가 그대로 쓴다).
+# 같은 태그가 있으면 건너뛴다 (태그 덮어쓰기 금지, test에서 만들고 검사한 이미지를 prod가 그대로 쓴다).
 # 사용법: push.sh <target> <name> <path> <tag>
 # 환경변수: ECR_REGISTRY(aws), GH_TOKEN · OWNER(onprem), SOURCE(이미지 라벨)
 set -euo pipefail
@@ -30,6 +30,11 @@ if exists; then
 else
   # 이미지는 runner의 아키텍처로 빌드된다 (EKS ubuntu runner amd64, 맥북 runner arm64).
   docker build --label "org.opencontainers.image.source=$SOURCE" -t "$repo:$tag" "$context" >&2
+  # 배포할 바로 그 이미지를 push 전에 검사한다 (checks의 image-scan은 다른 runner에서 따로 빌드한 이미지라 같지 않다).
+  # 기준은 checks와 같다: HIGH 이상, 수정 버전 있는 것만, .trivyignore 예외.
+  command -v trivy >/dev/null || { echo "::error::trivy가 없다 (deploy.yml의 setup-trivy 단계)" >&2; exit 1; }
+  ignore=(); [ -f .trivyignore ] && ignore=(--ignorefile .trivyignore)
+  trivy image --scanners vuln --severity HIGH,CRITICAL --ignore-unfixed --exit-code 1 "${ignore[@]}" "$repo:$tag" >&2
   docker push "$repo:$tag" >&2
 fi
 echo "$repo"

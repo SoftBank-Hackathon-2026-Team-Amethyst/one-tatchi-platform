@@ -10,6 +10,10 @@
 
 ## Unreleased
 
+- `deploy.yml`: prod 배포 전에 같은 커밋이 test에서 승격(stable)됐는지 확인하고 기다린다. 입력 `require-test-promotion`(기본 true), `test-namespace`(기본 test), `promotion-wait-seconds`(기본 600). Paused(승격 대기)인 test를 두고 운영으로 넘어가던 흐름을 막는다 (T5, 리뷰 지점 3)
+- `deploy.yml`(onprem): 터널 외부 주소를 찾지 못하면 실패로 끝낸다 (전에는 주소 `/`로 성공 처리) (T27)
+- `image-push`: 빌드한 이미지를 push 전에 Trivy(HIGH 이상, 수정 버전 있는 것, `.trivyignore`)로 검사한다. checks의 `image-scan`은 다른 runner에서 따로 빌드한 이미지라 배포 이미지와 같지 않았다. `deploy.yml`에 `setup-trivy` 단계 추가 (T5 · T27)
+
 ## v1.11.0
 
 - 재사용 워크플로 `pr-ready.yml` (T26): janto PR의 검사가 통과하면 Slack에 "PR 준비" 알림과 머지 버튼. draft · `yolo/**` · fork PR은 제외
