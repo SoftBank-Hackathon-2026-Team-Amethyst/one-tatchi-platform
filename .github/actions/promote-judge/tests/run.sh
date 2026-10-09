@@ -82,4 +82,74 @@ smoke pf KUBECTL="$here/fake-kubectl" FAKE_MODE=ok
 [ "$(count pf 'true')" -ge 3 ] || fail "port-forward로 요청하지 못했다"
 [ "$(count pf '.ok | not')" = 0 ] || fail "port-forward 경로에서 실패가 있다"
 
+# ---------- metrics.sh ----------
+# metrics <이름> [환경변수...]: $tmp/m-<이름>/smoke-results.jsonl을 미리 두고 실행한다
+metrics() {
+  local name="$1"; shift
+  env WORK_DIR="$tmp/m-$name" RELEASE=demo-app-be NAMESPACE=test MAX_ERROR_RATE=0 MAX_P95_MS=2000 MAX_RESTARTS=0 \
+    KUBECTL="$here/fake-kubectl" "$@" bash "$action/metrics.sh" > "$tmp/m-$name.log" 2>&1 \
+    || { cat "$tmp/m-$name.log" >&2; return 1; }
+}
+m() { jq -r "$2" "$tmp/m-$1/metrics.json"; }
+# results <이름> <ok 개수> <500 개수>: 응답 시간 1..n ms인 smoke 결과를 만든다
+results() {
+  mkdir -p "$tmp/m-$1"
+  jq -nc --argjson ok "$2" --argjson bad "$3" '
+    range(1; $ok + $bad + 1) as $i
+    | if $i <= $ok then {pass: 1, method: "GET", path: "/health", expect: 200, status: 200, ms: $i, ok: true}
+      else {pass: 1, method: "GET", path: "/api/info", expect: 200, status: 500, ms: $i, ok: false} end
+  ' > "$tmp/m-$1/smoke-results.jsonl"
+}
+pods_json() {  # pods_json <파일> <restartCount> <Ready: True|False>
+  jq -n --argjson r "$2" --arg ready "$3" '{items: [
+    {status: {conditions: [{type: "Ready", status: "True"}], containerStatuses: [{restartCount: 0}]}},
+    {status: {conditions: [{type: "Ready", status: $ready}], containerStatuses: [{restartCount: $r}]}}]}' > "$1"
+}
+
+echo "== metrics 정상: pass, p95는 nearest-rank (1..20ms → 19ms)"
+results ok 20 0
+metrics ok
+[ "$(m ok .rule.verdict)" = pass ] || fail "정상인데 pass가 아니다: $(m ok .rule.reasons)"
+[ "$(m ok .p95_ms)" = 19 ] || fail "p95 계산이 틀렸다: $(m ok .p95_ms)"
+[ "$(m ok .error_rate)" = 0 ] || fail "에러율이 0이 아니다"
+[ "$(m ok .pods.count)" = 2 ] || fail "green 파드 수가 틀렸다"
+
+echo "== metrics 500 섞임: 에러율 fail, 실패 묶음"
+results bad 18 2
+metrics bad
+[ "$(m bad .rule.verdict)" = fail ] || fail "500이 있는데 fail이 아니다"
+[ "$(m bad .error_rate)" = 10 ] || fail "에러율이 10%가 아니다: $(m bad .error_rate)"
+[ "$(m bad '.failures[0] | "\(.path) \(.status) \(.count)"')" = "/api/info 500 2" ] || fail "실패 묶음이 틀렸다"
+m bad '.rule.reasons[]' | grep -q '에러율 10%' || fail "이유에 에러율이 없다"
+
+echo "== metrics 재시작 · Ready 아님: fail"
+results restart 20 0
+pods_json "$tmp/pods-restart.json" 2 True
+metrics restart FAKE_PODS_FILE="$tmp/pods-restart.json"
+m restart '.rule.reasons[]' | grep -q '재시작 2회' || fail "재시작이 이유에 없다"
+pods_json "$tmp/pods-notready.json" 0 False
+results notready 20 0
+metrics notready FAKE_PODS_FILE="$tmp/pods-notready.json"
+m notready '.rule.reasons[]' | grep -q 'Ready가 아닌 green 파드 1개' || fail "Ready 아님이 이유에 없다"
+
+echo "== metrics p95 초과: fail, 기준을 비우면 검사 안 함"
+results slow 20 0
+metrics slow MAX_P95_MS=10
+m slow '.rule.reasons[]' | grep -q 'p95 19ms > 기준 10ms' || fail "p95 초과가 이유에 없다"
+metrics slow MAX_P95_MS=
+[ "$(m slow .rule.verdict)" = pass ] || fail "p95 기준을 비웠는데 fail이다"
+
+echo "== metrics 근거 부족: smoke 결과 없음 · Rollout 조회 실패 → fail"
+mkdir -p "$tmp/m-empty"
+metrics empty
+m empty '.rule.reasons[]' | grep -q 'smoke 결과가 없다' || fail "결과 없음이 이유에 없다"
+results norollout 20 0
+metrics norollout FAKE_NO_ROLLOUT=1
+m norollout '.rule.reasons[]' | grep -q 'green 파드 정보를 읽지 못했다' || fail "파드 조회 실패가 이유에 없다"
+
+echo "== metrics 잘못된 기준값: 파일은 남고 fail"
+results badinput 20 0
+metrics badinput MAX_ERROR_RATE=abc
+[ "$(m badinput .rule.verdict)" = fail ] || fail "잘못된 기준값인데 fail이 아니다"
+
 echo "통과"

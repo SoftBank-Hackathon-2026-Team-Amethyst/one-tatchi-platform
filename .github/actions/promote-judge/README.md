@@ -30,8 +30,8 @@ Blue-Green 배포에서 green(새 버전)을 승격할지 버릴지 정한다 (T
 | `window-seconds` | `30` | 관찰 창(초) |
 | `request-timeout-seconds` | `5` | 요청 하나의 제한 시간(초). 넘으면 실패 |
 | `max-error-rate` | `0` | 허용 에러율(%) |
-| `max-p95-ms` | `2000` | 허용 p95 응답 시간(ms) |
-| `max-restarts` | `0` | 관찰 중 허용 재시작 수 |
+| `max-p95-ms` | `2000` | 허용 p95 응답 시간(ms). 비우면 검사 안 함 |
+| `max-restarts` | `0` | 허용 green 파드 재시작 수 (생성 이후 합계) |
 | `model` | `claude-opus-5-5` | 판단 모델 |
 | `anthropic-api-key` | `""` | 비어 있으면 AI 판단 없이 abort |
 | `slack-token` · `slack-channel` | `""` | 비어 있으면 알림 생략 |
@@ -74,6 +74,31 @@ Blue-Green 배포에서 green(새 버전)을 승격할지 버릴지 정한다 (T
 {"pass":1,"method":"GET","path":"/health","expect":200,"status":200,"ms":12,"ok":true}
 ```
 
+## 지표와 규칙 판정
+
+`metrics.sh`가 `metrics.json`을 만든다. 에러율 · p95는 설계 문서 6.5대로 smoke 트래픽 기준이다(green은 승격 전이라 사용자 트래픽이 없다).
+
+| 지표 | 얻는 방법 |
+|---|---|
+| 요청 수 · 실패 수 · 에러율(%) · 실패 묶음 | `smoke-results.jsonl` |
+| p95 | 응답 시간 오름차순에서 ceil(0.95 × n)번째 값 (nearest-rank) |
+| green 파드 수 · Ready · 재시작 | kubectl. Rollout의 `status.blueGreen.previewSelector` 해시 라벨(`rollouts-pod-template-hash`)을 가진 파드 |
+
+아래 중 하나라도 해당하면 `rule.verdict`는 `fail`이고 `rule.reasons`에 이유가 남는다.
+
+- smoke 결과가 없다
+- 에러율 > `max-error-rate`, p95 > `max-p95-ms`(비우면 생략), 재시작 > `max-restarts`
+- Ready가 아닌 green 파드가 있다, green 파드가 없다, 파드 정보를 읽지 못했다
+- 기준값 입력이 숫자가 아니다
+
+```json
+{"requests": 2, "failed": 1, "error_rate": 50, "p95_ms": 30, "max_ms": 30, "passes": 1,
+ "failures": [{"method": "GET", "path": "/api/info", "expect": 200, "status": 500, "count": 1}],
+ "release": "demo-app-be", "green_hash": "green123", "pods": {"count": 2, "ready": 2, "restarts": 0},
+ "thresholds": {"max_error_rate": 0, "max_p95_ms": 2000, "max_restarts": 0},
+ "rule": {"verdict": "fail", "reasons": ["에러율 50% > 기준 0%"]}}
+```
+
 ## 테스트
 
 ```bash
@@ -87,7 +112,7 @@ bash .github/actions/promote-judge/tests/run.sh
 | 입력 | 값 | 근거 | 상태 |
 |---|---|---|---|
 | `max-error-rate` | 0% | 설계 문서 12장 제안값. 500이 한 번이라도 나오면 abort | 확정 |
-| `max-restarts` | 0 | 관찰 중 재시작한 버전을 막는다 | 확정 |
+| `max-restarts` | 0 | 뜬 뒤 한 번이라도 재시작한 green을 막는다 | 확정 |
 | `max-p95-ms` | 2000 | 멈춤 · 극단적 지연만 거르는 느슨한 값. port-forward 경유 지연을 감안했다 | 잠정. 정상 버전 실측 후 조정 |
 | `request-timeout-seconds` | 5 | 멈춘 버전이 에러율로도 걸리게 한다 | 확정 |
 | `window-seconds` | 30 | 설계 원안 60초는 서비스 2개를 차례로 배포하면 test에서만 +2분이다. 배포 시간 목표(T9)와 함께 정한다 | 잠정 |

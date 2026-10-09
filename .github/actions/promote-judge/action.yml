@@ -32,10 +32,10 @@ inputs:
     description: 허용 에러율(%). 넘으면 규칙 판정 fail
     default: "0"
   max-p95-ms:
-    description: 허용 p95 응답 시간(ms). 넘으면 규칙 판정 fail
+    description: 허용 p95 응답 시간(ms). 넘으면 규칙 판정 fail. 비우면 검사하지 않는다
     default: "2000"
   max-restarts:
-    description: 관찰 중 허용하는 green 파드 재시작 수. 넘으면 규칙 판정 fail
+    description: 허용하는 green 파드 재시작 수(파드 생성 이후 합계). 넘으면 규칙 판정 fail
     default: "0"
   model:
     description: 판단에 쓸 Claude 모델
