@@ -19,6 +19,11 @@ cd "$root"
 
 config=.deploy/config.yaml
 [[ -f "$config" ]] || { echo "$config 가 없다" >&2; exit 1; }
+pins='{}'
+if grep -q '^infra_versions:' "$config"; then
+  pins="$(yq -o=json '.infra_versions' "$config")"
+  jq -e 'type == "object" and all(to_entries[]; (.key == "aws" or .key == "gcp" or .key == "onprem") and (.value | test("^v[0-9]+\\.[0-9]+\\.[0-9]+$")))' <<<"$pins" >/dev/null
+fi
 sed -E -i "s/^(template_version:[[:space:]]*[\"']?)${semver}/\1${new}/" "$config"
 
 if [[ -d .github/workflows ]]; then
@@ -31,5 +36,14 @@ fi
 
 find . -type f -name '*.tf' -not -path '*/.terraform/*' -print0 |
   xargs -0 -r sed -E -i "s#(one-tatchi-platform(\.git)?//[^\"?]*\?ref=)${semver}#\1${new}#g"
+
+# Explicit migration pins survive automated template updates. Removing one is a reviewed change.
+for scope in aws gcp onprem; do
+  pin="$(jq -r --arg s "$scope" '.[$s] // empty' <<<"$pins")"
+  if [[ -n "$pin" && -d "infra/envs/$scope" ]]; then
+    find "infra/envs/$scope" -type f -name '*.tf' -not -path '*/.terraform/*' -print0 |
+      xargs -0 -r sed -E -i "s#(one-tatchi-platform(\.git)?//[^\"?]*\?ref=)${semver}#\1${pin}#g"
+  fi
+done
 
 echo "템플릿 버전 → ${new}"

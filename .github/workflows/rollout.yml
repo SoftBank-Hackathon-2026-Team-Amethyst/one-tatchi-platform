@@ -9,6 +9,12 @@ name: rollout
 on:
   workflow_call:
     inputs:
+      onprem-runner-label:
+        type: string
+        default: onprem
+      target-label:
+        type: string
+        default: ""
       action:
         description: promote | abort | undo
         type: string
@@ -44,23 +50,42 @@ on:
       template-ref:
         description: 공통 액션을 가져올 이 레포의 ref
         type: string
-        default: v1
+        default: v2
     secrets:
       SLACK_BOT_TOKEN:
         required: false
 
 jobs:
+  device:
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          repository: SoftBank-Hackathon-2026-Team-Amethyst/one-tatchi-platform
+          ref: ${{ inputs.template-ref }}
+          path: .platform
+          sparse-checkout: scripts/onprem
+      - name: 대상 기기 확인
+        env:
+          TARGET: ${{ inputs.target }}
+          TARGET_LABEL: ${{ inputs.target-label }}
+          RUNNER_LABEL: ${{ inputs.onprem-runner-label }}
+          CLUSTER: ${{ inputs.cluster }}
+        run: python3 .platform/scripts/onprem/target.py
   rollout:
+    needs: device
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
     # onprem은 맥북의 self-hosted runner에서 돈다 (deploy.yml과 같음)
-    runs-on: ${{ inputs.target == 'onprem' && fromJSON('["self-hosted","onprem"]') || 'ubuntu-latest' }}
+    runs-on: ${{ inputs.target == 'onprem' && fromJSON(format('["self-hosted","{0}"]', inputs.onprem-runner-label)) || 'ubuntu-latest' }}
     # 같은 대상 · 환경의 조작은 한 번에 하나씩
     concurrency:
-      group: rollout-${{ inputs.target }}-${{ inputs.environment }}
+      group: rollout-${{ inputs.target-label || inputs.target }}-${{ inputs.cluster }}-${{ inputs.environment }}
       cancel-in-progress: false
     env:
       ACTION: ${{ inputs.action }}
       NAMESPACE: ${{ inputs.namespace }}
-      LABEL: ${{ inputs.release }}@${{ inputs.target }}.${{ inputs.environment }}
+      LABEL: ${{ inputs.release }}@${{ inputs.target-label || inputs.target }}.${{ inputs.environment }}
     steps:
       - name: 입력 확인
         env:

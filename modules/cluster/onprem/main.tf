@@ -18,7 +18,7 @@ resource "terraform_data" "cluster" {
         --api-port 127.0.0.1:${self.input.api_port} \
         --k3s-arg "--disable=traefik@server:*" \
         --k3s-arg "--disable=servicelb@server:*" \
-        --kubeconfig-update-default \
+        --kubeconfig-update-default=false \
         --kubeconfig-switch-context=false \
         --wait
     EOT
@@ -28,18 +28,4 @@ resource "terraform_data" "cluster" {
     when    = destroy
     command = "k3d cluster delete ${self.input.name}"
   }
-}
-
-data "external" "kubeconfig" {
-  program = ["sh", "-c", <<-EOT
-    k3d kubeconfig get ${var.name} | yq -o=json '{
-      "endpoint": .clusters[0].cluster.server,
-      "ca_certificate": .clusters[0].cluster."certificate-authority-data",
-      "client_certificate": .users[0].user."client-certificate-data",
-      "client_key": .users[0].user."client-key-data"
-    }'
-  EOT
-  ]
-
-  depends_on = [terraform_data.cluster]
 }

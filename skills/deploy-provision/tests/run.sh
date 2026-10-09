@@ -112,6 +112,18 @@ echo "== 자리표시자가 남으면 실패"
 echo "host: @@HOST_TEST@@" >> "$app/deploy/onprem/values.yaml"
 if bash "$check" "$app" >/dev/null 2>&1; then echo "자리표시자 잔존을 놓쳤다" >&2; exit 1; fi
 
+echo "== v2는 ephemeral 계약, v1은 기존 계약으로 렌더"
+common[0]="TEMPLATE_VERSION=v2.0.0"
+common[1]="CHART_VERSION=2.0.0"
+bash "$render" "$skill/templates/infra/envs/onprem/main.tf.tmpl" "$tmp/v2-main.tf" "${common[@]}" >/dev/null
+bash "$render" "$skill/templates/infra/envs/onprem/variables.tf.tmpl" "$tmp/v2-variables.tf" "${common[@]}" >/dev/null
+grep -q 'var.onprem_auth' "$tmp/v2-main.tf"
+grep -q 'ephemeral *= true' "$tmp/v2-variables.tf"
+! grep -q 'module.cluster.client_key' "$tmp/v2-main.tf"
+common[0]="TEMPLATE_VERSION=v1.16.0"
+bash "$render" "$skill/templates/infra/envs/onprem/main.tf.tmpl" "$tmp/v1-main.tf" "${common[@]}" >/dev/null
+grep -q 'module.cluster.client_key' "$tmp/v1-main.tf"
+
 echo "== 렌더된 워크플로 · JSON 형식"
 if command -v python3 >/dev/null; then
   for f in "$app"/.github/workflows/*.yml; do python3 -c "import sys,yaml; yaml.safe_load(open(sys.argv[1]))" "$f" 2>/dev/null || python3 -c "import sys; sys.exit(0)"; done

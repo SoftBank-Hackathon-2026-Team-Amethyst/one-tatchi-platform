@@ -73,6 +73,14 @@ def test_request_rejects_user_not_allowed() -> None:
     assert len(requests) == 1
 
 
+def test_secondary_device_survives_button_dispatch() -> None:
+    requests: list[httpx.Request] = []
+    request = RolloutRequest.parse("promote", "all@onprem-secondary.test")
+    Rollouts(make_github(requests), []).request(request, "U1", "operator")
+    assert request.label == "all@onprem-secondary.test"
+    assert json.loads(requests[0].content)["inputs"]["target"] == "onprem-secondary"
+
+
 def test_request_raises_when_github_fails() -> None:
     with pytest.raises(httpx.HTTPStatusError):
         Rollouts(make_github([], status=403), []).request(

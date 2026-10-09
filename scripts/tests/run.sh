@@ -12,6 +12,12 @@ cp -r "$here/bump-template-version/before" "$tmp/repo"
 bash "$scripts/bump-template-version.sh" v1.1.0 "$tmp/repo" >/dev/null
 diff -r "$here/bump-template-version/after" "$tmp/repo"
 
+echo "== 명시적인 클라우드 루트 pin을 유지"
+printf '\ninfra_versions:\n  aws: v1.1.0\n' >> "$tmp/repo/.deploy/config.yaml"
+bash "$scripts/bump-template-version.sh" v2.0.0 "$tmp/repo" >/dev/null
+grep -q 'template_version: v2.0.0' "$tmp/repo/.deploy/config.yaml"
+grep -q '?ref=v1.1.0' "$tmp/repo/infra/envs/aws/main.tf"
+
 echo "== bump-template-version: 잘못된 버전은 거부"
 if bash "$scripts/bump-template-version.sh" 1.1.0 "$tmp/repo" 2>/dev/null; then
   echo "v 없는 버전을 받아들였다" >&2
@@ -54,3 +60,5 @@ python3 -B -m unittest discover -s "$(dirname "$scripts")/skills/yolo-deploy/tes
 echo "통과"
 python3 -B -m unittest discover -s "$(dirname "$scripts")/.github/actions/publish-metrics/tests"
 bash "$(dirname "$scripts")/.github/actions/image-push/tests/run.sh"
+
+python3 -B -m unittest discover -s "$(dirname "$scripts")/scripts/onprem/tests"

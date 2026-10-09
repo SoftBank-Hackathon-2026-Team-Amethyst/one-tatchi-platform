@@ -10,6 +10,14 @@
 
 ## Unreleased
 
+## v2.0.0
+
+- **호환되지 않는 변경 (T27):** onprem은 Terraform 1.11+와 관리 도구의 ephemeral 인증/DB 비밀번호 입력을 요구한다. cluster의 인증서/개인키 출력과 DB random_password state를 제거한다. 기존 state는 암호화 백업을 검증한 뒤 이전한다.
+- macOS launchd의 AC 잠자기 방지·Docker/k3d 복구·공식 runner 서비스와 기기별 배포/승격 대상 검증을 추가한다. [설치·이전 절차](scripts/onprem/README.md).
+- checks의 단일 amd64/arm64 OCI 빌드와 각각의 Trivy 검사를 통과한 동일 run artifact만 발행한다. deploy의 재빌드를 제거하고 digest로 고정한다. prod는 test의 동일 digest 승격을 확인한다.
+- 현재 터널의 환경·서비스·실행 로그를 검증하며 URL 누락이나 조회 오류는 실패한다. 기존 PostgreSQL StatefulSet/PVC는 유지한다 (ADR 0012).
+- 선택형 `.deploy/config.yaml`의 `infra_versions`로 기존 클라우드 루트 버전을 유지할 수 있다. v2는 자동 전체 루트 갱신 알림을 보내지 않는다. 기존 v1 호출과 태그는 유지된다.
+
 ## v1.16.0
 
 - `slack-bot` · `deploy.yml` (T26): 운영 승인 · 거절 버튼을 누른 사람을 배포 커밋에 표지 코멘트로 남기고, 운영 배포 감사 로그의 `requested_by`에 기록한다. 표지가 없으면 지금처럼 actor로 남는다. 봇 `deploy/values.yaml`에 `ALLOWED_USER_IDS`(팀원 5명)를 넣는다.

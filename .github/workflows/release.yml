@@ -94,7 +94,8 @@ jobs:
   # 메이저 태그(v1)를 옮긴 뒤에 보내야 대상 레포가 @v1로 새 template-update를 쓴다.
   notify:
     needs: [charts, nginxlog-exporter]
-    if: vars.BOT_CLIENT_ID != ''
+    # v2 onprem needs an explicit credential/state migration; never propose a blind all-root upgrade.
+    if: vars.BOT_CLIENT_ID != '' && startsWith(github.ref_name, 'v1.')
     runs-on: ubuntu-latest
     permissions:
       contents: read

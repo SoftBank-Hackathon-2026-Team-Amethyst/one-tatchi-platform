@@ -28,6 +28,7 @@ jobs:
   checks:
     uses: SoftBank-Hackathon-2026-Team-Amethyst/one-tatchi-platform/.github/workflows/checks.yml@@@TEMPLATE_VERSION@@
     with:
+      template-ref: @@TEMPLATE_VERSION@@ # T27-input
       node-dirs: '@@NODE_DIRS@@'
       python-dirs: '@@PYTHON_DIRS@@'
       db-init: @@DB_INIT@@
@@ -40,6 +41,8 @@ jobs:
     uses: SoftBank-Hackathon-2026-Team-Amethyst/one-tatchi-platform/.github/workflows/deploy.yml@@@TEMPLATE_VERSION@@
     with:
       target: ${{ inputs.target || vars.DEPLOY_TARGET || '@@DEFAULT_TARGET@@' }}
+      onprem-runner-label: ${{ vars.ONPREM_RUNNER_LABEL || 'onprem' }} # T27-input
+      target-label: ${{ (inputs.target || vars.DEPLOY_TARGET || '@@DEFAULT_TARGET@@') == 'onprem' && (vars.ONPREM_RUNNER_LABEL || 'onprem') || (inputs.target || vars.DEPLOY_TARGET || '@@DEFAULT_TARGET@@') }} # T27-input
       cluster: ${{ (inputs.target || vars.DEPLOY_TARGET || '@@DEFAULT_TARGET@@') == 'aws' && '@@CLUSTER_AWS@@' || '@@CLUSTER_ONPREM@@' }}
       ingress-group: @@APP@@-test
       host: @@HOST_TEST@@  # aws만
@@ -62,6 +65,8 @@ jobs:
     uses: SoftBank-Hackathon-2026-Team-Amethyst/one-tatchi-platform/.github/workflows/deploy.yml@@@TEMPLATE_VERSION@@
     with:
       target: ${{ inputs.target || vars.DEPLOY_TARGET || '@@DEFAULT_TARGET@@' }}
+      onprem-runner-label: ${{ vars.ONPREM_RUNNER_LABEL || 'onprem' }} # T27-input
+      target-label: ${{ (inputs.target || vars.DEPLOY_TARGET || '@@DEFAULT_TARGET@@') == 'onprem' && (vars.ONPREM_RUNNER_LABEL || 'onprem') || (inputs.target || vars.DEPLOY_TARGET || '@@DEFAULT_TARGET@@') }} # T27-input
       cluster: ${{ (inputs.target || vars.DEPLOY_TARGET || '@@DEFAULT_TARGET@@') == 'aws' && '@@CLUSTER_AWS@@' || '@@CLUSTER_ONPREM@@' }}
       ingress-group: @@APP@@-prod
       host: @@HOST_PROD@@  # aws만

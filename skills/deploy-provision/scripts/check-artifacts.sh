@@ -57,8 +57,18 @@ if [ -n "$version" ]; then
     bad="$(/usr/bin/grep -n 'chart-version:[[:space:]]*[0-9]' "$f" | /usr/bin/grep -v "chart-version:[[:space:]]*$ver\$" || true)"
     [ -z "$bad" ] || fail "$f: chart-version이 $ver 과 다르다:"$'\n'"$bad"
   done
-  bad="$(/usr/bin/grep -rn --include='*.tf' --exclude-dir=.terraform "one-tatchi-platform.git//[^?]*?ref=$semver" infra 2>/dev/null | /usr/bin/grep -v "?ref=$version" || true)"
-  [ -z "$bad" ] || fail "모듈 ?ref= 버전이 $version 과 다르다:"$'\n'"$bad"
+  # Major migrations may pin existing cloud roots while upgrading the onprem contract.
+  # Pins are explicit in the protected config, never inferred from whichever code happens to exist.
+  for scope in aws gcp onprem; do
+    expected="$version"
+    if /usr/bin/grep -q '^infra_versions:' "$cfg"; then
+      if ! command -v yq >/dev/null; then fail "infra_versions 검사에는 yq가 필요하다"; break; fi
+      expected="$(yq -r ".infra_versions.$scope // .template_version" "$cfg")"
+      [[ "$expected" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]] || fail "infra_versions.$scope: vX.Y.Z 형식이 아니다"
+    fi
+    bad="$(/usr/bin/grep -rn --include='*.tf' --exclude-dir=.terraform "one-tatchi-platform.git//[^?]*?ref=$semver" "infra/envs/$scope" 2>/dev/null | /usr/bin/grep -v "?ref=$expected\"" || true)"
+    [ -z "$bad" ] || fail "$scope 모듈 ?ref= 버전이 $expected 과 다르다:"$'\n'"$bad"
+  done
 fi
 
 # 3b. 템플릿 버전보다 새 입력을 쓰지 않는지 (호출부 입력이 없으면 워크플로가 startup_failure로 시작도 못 한다)

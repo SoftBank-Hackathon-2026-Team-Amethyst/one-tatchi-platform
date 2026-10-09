@@ -1,45 +1,39 @@
 name: image-push
-description: 서비스 이미지를 빌드해 배포 대상의 레지스트리에 올린다 (aws ECR, onprem GHCR). 같은 태그가 있으면 건너뛴다.
+description: checks의 OCI 산출물만 대상 레지스트리에 발행한다. hosted runner에서 사용한다.
 inputs:
   target:
-    description: "배포 대상: aws | gcp | onprem"
+    description: aws | gcp | onprem
     required: true
-  name:
-    description: 이미지 저장소 이름 (서비스 이름)
+  services:
+    description: name/path를 가진 서비스 JSON 배열
     required: true
-  path:
-    description: Dockerfile이 있는 빌드 경로
+  bundles:
+    description: 같은 run에서 다운로드한 checked-image artifact 디렉터리
     required: true
-  tag:
-    description: 이미지 태그 (커밋 SHA). 태그는 덮어쓰지 않는다
-    required: true
+  registry:
+    description: AWS ECR registry 주소
+    default: ""
   project:
-    description: GCP 프로젝트 ID
+    description: GCP project ID
     default: ""
   region:
-    description: GCP 리전
+    description: GCP region
     default: ""
 outputs:
-  repository:
-    description: 이미지 저장소 주소 (태그 제외)
-    value: ${{ steps.push.outputs.repository }}
+  images:
+    description: 서비스별 repository/digest/source_sha JSON
+    value: ${{ steps.publish.outputs.images }}
 runs:
   using: composite
   steps:
-    - id: ecr
-      if: inputs.target == 'aws'
-      uses: aws-actions/amazon-ecr-login@v2
-    - id: push
+    - id: publish
       shell: bash
       env:
         TARGET: ${{ inputs.target }}
-        NAME: ${{ inputs.name }}
-        CONTEXT: ${{ inputs.path }}
-        TAG: ${{ inputs.tag }}
-        ECR_REGISTRY: ${{ steps.ecr.outputs.registry }}
+        SERVICES: ${{ inputs.services }}
+        BUNDLES: ${{ inputs.bundles }}
+        ECR_REGISTRY: ${{ inputs.registry }}
         GCP_PROJECT: ${{ inputs.project }}
         GCP_REGION: ${{ inputs.region }}
         GH_TOKEN: ${{ github.token }}
-        OWNER: ${{ github.repository_owner }}
-        SOURCE: ${{ github.server_url }}/${{ github.repository }}
-      run: echo "repository=$("$GITHUB_ACTION_PATH/push.sh" "$TARGET" "$NAME" "$CONTEXT" "$TAG")" >> "$GITHUB_OUTPUT"
+      run: python3 "$GITHUB_ACTION_PATH/publish.py"
