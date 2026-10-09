@@ -10,6 +10,7 @@
 
 ## Unreleased
 
+- 이미지 빌드 전에 Docker Hub에 로그인해 비로그인 pull 한도(`toomanyrequests`)를 피한다. `vars.DOCKERHUB_USERNAME`과 `secrets.DOCKERHUB_TOKEN`(읽기 전용)이 있을 때만 로그인하고, 없으면 건너뛴다. 재사용 `checks.yml`은 선택 시크릿 `DOCKERHUB_TOKEN`을 받으므로 호출부에서 `secrets: inherit` 또는 명시적으로 넘긴다.
 - T16 비용 분석: AWS/GCP 공개 단가 조회, 명시 자원 매핑, 월 비용·예산 판정·대안 비교와 분석 보고서 연결을 추가한다. API 근거·조회 시각·미산정을 보존하며 하이브리드 비교는 제외한다.
 - T16 해커톤 데모: ADR-0014에 월 사용량 가정·제외 범위·무료 구간 처리와 절감 대안을 기록한다. 사용량만 변경하는 경우 원본 가격 조건과 해시를 확인하는 `reuse-prices`를 제공하고, 원래 조회 시각을 유지한다.
 

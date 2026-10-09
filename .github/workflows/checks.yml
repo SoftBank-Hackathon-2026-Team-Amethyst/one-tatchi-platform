@@ -33,6 +33,10 @@ on:
         description: 'Dockerfile이 있는 이미지 빌드 경로 JSON 배열. 빌드 후 Trivy로 검사. 예: ["be","fe"]'
         type: string
         default: "[]"
+    secrets:
+      DOCKERHUB_TOKEN:
+        description: Docker Hub 읽기 전용 토큰. vars.DOCKERHUB_USERNAME과 함께 있으면 빌드 전에 로그인해 pull 한도를 피한다
+        required: false
 
 permissions:
   contents: read
@@ -146,6 +150,12 @@ jobs:
           sparse-checkout: .github/actions/image-push
       - uses: docker/setup-qemu-action@v3
       - uses: docker/setup-buildx-action@v3
+      - name: Docker Hub 로그인 (pull 한도 회피, 설정이 없으면 건너뜀)
+        if: vars.DOCKERHUB_USERNAME != ''
+        env:
+          DOCKERHUB_USERNAME: ${{ vars.DOCKERHUB_USERNAME }}
+          DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
+        run: echo "$DOCKERHUB_TOKEN" | docker login -u "$DOCKERHUB_USERNAME" --password-stdin
       - uses: aquasecurity/setup-trivy@v0.3.1
         with:
           version: v0.75.0
