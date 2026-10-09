@@ -1,10 +1,12 @@
 #!/usr/bin/env bash
 # promote-judge 테스트용 가짜 kubectl.
 #   FAKE_MODE       port-forward로 띄울 가짜 green의 응답 (ok | fail | slow)
+#   FAKE_FAIL_RELEASE  이 서비스의 green만 fail 모드로 띄운다 (묶음 테스트용)
 #   FAKE_PODS_FILE  get pods가 돌려줄 JSON 파일 (없으면 Ready 파드 2개, 재시작 0)
 #   FAKE_NO_ROLLOUT 값이 있으면 get rollout이 실패한다
 #   FAKE_CALLS_FILE argo rollouts 호출을 한 줄씩 남길 파일
 #   FAKE_STATUS     argo rollouts status 결과 (ok | fail, 기본 ok)
+#   FAKE_ACT_FAIL   값이 있으면 argo rollouts promote · abort가 실패한다
 here="$(cd "$(dirname "$0")" && pwd)"
 case "$1 $2" in
   "get svc") echo 8000 ;;
@@ -22,7 +24,11 @@ case "$1 $2" in
     shift 2
     [ -z "${FAKE_CALLS_FILE:-}" ] || echo "$*" >> "$FAKE_CALLS_FILE"
     [ "$1" = status ] && [ "${FAKE_STATUS:-ok}" = fail ] && { echo 'Error: rollout aborted' >&2; exit 1; }
+    case "$1" in promote|abort) [ -n "${FAKE_ACT_FAIL:-}" ] && { echo 'Error: forbidden' >&2; exit 1; } ;; esac
     exit 0 ;;
-  port-forward*) exec python3 "$here/fake_server.py" "${FAKE_MODE:-ok}" ;;
+  port-forward*)
+    mode="${FAKE_MODE:-ok}"
+    case "$*" in *"svc/${FAKE_FAIL_RELEASE:-없음}-preview"*) mode=fail ;; esac
+    exec python3 "$here/fake_server.py" "$mode" ;;
   *) echo "fake-kubectl: 지원하지 않는 명령 $*" >&2; exit 1 ;;
 esac

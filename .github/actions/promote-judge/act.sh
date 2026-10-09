@@ -3,7 +3,7 @@
 #   auto   promote → kubectl argo rollouts promote 후 Healthy까지 확인 (못 되면 실패)
 #          abort   → kubectl argo rollouts abort 후 step 실패 (yolo 파이프라인을 멈춘다)
 #   manual 실행하지 않는다. 사람이 Slack 버튼(rollout.yml)으로 결정한다. step은 성공
-# step 출력: executed (promote | abort | 빈 값)
+# step 출력: executed (실제로 성공한 명령 promote | abort, 없으면 빈 값)
 #
 # 환경변수
 #   WORK_DIR, RELEASE, NAMESPACE, TARGET, ENVIRONMENT, MODE, PROMOTE_WAIT_SECONDS
@@ -30,17 +30,23 @@ fi
 executed="" result="" status=0
 case "$MODE" in
   auto)
-    executed="$decision"
+    # executed는 promote · abort 명령이 성공했을 때만 남긴다 (감사 로그 기준)
     if [ "$decision" = promote ]; then
-      if $KUBECTL argo rollouts promote "$RELEASE" -n "$NAMESPACE" \
-        && $KUBECTL argo rollouts status "$RELEASE" -n "$NAMESPACE" --timeout "${PROMOTE_WAIT_SECONDS}s"; then
-        result="promote 완료: green이 active가 됐다"
-      else
-        result="promote 후 ${PROMOTE_WAIT_SECONDS}초 안에 Healthy가 되지 않았다"
+      if ! $KUBECTL argo rollouts promote "$RELEASE" -n "$NAMESPACE"; then
+        result="promote 명령 실패"
         status=1
+      else
+        executed=promote
+        if $KUBECTL argo rollouts status "$RELEASE" -n "$NAMESPACE" --timeout "${PROMOTE_WAIT_SECONDS}s"; then
+          result="promote 완료: green이 active가 됐다"
+        else
+          result="promote 후 ${PROMOTE_WAIT_SECONDS}초 안에 Healthy가 되지 않았다"
+          status=1
+        fi
       fi
     else
       if $KUBECTL argo rollouts abort "$RELEASE" -n "$NAMESPACE"; then
+        executed=abort
         result="abort 완료: green을 버리고 blue를 유지한다"
       else
         result="abort 명령 실패"
@@ -66,7 +72,7 @@ summary="$(jq -r --arg label "$RELEASE@${TARGET:+$TARGET.}$ENVIRONMENT" --arg mo
   "",
   "| 항목 | 값 |",
   "|---|---|",
-  "| 결정 출처 | \(.source) (ai: AI 결정 · rule: 규칙 거부권 · fallback: AI 판단 없음) |",
+  "| 결정 출처 | \(.source) (ai: AI 결정 · rule: 규칙 거부권 · fallback: AI 판단 없음 · group: 다른 서비스 abort) |",
   "| 모드 · 실행 | \($mode) · \($result) |",
   "| 요청 · 실패 | \(.metrics.requests | n)건 · \(.metrics.failed | n)건 |",
   "| 에러율 · p95 | \(.metrics.error_rate | n)% · \(.metrics.p95_ms | n)ms |",

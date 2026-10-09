@@ -1,12 +1,13 @@
 name: promote-judge
 description: >-
-  Paused 상태의 green에 smoke 요청을 보내 지표를 모으고, 규칙 판정과 Claude 판단으로 promote 또는 abort를 정한다.
+  Paused 상태의 green(서비스 여러 개)에 smoke 요청을 동시에 보내 지표를 모으고, 서비스마다 규칙 판정과 Claude 판단을 한 뒤
+  묶어서 promote 또는 abort를 정한다(하나라도 abort면 전체 abort, ADR 0005).
   판단에 실패하면 abort다. mode가 auto면 바로 실행하고(abort면 step 실패), manual이면 실행하지 않는다.
   Slack 알림 · 감사 로그는 호출하는 쪽(deploy.yml)이 출력 decision · reason · executed로 남긴다.
   deploy.yml의 배포 job 안에서 kube-access 다음에 호출한다 (ADR 0002).
 inputs:
-  release:
-    description: 판단할 서비스(Rollout) 이름. green은 Service <release>-preview로 접근한다
+  releases:
+    description: 판단할 서비스(Rollout) 이름들, 공백 구분. green은 Service <release>-preview로 접근한다
     required: true
   namespace:
     description: 서비스 네임스페이스 (test | prod)
@@ -52,67 +53,65 @@ inputs:
     default: "60"
 outputs:
   decision:
-    description: promote | abort
+    description: 묶음 결정 promote | abort
     value: ${{ steps.judge.outputs.decision }}
   reason:
     description: 판단 근거 한두 문장
     value: ${{ steps.judge.outputs.reason }}
   report:
-    description: 지표 · 규칙 판정 · AI 판단을 담은 JSON 파일 경로
+    description: 묶음 결정 JSON 파일 경로. 서비스별 지표 · 판단은 같은 폴더의 <release>/
     value: ${{ steps.judge.outputs.report }}
   executed:
-    description: "auto에서 실제로 실행한 조작 (promote | abort). manual이면 빈 값"
+    description: "auto에서 실제로 성공한 조작 (promote | abort). manual이거나 명령이 실패하면 빈 값"
     value: ${{ steps.act.outputs.executed }}
 runs:
   using: composite
   steps:
-    - id: smoke
-      name: smoke 요청 (green)
+    - name: smoke 요청 (서비스별 green, 동시에)
       # 실패해도 다음 단계로 간다. 결과가 없거나 모자라면 judge가 abort로 처리한다.
       continue-on-error: true
       shell: bash
       env:
-        WORK_DIR: ${{ runner.temp }}/promote-judge/${{ inputs.release }}
-        RELEASE: ${{ inputs.release }}
+        WORK_ROOT: ${{ runner.temp }}/promote-judge
+        RELEASES: ${{ inputs.releases }}
         NAMESPACE: ${{ inputs.namespace }}
         SMOKE_FILE: ${{ inputs.smoke-file }}
         WINDOW_SECONDS: ${{ inputs.window-seconds }}
         REQUEST_TIMEOUT_SECONDS: ${{ inputs.request-timeout-seconds }}
-      run: bash "$GITHUB_ACTION_PATH/smoke.sh"
+      run: bash "$GITHUB_ACTION_PATH/group.sh" smoke
 
-    - id: metrics
-      name: 지표 계산 · 규칙 판정
+    - name: 지표 계산 · 규칙 판정
       continue-on-error: true
       shell: bash
       env:
-        WORK_DIR: ${{ runner.temp }}/promote-judge/${{ inputs.release }}
-        RELEASE: ${{ inputs.release }}
+        WORK_ROOT: ${{ runner.temp }}/promote-judge
+        RELEASES: ${{ inputs.releases }}
         NAMESPACE: ${{ inputs.namespace }}
         MAX_ERROR_RATE: ${{ inputs.max-error-rate }}
         MAX_P95_MS: ${{ inputs.max-p95-ms }}
         MAX_RESTARTS: ${{ inputs.max-restarts }}
-      run: bash "$GITHUB_ACTION_PATH/metrics.sh"
+      run: bash "$GITHUB_ACTION_PATH/group.sh" metrics
 
     - id: judge
-      name: AI 판단
+      name: AI 판단 (서비스별 → 묶음)
       shell: bash
       env:
-        WORK_DIR: ${{ runner.temp }}/promote-judge/${{ inputs.release }}
-        RELEASE: ${{ inputs.release }}
+        WORK_ROOT: ${{ runner.temp }}/promote-judge
+        RELEASES: ${{ inputs.releases }}
         MODEL: ${{ inputs.model }}
         API_TIMEOUT_SECONDS: ${{ inputs.api-timeout-seconds }}
         ANTHROPIC_API_KEY: ${{ inputs.anthropic-api-key }}
-      run: bash "$GITHUB_ACTION_PATH/judge.sh"
+      run: bash "$GITHUB_ACTION_PATH/group.sh" judge
 
     - id: act
       name: 판단 실행(auto) · 기록
       shell: bash
       env:
-        WORK_DIR: ${{ runner.temp }}/promote-judge/${{ inputs.release }}
-        RELEASE: ${{ inputs.release }}
+        WORK_ROOT: ${{ runner.temp }}/promote-judge
+        RELEASES: ${{ inputs.releases }}
         NAMESPACE: ${{ inputs.namespace }}
         TARGET: ${{ inputs.target }}
         ENVIRONMENT: ${{ inputs.environment }}
         MODE: ${{ inputs.mode }}
         PROMOTE_WAIT_SECONDS: ${{ inputs.promote-wait-seconds }}
-      run: bash "$GITHUB_ACTION_PATH/act.sh"
+      run: bash "$GITHUB_ACTION_PATH/group.sh" act
