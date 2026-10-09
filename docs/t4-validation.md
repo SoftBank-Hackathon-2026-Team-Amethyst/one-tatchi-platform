@@ -19,11 +19,11 @@
 
 접속 주소는 [active](http://136.82.112.142/)와 [preview](http://136.82.119.77/)다. stable 이미지 태그는 `f1571e99c019cbd778bc28bcbfb7692c4ff22ab7`이며 BE/FE stable ReplicaSet은 각각 `6466d8dc54`, `7f6987c798`이다.
 
-## 남은 완료 절차
+## 완료 절차 결과
 
-[demo-app PR #36](https://github.com/SoftBank-Hackathon-2026-Team-Amethyst/demo-app/pull/36)은 CODEOWNER 리뷰를 기다린다. `.deploy/config.yaml`의 템플릿 버전만 갱신했으며 compliance는 regulated를 유지한다. main ruleset은 코드 오너 리뷰를 요구하며 관리자 우회는 허용하지 않는다.
+[demo-app PR #36](https://github.com/SoftBank-Hackathon-2026-Team-Amethyst/demo-app/pull/36)은 최신 main의 v1.14.0 참조와 T26 알림·branch 승격 설정을 보존해 충돌을 해결한 뒤 머지됐다. config와 AWS/onprem 루트는 main과 동일하며 GCP 루트도 v1.14.0을 참조한다.
 
-작업 브랜치의 rollout 실행은 deployment environment가 없어 GCP/AWS 신뢰 조건이 거부했다([실행](https://github.com/SoftBank-Hackathon-2026-Team-Amethyst/demo-app/actions/runs/37887082219)). 인증 정책은 유지했고 로컬 승격으로 트래픽 전환과 데이터 유지를 확인했다. PR 머지 후 main의 GCP rollout을 다시 확인하고, 이슈의 마지막 항목을 체크한다. 임시 작업 브랜치 배포 조건은 제거했다. 머지 전에는 T4를 Done으로 표시하지 않는다.
+작업 브랜치의 rollout은 CI 신뢰 조건에서 거부됐지만, 머지 후 [main의 GCP rollout](https://github.com/SoftBank-Hackathon-2026-Team-Amethyst/demo-app/actions/runs/37903198486)은 인증·명령·감사 로그를 포함해 성공했다. 임시 브랜치 배포 조건은 제거했다. 최신 [PR 검사](https://github.com/SoftBank-Hackathon-2026-Team-Amethyst/demo-app/actions/runs/37903071761)와 [GCP plan](https://github.com/SoftBank-Hackathon-2026-Team-Amethyst/demo-app/actions/runs/37903071771)도 성공했다.
 
 ## 기존 작업 영향
 
