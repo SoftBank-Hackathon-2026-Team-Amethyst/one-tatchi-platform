@@ -26,6 +26,8 @@ on:
         type: string
         default: v1
     secrets:
+      OBSERVABILITY_REMOTE_WRITE_PASSWORD:
+        required: false
       SLACK_BOT_TOKEN:
         required: false
 
@@ -36,6 +38,8 @@ env:
 jobs:
   terraform:
     runs-on: ubuntu-latest
+    env:
+      OBSERVABILITY_CONFIGURED: ${{ secrets.OBSERVABILITY_REMOTE_WRITE_PASSWORD != '' }}
     steps:
       - uses: actions/checkout@v7
       - uses: actions/checkout@v7
@@ -103,6 +107,11 @@ jobs:
             kubectl delete mutatingwebhookconfiguration aws-load-balancer-webhook
             kubectl delete validatingwebhookconfiguration aws-load-balancer-webhook --ignore-not-found
           fi
+      - name: 관측 수신 인증 주입
+        if: inputs.target == 'aws' && inputs.mode == 'apply' && inputs.cluster != '' && env.OBSERVABILITY_CONFIGURED == 'true'
+        uses: ./.platform/.github/actions/observability-secret
+        with:
+          password: ${{ secrets.OBSERVABILITY_REMOTE_WRITE_PASSWORD }}
       - name: terraform apply
         if: inputs.mode == 'apply'
         working-directory: ${{ inputs.working-directory }}

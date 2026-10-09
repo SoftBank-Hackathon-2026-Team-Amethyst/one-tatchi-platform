@@ -1,0 +1,75 @@
+{{- $cluster := required "cluster is required" .Values.cluster -}}
+{{- if not (has .Values.target (list "aws" "onprem" "gcp")) }}{{ fail "invalid target" }}{{ end }}
+{{- if .Values.remoteWrite.url }}
+{{- if not (hasPrefix "https://" .Values.remoteWrite.url) }}{{ fail "remoteWrite requires HTTPS" }}{{ end }}
+{{- $_ := required "remoteWrite.secretName is required" .Values.remoteWrite.secretName }}
+{{- end }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Release.Name }}-config
+data:
+  prometheus.yml: |
+    global:
+      scrape_interval: 15s
+      evaluation_interval: 15s
+      external_labels:
+        target: {{ .Values.target | quote }}
+        cluster: {{ $cluster | quote }}
+    {{- if .Values.remoteWrite.url }}
+    remote_write:
+      - url: {{ .Values.remoteWrite.url | quote }}
+        basic_auth:
+          username_file: /etc/remote-write/username
+          password_file: /etc/remote-write/password
+        queue_config: {max_shards: 2, capacity: 2500}
+        write_relabel_configs:
+          - source_labels: [__name__]
+            regex: 'app_http_.*|container_cpu_usage_seconds_total|container_memory_working_set_bytes|kube_pod_.*|up|prometheus_remote_storage_.*|app_parse_errors_total'
+            action: keep
+    {{- end }}
+    scrape_configs:
+      - job_name: application
+        kubernetes_sd_configs:
+          - role: pod
+            namespaces:
+              names: {{ .Values.namespaces | toJson }}
+        relabel_configs:
+          - {source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_scrape], regex: 'true', action: keep}
+          - {source_labels: [__meta_kubernetes_pod_phase], regex: Running, action: keep}
+          - {source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_port], target_label: __tmp_port}
+          - {source_labels: [__meta_kubernetes_pod_container_port_number], target_label: __tmp_port, action: keepequal}
+          - {source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_path], target_label: __metrics_path__}
+          - {source_labels: [__meta_kubernetes_pod_label_app_kubernetes_io_name], target_label: service}
+          - {source_labels: [__meta_kubernetes_namespace], target_label: environment}
+          - {source_labels: [__meta_kubernetes_namespace], target_label: namespace}
+          - {source_labels: [__meta_kubernetes_pod_name], target_label: pod}
+          - {source_labels: [__meta_kubernetes_pod_label_rollouts_pod_template_hash], target_label: revision}
+          - {target_label: target, replacement: {{ .Values.target | quote }}}
+          - {target_label: cluster, replacement: {{ $cluster | quote }}}
+        metric_relabel_configs:
+          - {source_labels: [__name__], regex: 'app_http_.*|app_parse_errors_total', action: keep}
+      - job_name: kube-state-metrics
+        static_configs:
+          - targets: ['{{ .Release.Name }}-state:8080']
+            labels: {target: {{ .Values.target | quote }}, cluster: {{ $cluster | quote }}}
+      - job_name: cadvisor
+        scheme: https
+        authorization:
+          credentials_file: /var/run/secrets/kubernetes.io/serviceaccount/token
+        tls_config:
+          ca_file: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+        kubernetes_sd_configs:
+          - role: node
+        relabel_configs:
+          - {target_label: __metrics_path__, replacement: /metrics/cadvisor}
+          - {target_label: target, replacement: {{ .Values.target | quote }}}
+          - {target_label: cluster, replacement: {{ $cluster | quote }}}
+        metric_relabel_configs:
+          - {source_labels: [__name__], regex: 'container_cpu_usage_seconds_total|container_memory_working_set_bytes', action: keep}
+          - {source_labels: [namespace], regex: {{ join "|" .Values.namespaces | quote }}, action: keep}
+          - {source_labels: [container], regex: '|POD', action: drop}
+      - job_name: prometheus
+        static_configs:
+          - targets: ['127.0.0.1:9090']
+            labels: {target: {{ .Values.target | quote }}, cluster: {{ $cluster | quote }}}

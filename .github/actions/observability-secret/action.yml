@@ -1,0 +1,23 @@
+name: observability-secret
+description: 중앙 remote-write 수신 인증을 Terraform state 밖의 Kubernetes Secret으로 주입한다
+inputs:
+  password:
+    required: true
+runs:
+  using: composite
+  steps:
+    - shell: bash
+      env:
+        METRICS_PASSWORD: ${{ inputs.password }}
+      run: |
+        set -euo pipefail
+        test -n "$METRICS_PASSWORD"
+        command -v htpasswd >/dev/null || { sudo apt-get update -qq; sudo apt-get install -y -qq apache2-utils; }
+        umask 077
+        dir="$(mktemp -d)"
+        trap 'rm -rf "$dir"' EXIT
+        printf '%s\n' "$METRICS_PASSWORD" | htpasswd -niB onprem > "$dir/htpasswd"
+        kubectl create namespace monitoring --dry-run=client -o yaml | kubectl apply -f - >/dev/null
+        kubectl -n monitoring create secret generic deploy-metrics-auth \
+          --from-file="htpasswd=$dir/htpasswd" --dry-run=client -o yaml | kubectl apply -f - >/dev/null
+        echo 'Remote-write authentication Secret is ready'

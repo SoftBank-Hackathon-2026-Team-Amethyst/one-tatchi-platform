@@ -1,0 +1,24 @@
+target: onprem
+cluster: ""
+namespaces: [test, prod]
+prometheusImage: prom/prometheus:v3.13.4
+kubeStateMetricsImage: registry.k8s.io/kube-state-metrics/kube-state-metrics:v2.20.0
+retention: 2d
+storage:
+  # Enable with an installed provisioner for durable central storage.
+  persistent: false
+  className: ""
+  size: 5Gi
+  createEbsClass: false
+remoteWrite:
+  url: ""
+  # Existing Secret with username/password. Credentials never enter Helm values.
+  secretName: ""
+receiver:
+  enabled: false
+  # Existing Secret with a bcrypt htpasswd file in the htpasswd key.
+  secretName: ""
+  host: ""
+  ingressClass: alb
+  ingressGroup: demo-app
+  image: nginxinc/nginx-unprivileged:1.30.0-alpine

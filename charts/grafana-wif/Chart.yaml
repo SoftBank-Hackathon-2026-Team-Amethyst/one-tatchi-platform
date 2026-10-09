@@ -1,0 +1,5 @@
+apiVersion: v2
+name: grafana-wif
+description: Non-secret external account configuration for Grafana
+type: application
+version: 0.1.0

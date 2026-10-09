@@ -1,0 +1,73 @@
+{{- if .Values.receiver.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Release.Name }}-receiver
+spec:
+  replicas: 1
+  selector:
+    matchLabels: {app: {{ .Release.Name }}-receiver}
+  template:
+    metadata:
+      labels: {app: {{ .Release.Name }}-receiver}
+      annotations:
+        checksum/config: {{ include (print $.Template.BasePath "/receiver-config.yaml") . | sha256sum }}
+    spec:
+      automountServiceAccountToken: false
+      securityContext: {runAsNonRoot: true, runAsUser: 101, fsGroup: 101, seccompProfile: {type: RuntimeDefault}}
+      containers:
+        - name: receiver
+          image: {{ .Values.receiver.image | quote }}
+          command: [nginx, -c, /etc/receiver/nginx.conf, -g, 'daemon off;']
+          ports: [{name: http, containerPort: 8080}]
+          securityContext: {allowPrivilegeEscalation: false, readOnlyRootFilesystem: true, capabilities: {drop: [ALL]}}
+          resources:
+            requests: {cpu: 10m, memory: 16Mi}
+            limits: {memory: 64Mi}
+          readinessProbe: {httpGet: {path: /health, port: http}}
+          livenessProbe: {httpGet: {path: /health, port: http}}
+          volumeMounts:
+            - {name: config, mountPath: /etc/receiver, readOnly: true}
+            - {name: auth, mountPath: /etc/auth, readOnly: true}
+            - {name: tmp, mountPath: /tmp}
+      volumes:
+        - name: config
+          configMap: {name: {{ .Release.Name }}-receiver}
+        - name: auth
+          secret: {secretName: {{ .Values.receiver.secretName }}}
+        - name: tmp
+          emptyDir: {sizeLimit: 64Mi}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Release.Name }}-receiver
+spec:
+  selector: {app: {{ .Release.Name }}-receiver}
+  ports: [{name: http, port: 8080, targetPort: http}]
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ .Release.Name }}-receiver
+  annotations:
+    alb.ingress.kubernetes.io/scheme: internet-facing
+    alb.ingress.kubernetes.io/target-type: ip
+    alb.ingress.kubernetes.io/group.name: {{ .Values.receiver.ingressGroup | quote }}
+    alb.ingress.kubernetes.io/group.order: "5"
+    alb.ingress.kubernetes.io/listen-ports: '[{"HTTPS":443}]'
+    alb.ingress.kubernetes.io/healthcheck-path: /health
+    alb.ingress.kubernetes.io/ssl-policy: ELBSecurityPolicy-TLS13-1-2-2021-06
+spec:
+  ingressClassName: {{ .Values.receiver.ingressClass }}
+  rules:
+    - host: {{ .Values.receiver.host | quote }}
+      http:
+        paths:
+          - path: /api/v1/write
+            pathType: Exact
+            backend:
+              service:
+                name: {{ .Release.Name }}-receiver
+                port: {number: 8080}
+{{- end }}

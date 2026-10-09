@@ -1,0 +1,30 @@
+name: publish-metrics
+description: AI가 사용한 지표를 그대로 중앙 Grafana의 CloudWatch Logs 데이터 소스에 게시한다
+inputs:
+  report-dir:
+    required: true
+  log-group:
+    required: true
+  target:
+    required: true
+  environment:
+    required: true
+  cluster:
+    required: true
+  sha:
+    required: true
+runs:
+  using: composite
+  steps:
+    - shell: bash
+      env:
+        REPORT_DIR: ${{ inputs.report-dir }}
+        LOG_GROUP: ${{ inputs.log-group }}
+        TARGET: ${{ inputs.target }}
+        ENVIRONMENT: ${{ inputs.environment }}
+        CLUSTER: ${{ inputs.cluster }}
+        SHA: ${{ inputs.sha }}
+      run: |
+        python3 "$GITHUB_ACTION_PATH/publish.py" --report-dir "$REPORT_DIR" \
+          --log-group "$LOG_GROUP" --target "$TARGET" --environment "$ENVIRONMENT" \
+          --cluster "$CLUSTER" --sha "$SHA"

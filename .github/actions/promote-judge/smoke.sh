@@ -79,7 +79,7 @@ fi
 # 첫 바퀴는 목록 전체, 이후에는 GET만 반복한다 (POST 같은 쓰기 요청을 반복하지 않는다).
 request() {
   local method="$1" path="$2" body="$3" result rc=0
-  local args=(-sS -o /dev/null -w '%{http_code} %{time_total}' --max-time "$REQUEST_TIMEOUT_SECONDS" -X "$method")
+  local args=(-sS -A one-tatchi-smoke -o /dev/null -w '%{http_code} %{time_total}' --max-time "$REQUEST_TIMEOUT_SECONDS" -X "$method")
   if [ "$body" != null ]; then args+=(-H 'Content-Type: application/json' --data "$body"); fi
   result="$(curl "${args[@]}" "$BASE_URL$path" 2>/dev/null)" || rc=$?
   # 연결 실패 · 시간 초과면 상태 코드는 000
@@ -89,6 +89,9 @@ request() {
 }
 
 end=$((SECONDS + WINDOW_SECONDS))
+started_at="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+jq -n --arg started_at "$started_at" --argjson configured_seconds "$WINDOW_SECONDS" \
+  '{started_at:$started_at,ended_at:null,configured_seconds:$configured_seconds}' > "$WORK_DIR/observation.json"
 pass=0
 while :; do
   pass=$((pass + 1))
@@ -108,6 +111,9 @@ while :; do
   sleep 0.2
 done
 
+jq -n --arg started_at "$started_at" --arg ended_at "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+  --argjson configured_seconds "$WINDOW_SECONDS" \
+  '{started_at:$started_at,ended_at:$ended_at,configured_seconds:$configured_seconds}' > "$WORK_DIR/observation.json"
 total="$(wc -l < "$out" | tr -d ' ')"
 failed="$(jq -s '[.[] | select(.ok | not)] | length' "$out")"
 echo "smoke: $pass바퀴, 요청 $total건, 실패 $failed건 ($WINDOW_SECONDS초)"
