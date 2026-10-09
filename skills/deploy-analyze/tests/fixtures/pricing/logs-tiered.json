@@ -1,0 +1,45 @@
+{
+  "product": {
+    "sku": "LOGS-EXAMPLE",
+    "productFamily": "Data Payload",
+    "attributes": {
+      "regionCode": "ap-northeast-2",
+      "usagetype": "APN2-DataProcessing-Bytes"
+    }
+  },
+  "serviceCode": "AmazonCloudWatch",
+  "terms": {
+    "OnDemand": {
+      "LOGS-EXAMPLE.JRTCKXETXF": {
+        "sku": "LOGS-EXAMPLE",
+        "offerTermCode": "JRTCKXETXF",
+        "effectiveDate": "2026-01-01T00:00:00Z",
+        "priceDimensions": {
+          "logs-low": {
+            "rateCode": "logs-low",
+            "description": "Synthetic fixture",
+            "unit": "GB",
+            "beginRange": "0",
+            "endRange": "10",
+            "pricePerUnit": {
+              "USD": "0.5"
+            },
+            "appliesTo": []
+          },
+          "logs-high": {
+            "rateCode": "logs-high",
+            "description": "Synthetic fixture",
+            "unit": "GB",
+            "beginRange": "10",
+            "endRange": "Inf",
+            "pricePerUnit": {
+              "USD": "0.25"
+            },
+            "appliesTo": []
+          }
+        },
+        "termAttributes": {}
+      }
+    }
+  }
+}

@@ -1,0 +1,12 @@
+{
+  "schema_version": "1",
+  "method": "verified_usage_only_reuse",
+  "reused_at": "2026-10-09T14:51:54Z",
+  "source_input_id": "demo-live-validation-20261009",
+  "source_input_sha256": "86a903f95a882a3794c4874b2fd11a40d7b4d1411526dc7b61514499aa6ce4eb",
+  "source_prices_sha256": "ece27a06a182d236c5d110d6fb09ffa807d36acbf10f4960cdf66d56f75b9a86",
+  "input_sha256": "5242d7e68a5a56eb246b7a349906c3b28a483ba726015da142458ed356c2f699",
+  "prices_sha256": "41b960e9e4c28e1f022847d3e1b87ae8f33868318b170a10c0afa8fe1985e20b",
+  "queried_at": "2026-10-09T14:06:30Z",
+  "note": "No API request occurred. Pricing selectors and units matched; the original query time and price evidence are preserved."
+}

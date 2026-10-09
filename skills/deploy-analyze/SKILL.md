@@ -50,7 +50,7 @@ description: 웹앱 배포 전에 사용자 수, 예산, 데이터 취급, 배�
 | 4 | 보안 | `references/analyzers/security.md` | `.deploy/analysis/security.md` | 배포를 막는 문제, 외부 노출 범위, 규제가 요구하는 설정 |
 | 5 | 예산 | `references/analyzers/budget.md` | `.deploy/analysis/budget.md` | 후보 대상별 예상 월 비용과 예산 대비 |
 
-- 서브에이전트를 쓸 수 있는 환경이면 분석기마다 하나씩 **동시에** 돌린다. 각 서브에이전트에 지시 파일 경로, 브리프 경로, 결과 파일 경로를 준다. 아니면 위 순서로 하나씩 한다(예산은 트래픽 결과가 필요하다).
+- 서브에이전트를 사용할 수 있으면 코드베이스 · 서비스 · 트래픽 · 보안을 병렬로 실행하고, 예산은 트래픽 결과가 준비된 뒤 실행한다. 각 분석기에 지시 파일 · 브리프 · 결과 파일 경로를 준다. 병렬 실행이 없으면 위 순서로 진행한다. 예산을 기본 시나리오로 먼저 실행했다면 가정으로 표시하고 최종 트래픽 결과로 다시 계산한다.
 - 브리프에 없어서 추정한 값은 모두 각 결과의 **가정** 절에 근거와 함께 적는다.
 
 ## 3단계: 종합
@@ -60,14 +60,22 @@ description: 웹앱 배포 전에 사용자 수, 예산, 데이터 취급, 배�
 - `.deploy/report.md`: 사람이 리뷰 지점 1에서 읽는 분석 보고서. 결론(추천)이 맨 위.
 - `.deploy/plan.yaml`: `target`, `services`. 스킬 사이의 인계값이라 통째로 다시 쓴다. **`.deploy/config.yaml`은 건드리지 않는다**(`compliance`는 1단계 스크립트가, `template_version`은 `deploy-provision` · `template-update`가 쓴다. CODEOWNERS 리뷰 대상).
 
+### 비용 근거 확인과 보고서 갱신
+
+1. 예산 분석기의 [도구 실행 순서](references/analyzers/budget.md)를 따라 pricing-inventory.json → pricing-input.json · resource-assessment.json → prices.json → costs.json을 생성한다. report로 budget.md와 cost-summary.md를 같은 계산 결과에서 만든다.
+2. 종합 결과의 target · services 크기 · DB · 공유 환경과 계산 구성을 대조한다. 최종 추천 크기가 바뀌면 자원 목록을 갱신하고 map → lookup → calculate → report를 다시 실행한다. 가격 조건·단위가 같고 사용량·수량만 바뀌는 경우에는 가격 계약의 reuse-prices로 원본 입력·단가를 대조하고 재사용 근거를 남길 수 있다. 원래 조회 시각을 보존하며 새 조회처럼 표시하지 않는다. replicas 변화만으로 노드를 늘리거나 줄이지 않는다.
+3. report.md를 위 형식으로 작성한 뒤 추천 candidate_id를 지정해 report 명령에 --report 경로를 전달한다. 그 비용 블록은 도구가 갱신하며 종합 단계에서 다른 금액을 만들어 넣지 않는다.
+4. 예산 초과·초과 가능·판정 미정, 부분 소계, 환율·조회 시각과 미산정 사유를 리뷰 지점 1에서 함께 설명한다. 별도 대안 견적이 없으면 절감액 미산정 사유를 남긴다. 도구 실패를 성공이나 최신 단가로 바꾸지 않는다.
+5. .deploy/config.yaml은 브리프 분류와 template_version의 기존 소유 규칙을 따른다. 비용 도구와 종합 단계는 이 파일을 수정하지 않는다.
+
 ### 배포 대상 추천 규칙
 
 `aws` · `onprem` · `gcp` 중 하나를 추천한다. 하이브리드(클라우드 + 온프레미스 동시)는 비목표라 추천하지 않는다.
 
 1. **규제가 먼저다.** 브리프의 민감 데이터 답변이 `yes`이고 서비스 분석이 데이터 국내 · 사내 보관을 요구하면 `onprem`. 규제가 있어도 보관 위치 요구가 없으면 클라우드도 가능하다(운영 승인은 `compliance`가 따로 강제한다).
 2. **선호가 있으면 따른다.** `preferred_target`이 `aws` · `gcp` · `onprem`이면 그 값. 규제 규칙과 충돌하면 보고서에 충돌을 적고 규제를 따른다.
-3. **`auto`면** 코드에 남은 흔적(클라우드 SDK · 설정), 예산 분석의 비용 비교 순으로 정한다. 근거가 없으면 `aws`.
-4. **`gcp` 구현체(T4)가 아직 없다.** `gcp`를 추천하게 되면 보고서에 "GCP 구현체 전까지는 aws로 배포" 대안을 함께 적고, `plan.yaml`의 `target`은 지금 배포 가능한 값(`aws` 또는 `onprem`)으로 둔다.
+3. **`auto`면** 코드에 남은 흔적(클라우드 SDK · 설정), 같은 범위에서 완전하게 계산한 비용 비교 순으로 정한다. 부분 소계를 가장 저렴한 전체 비용처럼 비교하지 않는다. 비용 우열을 확정하지 못하면 확인 조건을 적고, 근거가 없으면 `aws`를 기본 후보로 둔다.
+4. **GCP 구현체(T4)를 제공한다.** `gcp`를 추천할 때는 대상 앱의 프로젝트·리전·CI 인증·GKE 접속·레지스트리·DB 구성과 템플릿 참조를 확인하고 준비되지 않은 조건을 보고서에 적는다. 가격 조회 성공만으로 배포 준비가 완료됐다고 판단하지 않는다.
 5. **온프레미스는 클러스터가 있어야 한다.** 브리프 · 레포에 self-hosted runner와 kube context 정보가 없으면 `onprem`을 추천하지 않고 보고서에 조건을 적는다.
 
 추천에는 이유 한 줄과, 검토했다가 버린 대안마다 한 줄을 붙인다.
@@ -79,8 +87,8 @@ description: 웹앱 배포 전에 사용자 수, 예산, 데이터 취급, 배�
 ## 끝난 상태
 
 - `.deploy/brief.md`, `.deploy/config.yaml`(`compliance`), `.deploy/plan.yaml`(`target`, `services`)
-- `.deploy/analysis/` 아래 결과 5개, `.deploy/report.md`
-- 추정한 값이 모두 보고서 **가정** 절에 있다
+- `.deploy/analysis/` 아래 결과 5개, 가격 입력·단가·비용·자원 평가 JSON, `cost-summary.md`, `.deploy/report.md`
+- 추정한 값이 모두 보고서 **가정** 절에 있고, 비용 표와 추천 비용 블록이 같은 계산 근거를 사용한다
 
 ## 설치와 로컬 검증
 

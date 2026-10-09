@@ -1,0 +1,34 @@
+{
+  "product": {
+    "sku": "ECR-EXAMPLE",
+    "productFamily": "Storage",
+    "attributes": {
+      "regionCode": "ap-northeast-2",
+      "usagetype": "APN2-TimedStorage-ByteHrs"
+    }
+  },
+  "serviceCode": "AmazonECR",
+  "terms": {
+    "OnDemand": {
+      "ECR-EXAMPLE.JRTCKXETXF": {
+        "sku": "ECR-EXAMPLE",
+        "offerTermCode": "JRTCKXETXF",
+        "effectiveDate": "2026-01-01T00:00:00Z",
+        "priceDimensions": {
+          "ecr-storage": {
+            "rateCode": "ecr-storage",
+            "description": "Synthetic fixture",
+            "unit": "GB-Mo",
+            "beginRange": "0",
+            "endRange": "Inf",
+            "pricePerUnit": {
+              "USD": "0.1"
+            },
+            "appliesTo": []
+          }
+        },
+        "termAttributes": {}
+      }
+    }
+  }
+}

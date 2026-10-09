@@ -1,0 +1,525 @@
+{
+  "5P9Q77R2ADUJCNJ2": {
+    "product": {
+      "productFamily": "Data Payload",
+      "attributes": {
+        "regionCode": "ap-northeast-2",
+        "servicecode": "AmazonCloudWatch",
+        "groupDescription": "Existing system, application, and custom log files",
+        "usagetype": "APN2-DataProcessing-Bytes",
+        "locationType": "AWS Region",
+        "location": "Asia Pacific (Seoul)",
+        "servicename": "AmazonCloudWatch",
+        "operation": "PutLogEvents",
+        "version": "Current",
+        "group": "Ingested Logs",
+        "logsDestination": "Amazon CloudWatch Logs"
+      },
+      "sku": "5P9Q77R2ADUJCNJ2"
+    },
+    "serviceCode": "AmazonCloudWatch",
+    "terms": {
+      "OnDemand": {
+        "5P9Q77R2ADUJCNJ2.JRTCKXETXF": {
+          "priceDimensions": {
+            "5P9Q77R2ADUJCNJ2.JRTCKXETXF.6YS6EN2CT7": {
+              "unit": "GB",
+              "endRange": "Inf",
+              "description": "$0.76 per GB custom log data ingested in Standard log class - Asia Pacific (Seoul)",
+              "appliesTo": [],
+              "rateCode": "5P9Q77R2ADUJCNJ2.JRTCKXETXF.6YS6EN2CT7",
+              "beginRange": "0",
+              "pricePerUnit": {
+                "USD": "0.7600000000"
+              }
+            }
+          },
+          "sku": "5P9Q77R2ADUJCNJ2",
+          "effectiveDate": "2026-10-01T00:00:00Z",
+          "offerTermCode": "JRTCKXETXF",
+          "termAttributes": {}
+        }
+      }
+    },
+    "version": "20261007115540",
+    "publicationDate": "2026-10-07T11:55:40Z"
+  },
+  "92QAN7T7PQUAG6NQ": {
+    "product": {
+      "productFamily": "Metric",
+      "attributes": {
+        "regionCode": "ap-northeast-2",
+        "servicecode": "AmazonCloudWatch",
+        "groupDescription": "CloudWatch Custom Metrics",
+        "usagetype": "APN2-CW:MetricMonitorUsage",
+        "locationType": "AWS Region",
+        "location": "Asia Pacific (Seoul)",
+        "servicename": "AmazonCloudWatch",
+        "operation": "",
+        "group": "Metric"
+      },
+      "sku": "92QAN7T7PQUAG6NQ"
+    },
+    "serviceCode": "AmazonCloudWatch",
+    "terms": {
+      "OnDemand": {
+        "92QAN7T7PQUAG6NQ.JRTCKXETXF": {
+          "priceDimensions": {
+            "92QAN7T7PQUAG6NQ.JRTCKXETXF.FG3KHZ79QN": {
+              "unit": "Metrics",
+              "endRange": "250000",
+              "description": "$0.10 per metric-month for the next 240,000 metrics - Asia Pacific (Seoul)",
+              "appliesTo": [],
+              "rateCode": "92QAN7T7PQUAG6NQ.JRTCKXETXF.FG3KHZ79QN",
+              "beginRange": "10000",
+              "pricePerUnit": {
+                "USD": "0.1000000000"
+              }
+            },
+            "92QAN7T7PQUAG6NQ.JRTCKXETXF.VNJQCFJPS4": {
+              "unit": "Metrics",
+              "endRange": "Inf",
+              "description": "$0.02 per metric-month for over 1,000,000 metrics - Asia Pacific (Seoul)",
+              "appliesTo": [],
+              "rateCode": "92QAN7T7PQUAG6NQ.JRTCKXETXF.VNJQCFJPS4",
+              "beginRange": "1000000",
+              "pricePerUnit": {
+                "USD": "0.0200000000"
+              }
+            },
+            "92QAN7T7PQUAG6NQ.JRTCKXETXF.A6VD9GXV7W": {
+              "unit": "Metrics",
+              "endRange": "10000",
+              "description": "$0.30 per metric-month for the first 10,000 metrics - Asia Pacific (Seoul)",
+              "appliesTo": [],
+              "rateCode": "92QAN7T7PQUAG6NQ.JRTCKXETXF.A6VD9GXV7W",
+              "beginRange": "0",
+              "pricePerUnit": {
+                "USD": "0.3000000000"
+              }
+            },
+            "92QAN7T7PQUAG6NQ.JRTCKXETXF.95SDKRWVHH": {
+              "unit": "Metrics",
+              "endRange": "1000000",
+              "description": "$0.05 per metric-month for the next 750,000 metrics - Asia Pacific (Seoul)",
+              "appliesTo": [],
+              "rateCode": "92QAN7T7PQUAG6NQ.JRTCKXETXF.95SDKRWVHH",
+              "beginRange": "250000",
+              "pricePerUnit": {
+                "USD": "0.0500000000"
+              }
+            }
+          },
+          "sku": "92QAN7T7PQUAG6NQ",
+          "effectiveDate": "2026-10-01T00:00:00Z",
+          "offerTermCode": "JRTCKXETXF",
+          "termAttributes": {}
+        }
+      }
+    },
+    "version": "20261007115540",
+    "publicationDate": "2026-10-07T11:55:40Z"
+  },
+  "E7V5NF3GN7MQKCB6": {
+    "product": {
+      "productFamily": "Storage Snapshot",
+      "attributes": {
+        "storageMedia": "Amazon S3",
+        "regionCode": "ap-northeast-2",
+        "servicecode": "AmazonCloudWatch",
+        "groupDescription": "Amazon CloudWatch Logs Storage Current version",
+        "usagetype": "APN2-TimedStorage-ByteHrs",
+        "locationType": "AWS Region",
+        "location": "Asia Pacific (Seoul)",
+        "servicename": "AmazonCloudWatch",
+        "operation": "",
+        "version": "Current",
+        "group": "Amazon CloudWatch Standard Storage pricing current"
+      },
+      "sku": "E7V5NF3GN7MQKCB6"
+    },
+    "serviceCode": "AmazonCloudWatch",
+    "terms": {
+      "OnDemand": {
+        "E7V5NF3GN7MQKCB6.JRTCKXETXF": {
+          "priceDimensions": {
+            "E7V5NF3GN7MQKCB6.JRTCKXETXF.6YS6EN2CT7": {
+              "unit": "GB-Mo",
+              "endRange": "Inf",
+              "description": "$0.0314 per GB-mo of log storage - Asia Pacific (Seoul)",
+              "appliesTo": [],
+              "rateCode": "E7V5NF3GN7MQKCB6.JRTCKXETXF.6YS6EN2CT7",
+              "beginRange": "0",
+              "pricePerUnit": {
+                "USD": "0.0314000000"
+              }
+            }
+          },
+          "sku": "E7V5NF3GN7MQKCB6",
+          "effectiveDate": "2026-10-01T00:00:00Z",
+          "offerTermCode": "JRTCKXETXF",
+          "termAttributes": {}
+        }
+      }
+    },
+    "version": "20261007115540",
+    "publicationDate": "2026-10-07T11:55:40Z"
+  },
+  "8TY6BPQ52JVYCRQD": {
+    "product": {
+      "productFamily": "Secret",
+      "attributes": {
+        "regionCode": "ap-northeast-2",
+        "servicecode": "AWSSecretsManager",
+        "usagetype": "APN2-AWSSecretsManager-Secrets",
+        "locationType": "AWS Region",
+        "location": "Asia Pacific (Seoul)",
+        "servicename": "AWS Secrets Manager",
+        "operation": "",
+        "group": "AWSSecretsManager-Secret"
+      },
+      "sku": "8TY6BPQ52JVYCRQD"
+    },
+    "serviceCode": "AWSSecretsManager",
+    "terms": {
+      "OnDemand": {
+        "8TY6BPQ52JVYCRQD.JRTCKXETXF": {
+          "priceDimensions": {
+            "8TY6BPQ52JVYCRQD.JRTCKXETXF.6YS6EN2CT7": {
+              "unit": "Secrets",
+              "endRange": "Inf",
+              "description": "$0.40 per Secret",
+              "appliesTo": [],
+              "rateCode": "8TY6BPQ52JVYCRQD.JRTCKXETXF.6YS6EN2CT7",
+              "beginRange": "0",
+              "pricePerUnit": {
+                "USD": "0.4000000000"
+              }
+            }
+          },
+          "sku": "8TY6BPQ52JVYCRQD",
+          "effectiveDate": "2025-07-01T00:00:00Z",
+          "offerTermCode": "JRTCKXETXF",
+          "termAttributes": {}
+        }
+      }
+    },
+    "version": "20260911124610",
+    "publicationDate": "2026-09-11T12:46:10Z"
+  },
+  "9779GVGYGTKZ2UJA": {
+    "product": {
+      "productFamily": "API Request",
+      "attributes": {
+        "regionCode": "ap-northeast-2",
+        "servicecode": "AWSSecretsManager",
+        "usagetype": "APN2-AWSSecretsManagerAPIRequest",
+        "locationType": "AWS Region",
+        "location": "Asia Pacific (Seoul)",
+        "servicename": "AWS Secrets Manager",
+        "operation": "",
+        "group": "AWSSecretsManager-APIRequest"
+      },
+      "sku": "9779GVGYGTKZ2UJA"
+    },
+    "serviceCode": "AWSSecretsManager",
+    "terms": {
+      "OnDemand": {
+        "9779GVGYGTKZ2UJA.JRTCKXETXF": {
+          "priceDimensions": {
+            "9779GVGYGTKZ2UJA.JRTCKXETXF.6YS6EN2CT7": {
+              "unit": "API Requests",
+              "endRange": "Inf",
+              "description": "$0.05 per 10000 API Requests",
+              "appliesTo": [],
+              "rateCode": "9779GVGYGTKZ2UJA.JRTCKXETXF.6YS6EN2CT7",
+              "beginRange": "0",
+              "pricePerUnit": {
+                "USD": "0.0000050000"
+              }
+            }
+          },
+          "sku": "9779GVGYGTKZ2UJA",
+          "effectiveDate": "2025-07-01T00:00:00Z",
+          "offerTermCode": "JRTCKXETXF",
+          "termAttributes": {}
+        }
+      }
+    },
+    "version": "20260911124610",
+    "publicationDate": "2026-09-11T12:46:10Z"
+  },
+  "ZKBHEVDXYBRCKFQ8": {
+    "product": {
+      "attributes": {
+        "regionCode": "ap-northeast-2",
+        "servicecode": "AmazonVPC",
+        "groupDescription": "Hourly charge for In-use Public IPv4 Addresses",
+        "usagetype": "APN2-PublicIPv4:InUseAddress",
+        "locationType": "AWS Region",
+        "location": "Asia Pacific (Seoul)",
+        "servicename": "Amazon Virtual Private Cloud",
+        "operation": "",
+        "group": "VPCPublicIPv4Address"
+      },
+      "sku": "ZKBHEVDXYBRCKFQ8"
+    },
+    "serviceCode": "AmazonVPC",
+    "terms": {
+      "OnDemand": {
+        "ZKBHEVDXYBRCKFQ8.JRTCKXETXF": {
+          "priceDimensions": {
+            "ZKBHEVDXYBRCKFQ8.JRTCKXETXF.6YS6EN2CT7": {
+              "unit": "Hrs",
+              "endRange": "Inf",
+              "description": "$0.005 per In-use public IPv4 address per hour",
+              "appliesTo": [],
+              "rateCode": "ZKBHEVDXYBRCKFQ8.JRTCKXETXF.6YS6EN2CT7",
+              "beginRange": "0",
+              "pricePerUnit": {
+                "USD": "0.0050000000"
+              }
+            }
+          },
+          "sku": "ZKBHEVDXYBRCKFQ8",
+          "effectiveDate": "2026-09-01T00:00:00Z",
+          "offerTermCode": "JRTCKXETXF",
+          "termAttributes": {}
+        }
+      }
+    },
+    "version": "20260917190528",
+    "publicationDate": "2026-09-17T19:05:28Z"
+  },
+  "3JSN7K7UDDNCYCDM": {
+    "product": {
+      "productFamily": "Storage",
+      "attributes": {
+        "volumeType": "Standard",
+        "storageClass": "General Purpose",
+        "regionCode": "ap-northeast-2",
+        "servicecode": "AmazonS3",
+        "durability": "99.999999999%",
+        "usagetype": "APN2-TimedStorage-ByteHrs",
+        "locationType": "AWS Region",
+        "location": "Asia Pacific (Seoul)",
+        "servicename": "Amazon Simple Storage Service",
+        "availability": "99.99%",
+        "operation": ""
+      },
+      "sku": "3JSN7K7UDDNCYCDM"
+    },
+    "serviceCode": "AmazonS3",
+    "terms": {
+      "OnDemand": {
+        "3JSN7K7UDDNCYCDM.JRTCKXETXF": {
+          "priceDimensions": {
+            "3JSN7K7UDDNCYCDM.JRTCKXETXF.D42MF2PVJS": {
+              "unit": "GB-Mo",
+              "endRange": "512000",
+              "description": "$0.024 per GB - next 450 TB / month of storage used",
+              "appliesTo": [],
+              "rateCode": "3JSN7K7UDDNCYCDM.JRTCKXETXF.D42MF2PVJS",
+              "beginRange": "51200",
+              "pricePerUnit": {
+                "USD": "0.0240000000"
+              }
+            },
+            "3JSN7K7UDDNCYCDM.JRTCKXETXF.PGHJ3S3EYE": {
+              "unit": "GB-Mo",
+              "endRange": "51200",
+              "description": "$0.025 per GB - first 50 TB / month of storage used",
+              "appliesTo": [],
+              "rateCode": "3JSN7K7UDDNCYCDM.JRTCKXETXF.PGHJ3S3EYE",
+              "beginRange": "0",
+              "pricePerUnit": {
+                "USD": "0.0250000000"
+              }
+            },
+            "3JSN7K7UDDNCYCDM.JRTCKXETXF.PXJDJ3YRG3": {
+              "unit": "GB-Mo",
+              "endRange": "Inf",
+              "description": "$0.023 per GB - storage used / month over 500 TB",
+              "appliesTo": [],
+              "rateCode": "3JSN7K7UDDNCYCDM.JRTCKXETXF.PXJDJ3YRG3",
+              "beginRange": "512000",
+              "pricePerUnit": {
+                "USD": "0.0230000000"
+              }
+            }
+          },
+          "sku": "3JSN7K7UDDNCYCDM",
+          "effectiveDate": "2026-09-01T00:00:00Z",
+          "offerTermCode": "JRTCKXETXF",
+          "termAttributes": {}
+        }
+      }
+    },
+    "version": "20260928230416",
+    "publicationDate": "2026-09-28T23:04:16Z"
+  },
+  "84G6KSFBGCU9CEC9": {
+    "product": {
+      "productFamily": "API Request",
+      "attributes": {
+        "regionCode": "ap-northeast-2",
+        "servicecode": "AmazonS3",
+        "groupDescription": "GET and all other requests",
+        "usagetype": "APN2-Requests-Tier2",
+        "locationType": "AWS Region",
+        "location": "Asia Pacific (Seoul)",
+        "servicename": "Amazon Simple Storage Service",
+        "operation": "",
+        "group": "S3-API-Tier2"
+      },
+      "sku": "84G6KSFBGCU9CEC9"
+    },
+    "serviceCode": "AmazonS3",
+    "terms": {
+      "OnDemand": {
+        "84G6KSFBGCU9CEC9.JRTCKXETXF": {
+          "priceDimensions": {
+            "84G6KSFBGCU9CEC9.JRTCKXETXF.6YS6EN2CT7": {
+              "unit": "Requests",
+              "endRange": "Inf",
+              "description": "$0.0035 per 10,000 GET and all other requests",
+              "appliesTo": [],
+              "rateCode": "84G6KSFBGCU9CEC9.JRTCKXETXF.6YS6EN2CT7",
+              "beginRange": "0",
+              "pricePerUnit": {
+                "USD": "0.0000003500"
+              }
+            }
+          },
+          "sku": "84G6KSFBGCU9CEC9",
+          "effectiveDate": "2026-09-01T00:00:00Z",
+          "offerTermCode": "JRTCKXETXF",
+          "termAttributes": {}
+        }
+      }
+    },
+    "version": "20260928230416",
+    "publicationDate": "2026-09-28T23:04:16Z"
+  },
+  "D3S5DN86CFPGUM5G": {
+    "product": {
+      "productFamily": "API Request",
+      "attributes": {
+        "regionCode": "ap-northeast-2",
+        "servicecode": "AmazonS3",
+        "groupDescription": "PUT/COPY/POST or LIST requests",
+        "usagetype": "APN2-Requests-Tier1",
+        "locationType": "AWS Region",
+        "location": "Asia Pacific (Seoul)",
+        "servicename": "Amazon Simple Storage Service",
+        "operation": "",
+        "group": "S3-API-Tier1"
+      },
+      "sku": "D3S5DN86CFPGUM5G"
+    },
+    "serviceCode": "AmazonS3",
+    "terms": {
+      "OnDemand": {
+        "D3S5DN86CFPGUM5G.JRTCKXETXF": {
+          "priceDimensions": {
+            "D3S5DN86CFPGUM5G.JRTCKXETXF.6YS6EN2CT7": {
+              "unit": "Requests",
+              "endRange": "Inf",
+              "description": "$0.0045 per 1,000 PUT, COPY, POST, or LIST requests",
+              "appliesTo": [],
+              "rateCode": "D3S5DN86CFPGUM5G.JRTCKXETXF.6YS6EN2CT7",
+              "beginRange": "0",
+              "pricePerUnit": {
+                "USD": "0.0000045000"
+              }
+            }
+          },
+          "sku": "D3S5DN86CFPGUM5G",
+          "effectiveDate": "2026-09-01T00:00:00Z",
+          "offerTermCode": "JRTCKXETXF",
+          "termAttributes": {}
+        }
+      }
+    },
+    "version": "20260928230416",
+    "publicationDate": "2026-09-28T23:04:16Z"
+  },
+  "9AS8NERTGECRPGT7": {
+    "product": {
+      "productFamily": "Data Transfer",
+      "attributes": {
+        "fromLocationType": "AWS Region",
+        "toRegionCode": "",
+        "servicecode": "AWSDataTransfer",
+        "usagetype": "APN2-DataTransfer-Out-Bytes",
+        "fromRegionCode": "ap-northeast-2",
+        "transferType": "AWS Outbound",
+        "servicename": "AWS Data Transfer",
+        "fromLocation": "Asia Pacific (Seoul)",
+        "toLocationType": "Other",
+        "toLocation": "External",
+        "operation": ""
+      },
+      "sku": "9AS8NERTGECRPGT7"
+    },
+    "serviceCode": "AWSDataTransfer",
+    "terms": {
+      "OnDemand": {
+        "9AS8NERTGECRPGT7.JRTCKXETXF": {
+          "priceDimensions": {
+            "9AS8NERTGECRPGT7.JRTCKXETXF.Q3Z75P77EN": {
+              "unit": "GB",
+              "endRange": "10240",
+              "description": "$0.126 per GB - first 10 TB / month data transfer out beyond the global free tier",
+              "appliesTo": [],
+              "rateCode": "9AS8NERTGECRPGT7.JRTCKXETXF.Q3Z75P77EN",
+              "beginRange": "0",
+              "pricePerUnit": {
+                "USD": "0.1260000000"
+              }
+            },
+            "9AS8NERTGECRPGT7.JRTCKXETXF.N9EW5UVVPA": {
+              "unit": "GB",
+              "endRange": "153600",
+              "description": "$0.117 per GB - next 100 TB / month data transfer out",
+              "appliesTo": [],
+              "rateCode": "9AS8NERTGECRPGT7.JRTCKXETXF.N9EW5UVVPA",
+              "beginRange": "51200",
+              "pricePerUnit": {
+                "USD": "0.1170000000"
+              }
+            },
+            "9AS8NERTGECRPGT7.JRTCKXETXF.GPHXDESFBB": {
+              "unit": "GB",
+              "endRange": "Inf",
+              "description": "$0.108 per GB - greater than 150 TB / month data transfer out",
+              "appliesTo": [],
+              "rateCode": "9AS8NERTGECRPGT7.JRTCKXETXF.GPHXDESFBB",
+              "beginRange": "153600",
+              "pricePerUnit": {
+                "USD": "0.1080000000"
+              }
+            },
+            "9AS8NERTGECRPGT7.JRTCKXETXF.VF6T3GAUKQ": {
+              "unit": "GB",
+              "endRange": "51200",
+              "description": "$0.122 per GB - next 40 TB / month data transfer out",
+              "appliesTo": [],
+              "rateCode": "9AS8NERTGECRPGT7.JRTCKXETXF.VF6T3GAUKQ",
+              "beginRange": "10240",
+              "pricePerUnit": {
+                "USD": "0.1220000000"
+              }
+            }
+          },
+          "sku": "9AS8NERTGECRPGT7",
+          "effectiveDate": "2026-06-01T00:00:00Z",
+          "offerTermCode": "JRTCKXETXF",
+          "termAttributes": {}
+        }
+      }
+    },
+    "version": "20260916132208",
+    "publicationDate": "2026-09-16T13:22:08Z"
+  }
+}

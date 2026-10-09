@@ -1,0 +1,38 @@
+{
+  "name": "services/GKE/skus/GKE-EXAMPLE",
+  "skuId": "GKE-EXAMPLE",
+  "description": "Synthetic cluster management",
+  "category": {
+    "serviceDisplayName": "Kubernetes Engine",
+    "resourceFamily": "ApplicationServices",
+    "resourceGroup": "Management",
+    "usageType": "OnDemand"
+  },
+  "serviceRegions": [],
+  "geoTaxonomy": {
+    "type": "GLOBAL",
+    "regions": []
+  },
+  "pricingInfo": [
+    {
+      "effectiveTime": "2026-01-01T00:00:00Z",
+      "currencyConversionRate": 1,
+      "pricingExpression": {
+        "usageUnit": "h",
+        "baseUnit": "s",
+        "baseUnitConversionFactor": 3600,
+        "displayQuantity": 1,
+        "tieredRates": [
+          {
+            "startUsageAmount": 0,
+            "unitPrice": {
+              "currencyCode": "USD",
+              "units": "0",
+              "nanos": 100000000
+            }
+          }
+        ]
+      }
+    }
+  ]
+}

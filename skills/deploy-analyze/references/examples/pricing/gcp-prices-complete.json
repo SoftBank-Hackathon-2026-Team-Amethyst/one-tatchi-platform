@@ -1,0 +1,55 @@
+{
+  "schema_version": "2",
+  "input_id": "example-t16-gcp",
+  "input_sha256": "06da43fd93c1b550207333f6dfb4a7eedf9b68a1d8cb099f15ae230b3582c054",
+  "queried_at": "2026-10-09T00:01:00Z",
+  "status": "complete",
+  "candidates": [
+    {
+      "candidate_id": "gcp-example",
+      "target": "gcp",
+      "region": "asia-northeast3",
+      "items": [
+        {
+          "item_id": "cpu",
+          "status": "available",
+          "price": {
+            "sku": "CPU-EXAMPLE",
+            "provider_service": "services/COMPUTE",
+            "currency": "USD",
+            "source": "https://docs.cloud.google.com/billing/docs/reference/rest/v1/services.skus/list",
+            "effective_at": "2026-01-01T00:00:00Z",
+            "unit": "vcpu_hour",
+            "source_unit": "h",
+            "source_usage_per_unit": "1",
+            "tiers": [
+              {
+                "from": "0",
+                "to": null,
+                "unit_price": "0.021177"
+              }
+            ],
+            "provider_details": {
+              "usage_unit": "h",
+              "base_unit": "s",
+              "base_unit_conversion_factor": "3600",
+              "display_quantity": "1",
+              "currency_conversion_rate": "1",
+              "aggregation": null,
+              "effective_time": "2026-01-01T00:00:00Z",
+              "tiers": [
+                {
+                  "from": "0",
+                  "units": "0",
+                  "nanos": 21177000
+                }
+              ]
+            }
+          },
+          "issue": null
+        }
+      ]
+    }
+  ],
+  "issues": []
+}

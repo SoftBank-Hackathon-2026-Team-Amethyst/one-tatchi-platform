@@ -10,8 +10,11 @@
 ## 추천
 - 배포 대상: onprem
 - 이유 한 줄: 민감 데이터(regulated)와 사내 보관 요구. 맥북 k3d 클러스터와 self-hosted runner가 있다
-- 예상 월 비용: 0원 (클라우드 없음) / 참고: aws 약 ○○원
-- 검토한 대안: aws (보관 위치 요구로 제외) / gcp (구현체 없음, T4)
+- 검토한 대안: aws / gcp (각 후보를 제외한 이유)
+
+<!-- pricing-summary:start -->
+price.py report가 만든 추천 후보 비용 블록을 여기에 갱신한다.
+<!-- pricing-summary:end -->
 
 ## 인프라 구성
 서비스별 런타임 · 크기(replicas, resources) · DB · 네트워크(노출 여부) 표.
@@ -28,6 +31,19 @@ Dockerfile 추가, 로컬 DB를 운영 DB로, 헬스체크 추가, lint · build
 ## 가정
 브리프에 없어서 추정한 값과 근거. 없으면 "없음".
 ```
+
+## 비용 표와 추천 요약의 연결
+
+예산 분석기는 [예산 분석 지침](analyzers/budget.md)과 [보고서 생성 계약](cost-reporting.md)을 따른다. budget.md 비용 표와 report.md의 비용 블록은 같은 costs.json에서 생성한다. 표의 소계나 항목별 범위를 다시 더해 전체 비용을 만들지 않는다.
+
+분석 보고서의 추천 후보를 정한 뒤 해당 candidate_id로 price.py report를 실행한다. --summary-output은 .deploy/analysis/cost-summary.md다. --report .deploy/report.md를 함께 주면 pricing-summary 표지 안만 교체하고 추천 이유·인프라·확장·코드 수정·보안·기존 본문은 보존한다. 표지가 없거나 중복되면 기존 본문을 임의로 덮어쓰지 않고 실패한다. 처음 작성하거나 이전 형식에서 갱신할 때는 위 표지 한 쌍을 두고 기존 수동 비용 문구를 제거한다.
+
+- 전체/증분과 USD/KRW, 소계/완전한 합계, 명시/가정 구성을 구분한다.
+- 예산 초과와 초과 가능 경고, 미산정 사유와 절감안 또는 절감액 미산정 사유를 요약에도 남긴다.
+- 조회 시각과 가격 적용 시점, 환율 값·기준일·출처와 근거 JSON을 확인한다. 보고서 생성 시각을 단가 조회 시각으로 사용하지 않는다.
+- 온프레미스 클라우드 0원과 운영 비용 미산정을 구분한다.
+- 최종 services의 replicas · resources · DB · 환경 범위가 계산 입력과 다르면 자원 매핑부터 다시 실행하고 비용 블록을 재생성한다. 가격 조건·단위가 바뀌면 새 lookup을 실행한다. 사용량·수량만 바뀌는 시나리오는 `reuse-prices`로 원본 조건과 해시를 검증하고 재사용 근거를 남길 수 있다. 조회 시각을 새로 만들거나 해시만 임의로 수정하지 않는다.
+- API가 실패하면 부분 결과를 사용하고 알려진 가격을 최신 조회값처럼 대체하지 않는다.
 
 ## `.deploy/config.yaml`과 `.deploy/plan.yaml`
 
@@ -50,7 +66,7 @@ compliance: regulated
 
 ```yaml
 # .deploy/plan.yaml — 스킬 사이의 인계값. deploy-analyze가 쓰고 deploy-provision이 읽는다. 파이프라인은 읽지 않는다.
-target: onprem                  # aws | onprem | gcp(구현 예정). 워크플로 호출부의 기본 대상(레포 변수 DEPLOY_TARGET이 없을 때)
+target: onprem                  # aws | onprem | gcp. 워크플로 호출부의 기본 대상(레포 변수 DEPLOY_TARGET이 없을 때)
 services:
   - name: demo-app-be           # 이미지 저장소 · Rollout · k8s Service 이름
     path: be                    # 빌드 컨텍스트 (Dockerfile 위치)

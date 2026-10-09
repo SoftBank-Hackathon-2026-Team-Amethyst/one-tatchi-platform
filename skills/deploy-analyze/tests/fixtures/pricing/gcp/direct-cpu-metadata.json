@@ -1,0 +1,36 @@
+{
+  "name": "skus/9304-94C4-2117",
+  "skuId": "9304-94C4-2117",
+  "displayName": "E2 Instance Core running in Seoul",
+  "service": "services/6F81-5844-456A",
+  "productTaxonomy": {
+    "taxonomyCategories": [
+      {
+        "category": "GCP"
+      },
+      {
+        "category": "Compute"
+      },
+      {
+        "category": "GCE"
+      },
+      {
+        "category": "VMs On Demand"
+      },
+      {
+        "category": "Cores: Per Core"
+      },
+      {
+        "category": "E2"
+      }
+    ]
+  },
+  "geoTaxonomy": {
+    "type": "TYPE_REGIONAL",
+    "regionalMetadata": {
+      "region": {
+        "region": "asia-northeast3"
+      }
+    }
+  }
+}

@@ -1,0 +1,1542 @@
+{
+  "schema_version": "3",
+  "input_id": "demo-live-validation-20261009",
+  "input_sha256": "86a903f95a882a3794c4874b2fd11a40d7b4d1411526dc7b61514499aa6ce4eb",
+  "queried_at": "2026-10-09T14:06:30Z",
+  "status": "complete",
+  "candidates": [
+    {
+      "candidate_id": "demo-aws",
+      "target": "aws",
+      "region": "ap-northeast-2",
+      "items": [
+        {
+          "item_id": "aws-cluster-cluster_hours",
+          "status": "available",
+          "price": {
+            "sku": "8HAE52ZNS3QC3Q8Q",
+            "provider_service": "AmazonEKS",
+            "currency": "USD",
+            "source": "https://docs.aws.amazon.com/aws-cost-management/latest/APIReference/API_pricing_GetProducts.html",
+            "effective_at": "2026-09-01T00:00:00Z",
+            "unit": "hour",
+            "source_unit": "Hours",
+            "source_usage_per_unit": "1",
+            "tiers": [
+              {
+                "from": "0",
+                "to": null,
+                "unit_price": "0.1000000000"
+              }
+            ]
+          },
+          "issue": null
+        },
+        {
+          "item_id": "aws-nodes-instance_hours",
+          "status": "available",
+          "price": {
+            "sku": "G5CAZXC4M5ENHEZN",
+            "provider_service": "AmazonEC2",
+            "currency": "USD",
+            "source": "https://docs.aws.amazon.com/aws-cost-management/latest/APIReference/API_pricing_GetProducts.html",
+            "effective_at": "2026-10-01T00:00:00Z",
+            "unit": "hour",
+            "source_unit": "Hrs",
+            "source_usage_per_unit": "1",
+            "tiers": [
+              {
+                "from": "0",
+                "to": null,
+                "unit_price": "0.0520000000"
+              }
+            ]
+          },
+          "issue": null
+        },
+        {
+          "item_id": "aws-node-disks-storage",
+          "status": "available",
+          "price": {
+            "sku": "MTK7D9SGKGYR3JD6",
+            "provider_service": "AmazonEC2",
+            "currency": "USD",
+            "source": "https://docs.aws.amazon.com/aws-cost-management/latest/APIReference/API_pricing_GetProducts.html",
+            "effective_at": "2026-10-01T00:00:00Z",
+            "unit": "gb_month",
+            "source_unit": "GB-Mo",
+            "source_usage_per_unit": "1",
+            "tiers": [
+              {
+                "from": "0",
+                "to": null,
+                "unit_price": "0.0912000000"
+              }
+            ]
+          },
+          "issue": null
+        },
+        {
+          "item_id": "aws-nat-gateway_hours",
+          "status": "available",
+          "price": {
+            "sku": "P63FHTYZXQBC6HX5",
+            "provider_service": "AmazonEC2",
+            "currency": "USD",
+            "source": "https://docs.aws.amazon.com/aws-cost-management/latest/APIReference/API_pricing_GetProducts.html",
+            "effective_at": "2026-10-01T00:00:00Z",
+            "unit": "hour",
+            "source_unit": "Hrs",
+            "source_usage_per_unit": "1",
+            "tiers": [
+              {
+                "from": "0",
+                "to": null,
+                "unit_price": "0.0590000000"
+              }
+            ]
+          },
+          "issue": null
+        },
+        {
+          "item_id": "aws-nat-processed_data",
+          "status": "available",
+          "price": {
+            "sku": "HC3MBQKUG7PB4BYX",
+            "provider_service": "AmazonEC2",
+            "currency": "USD",
+            "source": "https://docs.aws.amazon.com/aws-cost-management/latest/APIReference/API_pricing_GetProducts.html",
+            "effective_at": "2026-10-01T00:00:00Z",
+            "unit": "gb",
+            "source_unit": "GB",
+            "source_usage_per_unit": "1",
+            "tiers": [
+              {
+                "from": "0",
+                "to": null,
+                "unit_price": "0.0590000000"
+              }
+            ]
+          },
+          "issue": null
+        },
+        {
+          "item_id": "aws-alb-load_balancer_hours",
+          "status": "available",
+          "price": {
+            "sku": "VUV9M7PZ543S2SC9",
+            "provider_service": "AWSELB",
+            "currency": "USD",
+            "source": "https://docs.aws.amazon.com/aws-cost-management/latest/APIReference/API_pricing_GetProducts.html",
+            "effective_at": "2026-08-01T00:00:00Z",
+            "unit": "hour",
+            "source_unit": "Hrs",
+            "source_usage_per_unit": "1",
+            "tiers": [
+              {
+                "from": "0",
+                "to": null,
+                "unit_price": "0.0225000000"
+              }
+            ]
+          },
+          "issue": null
+        },
+        {
+          "item_id": "aws-alb-lcu_hours",
+          "status": "available",
+          "price": {
+            "sku": "CX4ZBV2SE6F5HJV3",
+            "provider_service": "AWSELB",
+            "currency": "USD",
+            "source": "https://docs.aws.amazon.com/aws-cost-management/latest/APIReference/API_pricing_GetProducts.html",
+            "effective_at": "2026-08-01T00:00:00Z",
+            "unit": "lcu_hour",
+            "source_unit": "LCU-Hrs",
+            "source_usage_per_unit": "1",
+            "tiers": [
+              {
+                "from": "0",
+                "to": null,
+                "unit_price": "0.0080000000"
+              }
+            ]
+          },
+          "issue": null
+        },
+        {
+          "item_id": "aws-db-instance_hours",
+          "status": "available",
+          "price": {
+            "sku": "ZBMXF2F4CYQ2FT96",
+            "provider_service": "AmazonRDS",
+            "currency": "USD",
+            "source": "https://docs.aws.amazon.com/aws-cost-management/latest/APIReference/API_pricing_GetProducts.html",
+            "effective_at": "2026-10-01T00:00:00Z",
+            "unit": "hour",
+            "source_unit": "Hrs",
+            "source_usage_per_unit": "1",
+            "tiers": [
+              {
+                "from": "0",
+                "to": null,
+                "unit_price": "0.0250000000"
+              }
+            ]
+          },
+          "issue": null
+        },
+        {
+          "item_id": "aws-db-storage",
+          "status": "available",
+          "price": {
+            "sku": "8TFTRRBWJSP95DQP",
+            "provider_service": "AmazonRDS",
+            "currency": "USD",
+            "source": "https://docs.aws.amazon.com/aws-cost-management/latest/APIReference/API_pricing_GetProducts.html",
+            "effective_at": "2026-10-01T00:00:00Z",
+            "unit": "gb_month",
+            "source_unit": "GB-Mo",
+            "source_usage_per_unit": "1",
+            "tiers": [
+              {
+                "from": "0",
+                "to": null,
+                "unit_price": "0.1310000000"
+              }
+            ]
+          },
+          "issue": null
+        },
+        {
+          "item_id": "aws-registry-storage",
+          "status": "available",
+          "price": {
+            "sku": "FP58BXCX2RHZR3B2",
+            "provider_service": "AmazonECR",
+            "currency": "USD",
+            "source": "https://docs.aws.amazon.com/aws-cost-management/latest/APIReference/API_pricing_GetProducts.html",
+            "effective_at": "2025-11-01T00:00:00Z",
+            "unit": "gb_month",
+            "source_unit": "GB-Mo",
+            "source_usage_per_unit": "1",
+            "tiers": [
+              {
+                "from": "0",
+                "to": null,
+                "unit_price": "0.1000000000"
+              }
+            ]
+          },
+          "issue": null
+        },
+        {
+          "item_id": "aws-observability-ingestion",
+          "status": "available",
+          "price": {
+            "sku": "5P9Q77R2ADUJCNJ2",
+            "provider_service": "AmazonCloudWatch",
+            "currency": "USD",
+            "source": "https://docs.aws.amazon.com/aws-cost-management/latest/APIReference/API_pricing_GetProducts.html",
+            "effective_at": "2026-10-01T00:00:00Z",
+            "unit": "gb",
+            "source_unit": "GB",
+            "source_usage_per_unit": "1",
+            "tiers": [
+              {
+                "from": "0",
+                "to": null,
+                "unit_price": "0.7600000000"
+              }
+            ]
+          },
+          "issue": null
+        },
+        {
+          "item_id": "aws-observability-storage",
+          "status": "available",
+          "price": {
+            "sku": "E7V5NF3GN7MQKCB6",
+            "provider_service": "AmazonCloudWatch",
+            "currency": "USD",
+            "source": "https://docs.aws.amazon.com/aws-cost-management/latest/APIReference/API_pricing_GetProducts.html",
+            "effective_at": "2026-10-01T00:00:00Z",
+            "unit": "gb_month",
+            "source_unit": "GB-Mo",
+            "source_usage_per_unit": "1",
+            "tiers": [
+              {
+                "from": "0",
+                "to": null,
+                "unit_price": "0.0314000000"
+              }
+            ]
+          },
+          "issue": null
+        },
+        {
+          "item_id": "aws-egress-transfer",
+          "status": "available",
+          "price": {
+            "sku": "9AS8NERTGECRPGT7",
+            "provider_service": "AWSDataTransfer",
+            "currency": "USD",
+            "source": "https://docs.aws.amazon.com/aws-cost-management/latest/APIReference/API_pricing_GetProducts.html",
+            "effective_at": "2026-06-01T00:00:00Z",
+            "unit": "gb",
+            "source_unit": "GB",
+            "source_usage_per_unit": "1",
+            "tiers": [
+              {
+                "from": "0",
+                "to": "10240",
+                "unit_price": "0.1260000000"
+              },
+              {
+                "from": "10240",
+                "to": "51200",
+                "unit_price": "0.1220000000"
+              },
+              {
+                "from": "51200",
+                "to": "153600",
+                "unit_price": "0.1170000000"
+              },
+              {
+                "from": "153600",
+                "to": null,
+                "unit_price": "0.1080000000"
+              }
+            ]
+          },
+          "issue": null
+        },
+        {
+          "item_id": "aws-addresses-address_hours",
+          "status": "available",
+          "price": {
+            "sku": "ZKBHEVDXYBRCKFQ8",
+            "provider_service": "AmazonVPC",
+            "currency": "USD",
+            "source": "https://docs.aws.amazon.com/aws-cost-management/latest/APIReference/API_pricing_GetProducts.html",
+            "effective_at": "2026-09-01T00:00:00Z",
+            "unit": "hour",
+            "source_unit": "Hrs",
+            "source_usage_per_unit": "1",
+            "tiers": [
+              {
+                "from": "0",
+                "to": null,
+                "unit_price": "0.0050000000"
+              }
+            ]
+          },
+          "issue": null
+        },
+        {
+          "item_id": "aws-metrics-metrics",
+          "status": "available",
+          "price": {
+            "sku": "92QAN7T7PQUAG6NQ",
+            "provider_service": "AmazonCloudWatch",
+            "currency": "USD",
+            "source": "https://docs.aws.amazon.com/aws-cost-management/latest/APIReference/API_pricing_GetProducts.html",
+            "effective_at": "2026-10-01T00:00:00Z",
+            "unit": "metric_month",
+            "source_unit": "Metrics",
+            "source_usage_per_unit": "1",
+            "tiers": [
+              {
+                "from": "0",
+                "to": "10000",
+                "unit_price": "0.3000000000"
+              },
+              {
+                "from": "10000",
+                "to": "250000",
+                "unit_price": "0.1000000000"
+              },
+              {
+                "from": "250000",
+                "to": "1000000",
+                "unit_price": "0.0500000000"
+              },
+              {
+                "from": "1000000",
+                "to": null,
+                "unit_price": "0.0200000000"
+              }
+            ]
+          },
+          "issue": null
+        },
+        {
+          "item_id": "aws-secrets-storage",
+          "status": "available",
+          "price": {
+            "sku": "8TY6BPQ52JVYCRQD",
+            "provider_service": "AWSSecretsManager",
+            "currency": "USD",
+            "source": "https://docs.aws.amazon.com/aws-cost-management/latest/APIReference/API_pricing_GetProducts.html",
+            "effective_at": "2025-07-01T00:00:00Z",
+            "unit": "secret_month",
+            "source_unit": "Secrets",
+            "source_usage_per_unit": "1",
+            "tiers": [
+              {
+                "from": "0",
+                "to": null,
+                "unit_price": "0.4000000000"
+              }
+            ]
+          },
+          "issue": null
+        },
+        {
+          "item_id": "aws-secrets-access",
+          "status": "available",
+          "price": {
+            "sku": "9779GVGYGTKZ2UJA",
+            "provider_service": "AWSSecretsManager",
+            "currency": "USD",
+            "source": "https://docs.aws.amazon.com/aws-cost-management/latest/APIReference/API_pricing_GetProducts.html",
+            "effective_at": "2025-07-01T00:00:00Z",
+            "unit": "request",
+            "source_unit": "API Requests",
+            "source_usage_per_unit": "1",
+            "tiers": [
+              {
+                "from": "0",
+                "to": null,
+                "unit_price": "0.0000050000"
+              }
+            ]
+          },
+          "issue": null
+        },
+        {
+          "item_id": "aws-audit-storage",
+          "status": "available",
+          "price": {
+            "sku": "3JSN7K7UDDNCYCDM",
+            "provider_service": "AmazonS3",
+            "currency": "USD",
+            "source": "https://docs.aws.amazon.com/aws-cost-management/latest/APIReference/API_pricing_GetProducts.html",
+            "effective_at": "2026-09-01T00:00:00Z",
+            "unit": "gb_month",
+            "source_unit": "GB-Mo",
+            "source_usage_per_unit": "1",
+            "tiers": [
+              {
+                "from": "0",
+                "to": "51200",
+                "unit_price": "0.0250000000"
+              },
+              {
+                "from": "51200",
+                "to": "512000",
+                "unit_price": "0.0240000000"
+              },
+              {
+                "from": "512000",
+                "to": null,
+                "unit_price": "0.0230000000"
+              }
+            ]
+          },
+          "issue": null
+        },
+        {
+          "item_id": "aws-audit-write_requests",
+          "status": "available",
+          "price": {
+            "sku": "D3S5DN86CFPGUM5G",
+            "provider_service": "AmazonS3",
+            "currency": "USD",
+            "source": "https://docs.aws.amazon.com/aws-cost-management/latest/APIReference/API_pricing_GetProducts.html",
+            "effective_at": "2026-09-01T00:00:00Z",
+            "unit": "request",
+            "source_unit": "Requests",
+            "source_usage_per_unit": "1",
+            "tiers": [
+              {
+                "from": "0",
+                "to": null,
+                "unit_price": "0.0000045000"
+              }
+            ]
+          },
+          "issue": null
+        },
+        {
+          "item_id": "aws-audit-read_requests",
+          "status": "available",
+          "price": {
+            "sku": "84G6KSFBGCU9CEC9",
+            "provider_service": "AmazonS3",
+            "currency": "USD",
+            "source": "https://docs.aws.amazon.com/aws-cost-management/latest/APIReference/API_pricing_GetProducts.html",
+            "effective_at": "2026-09-01T00:00:00Z",
+            "unit": "request",
+            "source_unit": "Requests",
+            "source_usage_per_unit": "1",
+            "tiers": [
+              {
+                "from": "0",
+                "to": null,
+                "unit_price": "0.0000003500"
+              }
+            ]
+          },
+          "issue": null
+        },
+        {
+          "item_id": "aws-metrics-disk-storage",
+          "status": "available",
+          "price": {
+            "sku": "MTK7D9SGKGYR3JD6",
+            "provider_service": "AmazonEC2",
+            "currency": "USD",
+            "source": "https://docs.aws.amazon.com/aws-cost-management/latest/APIReference/API_pricing_GetProducts.html",
+            "effective_at": "2026-10-01T00:00:00Z",
+            "unit": "gb_month",
+            "source_unit": "GB-Mo",
+            "source_usage_per_unit": "1",
+            "tiers": [
+              {
+                "from": "0",
+                "to": null,
+                "unit_price": "0.0912000000"
+              }
+            ]
+          },
+          "issue": null
+        }
+      ]
+    },
+    {
+      "candidate_id": "demo-gcp",
+      "target": "gcp",
+      "region": "asia-northeast3",
+      "items": [
+        {
+          "item_id": "gcp-cluster-cluster_hours",
+          "status": "available",
+          "price": {
+            "sku": "B561-BFBD-1264",
+            "provider_service": "services/CCD8-9BF1-090E",
+            "currency": "USD",
+            "source": "https://docs.cloud.google.com/billing/docs/reference/pricing-api/rest/v2beta/skus.price/get",
+            "effective_at": null,
+            "unit": "hour",
+            "source_unit": "h",
+            "source_usage_per_unit": "1",
+            "tiers": [
+              {
+                "from": "0",
+                "to": null,
+                "unit_price": "0.1"
+              }
+            ],
+            "provider_details": {
+              "api": "v2beta",
+              "usage_unit": "h",
+              "unit_quantity": "1",
+              "aggregation": {
+                "aggregationLevel": "ACCOUNT",
+                "aggregationInterval": "MONTHLY",
+                "aggregationCount": 1
+              },
+              "effective_time": null,
+              "tiers": [
+                {
+                  "from": "0",
+                  "units": "0",
+                  "nanos": 100000000
+                }
+              ]
+            }
+          },
+          "issue": null
+        },
+        {
+          "item_id": "gcp-nodes-cpu_hours",
+          "status": "available",
+          "price": {
+            "sku": "9304-94C4-2117",
+            "provider_service": "services/6F81-5844-456A",
+            "currency": "USD",
+            "source": "https://docs.cloud.google.com/billing/docs/reference/pricing-api/rest/v2beta/skus.price/get",
+            "effective_at": null,
+            "unit": "vcpu_hour",
+            "source_unit": "h",
+            "source_usage_per_unit": "1",
+            "tiers": [
+              {
+                "from": "0",
+                "to": null,
+                "unit_price": "0.02802642"
+              }
+            ],
+            "provider_details": {
+              "api": "v2beta",
+              "usage_unit": "h",
+              "unit_quantity": "1",
+              "aggregation": {
+                "aggregationLevel": "ACCOUNT",
+                "aggregationInterval": "MONTHLY",
+                "aggregationCount": 1
+              },
+              "effective_time": null,
+              "tiers": [
+                {
+                  "from": "0",
+                  "units": "0",
+                  "nanos": 28026420
+                }
+              ]
+            }
+          },
+          "issue": null
+        },
+        {
+          "item_id": "gcp-nodes-memory_hours",
+          "status": "available",
+          "price": {
+            "sku": "D715-4E57-BAFB",
+            "provider_service": "services/6F81-5844-456A",
+            "currency": "USD",
+            "source": "https://docs.cloud.google.com/billing/docs/reference/pricing-api/rest/v2beta/skus.price/get",
+            "effective_at": null,
+            "unit": "gib_hour",
+            "source_unit": "GiBy.h",
+            "source_usage_per_unit": "1",
+            "tiers": [
+              {
+                "from": "0",
+                "to": null,
+                "unit_price": "0.00373911"
+              }
+            ],
+            "provider_details": {
+              "api": "v2beta",
+              "usage_unit": "GiBy.h",
+              "unit_quantity": "1",
+              "aggregation": {
+                "aggregationLevel": "ACCOUNT",
+                "aggregationInterval": "MONTHLY",
+                "aggregationCount": 1
+              },
+              "effective_time": null,
+              "tiers": [
+                {
+                  "from": "0",
+                  "units": "0",
+                  "nanos": 3739110
+                }
+              ]
+            }
+          },
+          "issue": null
+        },
+        {
+          "item_id": "gcp-node-disks-storage",
+          "status": "available",
+          "price": {
+            "sku": "0306-B164-A7B7",
+            "provider_service": "services/6F81-5844-456A",
+            "currency": "USD",
+            "source": "https://docs.cloud.google.com/billing/docs/reference/pricing-api/rest/v2beta/skus.price/get",
+            "effective_at": null,
+            "unit": "gib_month",
+            "source_unit": "GiBy.mo",
+            "source_usage_per_unit": "1",
+            "tiers": [
+              {
+                "from": "0",
+                "to": null,
+                "unit_price": "0.052"
+              }
+            ],
+            "provider_details": {
+              "api": "v2beta",
+              "usage_unit": "GiBy.mo",
+              "unit_quantity": "1",
+              "aggregation": {
+                "aggregationLevel": "ACCOUNT",
+                "aggregationInterval": "MONTHLY",
+                "aggregationCount": 1
+              },
+              "effective_time": null,
+              "tiers": [
+                {
+                  "from": "0",
+                  "units": "0",
+                  "nanos": 52000000
+                }
+              ]
+            }
+          },
+          "issue": null
+        },
+        {
+          "item_id": "gcp-nat-gateway_hours",
+          "status": "available",
+          "price": {
+            "sku": "32E2-4EFC-EF9F",
+            "provider_service": "services/E505-1604-58F8",
+            "currency": "USD",
+            "source": "https://docs.cloud.google.com/billing/docs/reference/pricing-api/rest/v2beta/skus.price/get",
+            "effective_at": null,
+            "unit": "hour",
+            "source_unit": "h",
+            "source_usage_per_unit": "1",
+            "tiers": [
+              {
+                "from": "0",
+                "to": null,
+                "unit_price": "0.0014"
+              }
+            ],
+            "provider_details": {
+              "api": "v2beta",
+              "usage_unit": "h",
+              "unit_quantity": "1",
+              "aggregation": {
+                "aggregationLevel": "ACCOUNT",
+                "aggregationInterval": "MONTHLY",
+                "aggregationCount": 1
+              },
+              "effective_time": null,
+              "tiers": [
+                {
+                  "from": "0",
+                  "units": "0",
+                  "nanos": 1400000
+                }
+              ]
+            }
+          },
+          "issue": null
+        },
+        {
+          "item_id": "gcp-nat-processed_data",
+          "status": "available",
+          "price": {
+            "sku": "015F-5732-FFF0",
+            "provider_service": "services/E505-1604-58F8",
+            "currency": "USD",
+            "source": "https://docs.cloud.google.com/billing/docs/reference/pricing-api/rest/v2beta/skus.price/get",
+            "effective_at": null,
+            "unit": "gib",
+            "source_unit": "GiBy",
+            "source_usage_per_unit": "1",
+            "tiers": [
+              {
+                "from": "0",
+                "to": null,
+                "unit_price": "0.045"
+              }
+            ],
+            "provider_details": {
+              "api": "v2beta",
+              "usage_unit": "GiBy",
+              "unit_quantity": "1",
+              "aggregation": {
+                "aggregationLevel": "ACCOUNT",
+                "aggregationInterval": "MONTHLY",
+                "aggregationCount": 1
+              },
+              "effective_time": null,
+              "tiers": [
+                {
+                  "from": "0",
+                  "units": "0",
+                  "nanos": 45000000
+                }
+              ]
+            }
+          },
+          "issue": null
+        },
+        {
+          "item_id": "gcp-ingress-test-load_balancer_hours",
+          "status": "available",
+          "price": {
+            "sku": "DEE3-C42E-3E4D",
+            "provider_service": "services/E505-1604-58F8",
+            "currency": "USD",
+            "source": "https://docs.cloud.google.com/billing/docs/reference/pricing-api/rest/v2beta/skus.price/get",
+            "effective_at": null,
+            "unit": "hour",
+            "source_unit": "h",
+            "source_usage_per_unit": "1",
+            "tiers": [
+              {
+                "from": "0",
+                "to": null,
+                "unit_price": "0.025"
+              }
+            ],
+            "provider_details": {
+              "api": "v2beta",
+              "usage_unit": "h",
+              "unit_quantity": "1",
+              "aggregation": {
+                "aggregationLevel": "ACCOUNT",
+                "aggregationInterval": "MONTHLY",
+                "aggregationCount": 1
+              },
+              "effective_time": null,
+              "tiers": [
+                {
+                  "from": "0",
+                  "units": "0",
+                  "nanos": 25000000
+                }
+              ]
+            }
+          },
+          "issue": null
+        },
+        {
+          "item_id": "gcp-ingress-test-processed_data",
+          "status": "available",
+          "price": {
+            "sku": "147E-ED36-67D1",
+            "provider_service": "services/E505-1604-58F8",
+            "currency": "USD",
+            "source": "https://docs.cloud.google.com/billing/docs/reference/pricing-api/rest/v2beta/skus.price/get",
+            "effective_at": null,
+            "unit": "gib",
+            "source_unit": "GiBy",
+            "source_usage_per_unit": "1",
+            "tiers": [
+              {
+                "from": "0",
+                "to": null,
+                "unit_price": "0.012"
+              }
+            ],
+            "provider_details": {
+              "api": "v2beta",
+              "usage_unit": "GiBy",
+              "unit_quantity": "1",
+              "aggregation": {
+                "aggregationLevel": "ACCOUNT",
+                "aggregationInterval": "MONTHLY",
+                "aggregationCount": 1
+              },
+              "effective_time": null,
+              "tiers": [
+                {
+                  "from": "0",
+                  "units": "0",
+                  "nanos": 12000000
+                }
+              ]
+            }
+          },
+          "issue": null
+        },
+        {
+          "item_id": "gcp-ingress-test-outbound-data",
+          "status": "available",
+          "price": {
+            "sku": "3C98-FAA0-7935",
+            "provider_service": "services/E505-1604-58F8",
+            "currency": "USD",
+            "source": "https://docs.cloud.google.com/billing/docs/reference/pricing-api/rest/v2beta/skus.price/get",
+            "effective_at": null,
+            "unit": "gib",
+            "source_unit": "GiBy",
+            "source_usage_per_unit": "1",
+            "tiers": [
+              {
+                "from": "0",
+                "to": null,
+                "unit_price": "0.012"
+              }
+            ],
+            "provider_details": {
+              "api": "v2beta",
+              "usage_unit": "GiBy",
+              "unit_quantity": "1",
+              "aggregation": {
+                "aggregationLevel": "ACCOUNT",
+                "aggregationInterval": "MONTHLY",
+                "aggregationCount": 1
+              },
+              "effective_time": null,
+              "tiers": [
+                {
+                  "from": "0",
+                  "units": "0",
+                  "nanos": 12000000
+                }
+              ]
+            }
+          },
+          "issue": null
+        },
+        {
+          "item_id": "gcp-ingress-prod-load_balancer_hours",
+          "status": "available",
+          "price": {
+            "sku": "DEE3-C42E-3E4D",
+            "provider_service": "services/E505-1604-58F8",
+            "currency": "USD",
+            "source": "https://docs.cloud.google.com/billing/docs/reference/pricing-api/rest/v2beta/skus.price/get",
+            "effective_at": null,
+            "unit": "hour",
+            "source_unit": "h",
+            "source_usage_per_unit": "1",
+            "tiers": [
+              {
+                "from": "0",
+                "to": null,
+                "unit_price": "0.025"
+              }
+            ],
+            "provider_details": {
+              "api": "v2beta",
+              "usage_unit": "h",
+              "unit_quantity": "1",
+              "aggregation": {
+                "aggregationLevel": "ACCOUNT",
+                "aggregationInterval": "MONTHLY",
+                "aggregationCount": 1
+              },
+              "effective_time": null,
+              "tiers": [
+                {
+                  "from": "0",
+                  "units": "0",
+                  "nanos": 25000000
+                }
+              ]
+            }
+          },
+          "issue": null
+        },
+        {
+          "item_id": "gcp-ingress-prod-processed_data",
+          "status": "available",
+          "price": {
+            "sku": "147E-ED36-67D1",
+            "provider_service": "services/E505-1604-58F8",
+            "currency": "USD",
+            "source": "https://docs.cloud.google.com/billing/docs/reference/pricing-api/rest/v2beta/skus.price/get",
+            "effective_at": null,
+            "unit": "gib",
+            "source_unit": "GiBy",
+            "source_usage_per_unit": "1",
+            "tiers": [
+              {
+                "from": "0",
+                "to": null,
+                "unit_price": "0.012"
+              }
+            ],
+            "provider_details": {
+              "api": "v2beta",
+              "usage_unit": "GiBy",
+              "unit_quantity": "1",
+              "aggregation": {
+                "aggregationLevel": "ACCOUNT",
+                "aggregationInterval": "MONTHLY",
+                "aggregationCount": 1
+              },
+              "effective_time": null,
+              "tiers": [
+                {
+                  "from": "0",
+                  "units": "0",
+                  "nanos": 12000000
+                }
+              ]
+            }
+          },
+          "issue": null
+        },
+        {
+          "item_id": "gcp-ingress-prod-outbound-data",
+          "status": "available",
+          "price": {
+            "sku": "3C98-FAA0-7935",
+            "provider_service": "services/E505-1604-58F8",
+            "currency": "USD",
+            "source": "https://docs.cloud.google.com/billing/docs/reference/pricing-api/rest/v2beta/skus.price/get",
+            "effective_at": null,
+            "unit": "gib",
+            "source_unit": "GiBy",
+            "source_usage_per_unit": "1",
+            "tiers": [
+              {
+                "from": "0",
+                "to": null,
+                "unit_price": "0.012"
+              }
+            ],
+            "provider_details": {
+              "api": "v2beta",
+              "usage_unit": "GiBy",
+              "unit_quantity": "1",
+              "aggregation": {
+                "aggregationLevel": "ACCOUNT",
+                "aggregationInterval": "MONTHLY",
+                "aggregationCount": 1
+              },
+              "effective_time": null,
+              "tiers": [
+                {
+                  "from": "0",
+                  "units": "0",
+                  "nanos": 12000000
+                }
+              ]
+            }
+          },
+          "issue": null
+        },
+        {
+          "item_id": "gcp-db-instance_hours",
+          "status": "available",
+          "price": {
+            "sku": "28C7-7317-B255",
+            "provider_service": "services/9662-B51E-5089",
+            "currency": "USD",
+            "source": "https://docs.cloud.google.com/billing/docs/reference/pricing-api/rest/v2beta/skus.price/get",
+            "effective_at": null,
+            "unit": "hour",
+            "source_unit": "h",
+            "source_usage_per_unit": "1",
+            "tiers": [
+              {
+                "from": "0",
+                "to": null,
+                "unit_price": "0.0455"
+              }
+            ],
+            "provider_details": {
+              "api": "v2beta",
+              "usage_unit": "h",
+              "unit_quantity": "1",
+              "aggregation": {
+                "aggregationLevel": "ACCOUNT",
+                "aggregationInterval": "MONTHLY",
+                "aggregationCount": 1
+              },
+              "effective_time": null,
+              "tiers": [
+                {
+                  "from": "0",
+                  "units": "0",
+                  "nanos": 45500000
+                }
+              ]
+            }
+          },
+          "issue": null
+        },
+        {
+          "item_id": "gcp-db-storage",
+          "status": "available",
+          "price": {
+            "sku": "B160-DAEA-03EE",
+            "provider_service": "services/9662-B51E-5089",
+            "currency": "USD",
+            "source": "https://docs.cloud.google.com/billing/docs/reference/pricing-api/rest/v2beta/skus.price/get",
+            "effective_at": null,
+            "unit": "gib_month",
+            "source_unit": "GiBy.mo",
+            "source_usage_per_unit": "1",
+            "tiers": [
+              {
+                "from": "0",
+                "to": null,
+                "unit_price": "0.221"
+              }
+            ],
+            "provider_details": {
+              "api": "v2beta",
+              "usage_unit": "GiBy.mo",
+              "unit_quantity": "1",
+              "aggregation": {
+                "aggregationLevel": "ACCOUNT",
+                "aggregationInterval": "MONTHLY",
+                "aggregationCount": 1
+              },
+              "effective_time": null,
+              "tiers": [
+                {
+                  "from": "0",
+                  "units": "0",
+                  "nanos": 221000000
+                }
+              ]
+            }
+          },
+          "issue": null
+        },
+        {
+          "item_id": "gcp-registry-storage",
+          "status": "available",
+          "price": {
+            "sku": "8502-299A-ABAF",
+            "provider_service": "services/149C-F9EC-3994",
+            "currency": "USD",
+            "source": "https://docs.cloud.google.com/billing/docs/reference/pricing-api/rest/v2beta/skus.price/get",
+            "effective_at": null,
+            "unit": "gib_month",
+            "source_unit": "GiBy.mo",
+            "source_usage_per_unit": "1",
+            "tiers": [
+              {
+                "from": "0",
+                "to": "0.5",
+                "unit_price": "0"
+              },
+              {
+                "from": "0.5",
+                "to": null,
+                "unit_price": "0.1"
+              }
+            ],
+            "provider_details": {
+              "api": "v2beta",
+              "usage_unit": "GiBy.mo",
+              "unit_quantity": "1",
+              "aggregation": {
+                "aggregationLevel": "ACCOUNT",
+                "aggregationInterval": "MONTHLY",
+                "aggregationCount": 1
+              },
+              "effective_time": null,
+              "tiers": [
+                {
+                  "from": "0",
+                  "units": "0",
+                  "nanos": 0
+                },
+                {
+                  "from": "0.5",
+                  "units": "0",
+                  "nanos": 100000000
+                }
+              ]
+            }
+          },
+          "issue": null
+        },
+        {
+          "item_id": "gcp-observability-ingestion",
+          "status": "available",
+          "price": {
+            "sku": "143F-A1B0-E0BE",
+            "provider_service": "services/5490-F7B7-8DF6",
+            "currency": "USD",
+            "source": "https://docs.cloud.google.com/billing/docs/reference/pricing-api/rest/v2beta/skus.price/get",
+            "effective_at": null,
+            "unit": "gib",
+            "source_unit": "GiBy",
+            "source_usage_per_unit": "1",
+            "tiers": [
+              {
+                "from": "0",
+                "to": "50",
+                "unit_price": "0"
+              },
+              {
+                "from": "50",
+                "to": null,
+                "unit_price": "0.5"
+              }
+            ],
+            "provider_details": {
+              "api": "v2beta",
+              "usage_unit": "GiBy",
+              "unit_quantity": "1",
+              "aggregation": {
+                "aggregationLevel": "PROJECT",
+                "aggregationInterval": "MONTHLY",
+                "aggregationCount": 1
+              },
+              "effective_time": null,
+              "tiers": [
+                {
+                  "from": "0",
+                  "units": "0",
+                  "nanos": 0
+                },
+                {
+                  "from": "50",
+                  "units": "0",
+                  "nanos": 500000000
+                }
+              ]
+            }
+          },
+          "issue": null
+        },
+        {
+          "item_id": "gcp-observability-storage",
+          "status": "available",
+          "price": {
+            "sku": "F4AE-5A52-ACE3",
+            "provider_service": "services/5490-F7B7-8DF6",
+            "currency": "USD",
+            "source": "https://docs.cloud.google.com/billing/docs/reference/pricing-api/rest/v2beta/skus.price/get",
+            "effective_at": null,
+            "unit": "gib_month",
+            "source_unit": "GiBy.mo",
+            "source_usage_per_unit": "1",
+            "tiers": [
+              {
+                "from": "0",
+                "to": null,
+                "unit_price": "0.01"
+              }
+            ],
+            "provider_details": {
+              "api": "v2beta",
+              "usage_unit": "GiBy.mo",
+              "unit_quantity": "1",
+              "aggregation": {
+                "aggregationLevel": "ACCOUNT",
+                "aggregationInterval": "MONTHLY",
+                "aggregationCount": 1
+              },
+              "effective_time": null,
+              "tiers": [
+                {
+                  "from": "0",
+                  "units": "0",
+                  "nanos": 10000000
+                }
+              ]
+            }
+          },
+          "issue": null
+        },
+        {
+          "item_id": "gcp-egress-transfer",
+          "status": "available",
+          "price": {
+            "sku": "70A1-9E75-5BB1",
+            "provider_service": "services/6F81-5844-456A",
+            "currency": "USD",
+            "source": "https://docs.cloud.google.com/billing/docs/reference/pricing-api/rest/v2beta/skus.price/get",
+            "effective_at": null,
+            "unit": "gib",
+            "source_unit": "GiBy",
+            "source_usage_per_unit": "1",
+            "tiers": [
+              {
+                "from": "0",
+                "to": "1024",
+                "unit_price": "0.19"
+              },
+              {
+                "from": "1024",
+                "to": "10240",
+                "unit_price": "0.18"
+              },
+              {
+                "from": "10240",
+                "to": null,
+                "unit_price": "0.15"
+              }
+            ],
+            "provider_details": {
+              "api": "v2beta",
+              "usage_unit": "GiBy",
+              "unit_quantity": "1",
+              "aggregation": {
+                "aggregationLevel": "ACCOUNT",
+                "aggregationInterval": "MONTHLY",
+                "aggregationCount": 1
+              },
+              "effective_time": null,
+              "tiers": [
+                {
+                  "from": "0",
+                  "units": "0",
+                  "nanos": 190000000
+                },
+                {
+                  "from": "1024",
+                  "units": "0",
+                  "nanos": 180000000
+                },
+                {
+                  "from": "10240",
+                  "units": "0",
+                  "nanos": 150000000
+                }
+              ]
+            }
+          },
+          "issue": null
+        },
+        {
+          "item_id": "gcp-addresses-address_hours",
+          "status": "available",
+          "price": {
+            "sku": "8515-9425-D2CE",
+            "provider_service": "services/E505-1604-58F8",
+            "currency": "USD",
+            "source": "https://docs.cloud.google.com/billing/docs/reference/pricing-api/rest/v2beta/skus.price/get",
+            "effective_at": null,
+            "unit": "hour",
+            "source_unit": "h",
+            "source_usage_per_unit": "1",
+            "tiers": [
+              {
+                "from": "0",
+                "to": null,
+                "unit_price": "0.005"
+              }
+            ],
+            "provider_details": {
+              "api": "v2beta",
+              "usage_unit": "h",
+              "unit_quantity": "1",
+              "aggregation": {
+                "aggregationLevel": "ACCOUNT",
+                "aggregationInterval": "MONTHLY",
+                "aggregationCount": 1
+              },
+              "effective_time": null,
+              "tiers": [
+                {
+                  "from": "0",
+                  "units": "0",
+                  "nanos": 5000000
+                }
+              ]
+            }
+          },
+          "issue": null
+        },
+        {
+          "item_id": "gcp-metrics-metrics",
+          "status": "available",
+          "price": {
+            "sku": "A4E4-DF03-CDB6",
+            "provider_service": "services/58CD-E7C3-72CA",
+            "currency": "USD",
+            "source": "https://docs.cloud.google.com/billing/docs/reference/pricing-api/rest/v2beta/skus.price/get",
+            "effective_at": null,
+            "unit": "sample",
+            "source_unit": "count",
+            "source_usage_per_unit": "1",
+            "tiers": [
+              {
+                "from": "0",
+                "to": "50000000000",
+                "unit_price": "0.00000006"
+              },
+              {
+                "from": "50000000000",
+                "to": "250000000000",
+                "unit_price": "0.000000048"
+              },
+              {
+                "from": "250000000000",
+                "to": "500000000000",
+                "unit_price": "0.000000036"
+              },
+              {
+                "from": "500000000000",
+                "to": null,
+                "unit_price": "0.000000024"
+              }
+            ],
+            "provider_details": {
+              "api": "v2beta",
+              "usage_unit": "count",
+              "unit_quantity": "1000000",
+              "aggregation": {
+                "aggregationLevel": "ACCOUNT",
+                "aggregationInterval": "MONTHLY",
+                "aggregationCount": 1
+              },
+              "effective_time": null,
+              "tiers": [
+                {
+                  "from": "0",
+                  "units": "0",
+                  "nanos": 60000000
+                },
+                {
+                  "from": "50000000000",
+                  "units": "0",
+                  "nanos": 48000000
+                },
+                {
+                  "from": "250000000000",
+                  "units": "0",
+                  "nanos": 36000000
+                },
+                {
+                  "from": "500000000000",
+                  "units": "0",
+                  "nanos": 24000000
+                }
+              ]
+            }
+          },
+          "issue": null
+        },
+        {
+          "item_id": "gcp-secrets-storage",
+          "status": "available",
+          "price": {
+            "sku": "7756-ADEF-84F4",
+            "provider_service": "services/EE82-7A5E-871C",
+            "currency": "USD",
+            "source": "https://docs.cloud.google.com/billing/docs/reference/pricing-api/rest/v2beta/skus.price/get",
+            "effective_at": null,
+            "unit": "secret_month",
+            "source_unit": "mo",
+            "source_usage_per_unit": "1",
+            "tiers": [
+              {
+                "from": "0",
+                "to": "6",
+                "unit_price": "0"
+              },
+              {
+                "from": "6",
+                "to": null,
+                "unit_price": "0.06"
+              }
+            ],
+            "provider_details": {
+              "api": "v2beta",
+              "usage_unit": "mo",
+              "unit_quantity": "1",
+              "aggregation": {
+                "aggregationLevel": "ACCOUNT",
+                "aggregationInterval": "MONTHLY",
+                "aggregationCount": 1
+              },
+              "effective_time": null,
+              "tiers": [
+                {
+                  "from": "0",
+                  "units": "0",
+                  "nanos": 0
+                },
+                {
+                  "from": "6",
+                  "units": "0",
+                  "nanos": 60000000
+                }
+              ]
+            }
+          },
+          "issue": null
+        },
+        {
+          "item_id": "gcp-secrets-access",
+          "status": "available",
+          "price": {
+            "sku": "EBA7-264F-2D2C",
+            "provider_service": "services/EE82-7A5E-871C",
+            "currency": "USD",
+            "source": "https://docs.cloud.google.com/billing/docs/reference/pricing-api/rest/v2beta/skus.price/get",
+            "effective_at": null,
+            "unit": "request",
+            "source_unit": "count",
+            "source_usage_per_unit": "1",
+            "tiers": [
+              {
+                "from": "0",
+                "to": "10000",
+                "unit_price": "0"
+              },
+              {
+                "from": "10000",
+                "to": null,
+                "unit_price": "0.000003"
+              }
+            ],
+            "provider_details": {
+              "api": "v2beta",
+              "usage_unit": "count",
+              "unit_quantity": "10000",
+              "aggregation": {
+                "aggregationLevel": "ACCOUNT",
+                "aggregationInterval": "MONTHLY",
+                "aggregationCount": 1
+              },
+              "effective_time": null,
+              "tiers": [
+                {
+                  "from": "0",
+                  "units": "0",
+                  "nanos": 0
+                },
+                {
+                  "from": "10000",
+                  "units": "0",
+                  "nanos": 30000000
+                }
+              ]
+            }
+          },
+          "issue": null
+        },
+        {
+          "item_id": "gcp-audit-storage",
+          "status": "available",
+          "price": {
+            "sku": "F4AE-5A52-ACE3",
+            "provider_service": "services/5490-F7B7-8DF6",
+            "currency": "USD",
+            "source": "https://docs.cloud.google.com/billing/docs/reference/pricing-api/rest/v2beta/skus.price/get",
+            "effective_at": null,
+            "unit": "gib_month",
+            "source_unit": "GiBy.mo",
+            "source_usage_per_unit": "1",
+            "tiers": [
+              {
+                "from": "0",
+                "to": null,
+                "unit_price": "0.01"
+              }
+            ],
+            "provider_details": {
+              "api": "v2beta",
+              "usage_unit": "GiBy.mo",
+              "unit_quantity": "1",
+              "aggregation": {
+                "aggregationLevel": "ACCOUNT",
+                "aggregationInterval": "MONTHLY",
+                "aggregationCount": 1
+              },
+              "effective_time": null,
+              "tiers": [
+                {
+                  "from": "0",
+                  "units": "0",
+                  "nanos": 10000000
+                }
+              ]
+            }
+          },
+          "issue": null
+        }
+      ]
+    },
+    {
+      "candidate_id": "demo-onprem",
+      "target": "onprem",
+      "region": null,
+      "items": []
+    }
+  ],
+  "issues": []
+}

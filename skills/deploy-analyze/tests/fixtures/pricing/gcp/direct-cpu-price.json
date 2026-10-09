@@ -1,0 +1,93 @@
+{
+  "name": "skus/9304-94C4-2117/price",
+  "currencyCode": "USD",
+  "skuPrices": [
+    {
+      "consumptionModel": "consumptionModels/70D7-D1AB-12A4",
+      "consumptionModelDescription": "Compute Flexible CUD - 3 Year",
+      "valueType": "rate",
+      "rate": {
+        "tiers": [
+          {
+            "startAmount": {
+              "value": "0"
+            },
+            "listPrice": {
+              "currencyCode": "USD",
+              "nanos": 15134266
+            }
+          }
+        ],
+        "unitInfo": {
+          "unit": "h",
+          "unitDescription": "hour",
+          "unitQuantity": {
+            "value": "1"
+          }
+        },
+        "aggregationInfo": {
+          "level": "LEVEL_ACCOUNT",
+          "interval": "INTERVAL_MONTHLY"
+        }
+      }
+    },
+    {
+      "consumptionModel": "consumptionModels/7754-699E-0EBF",
+      "consumptionModelDescription": "Default",
+      "valueType": "rate",
+      "rate": {
+        "tiers": [
+          {
+            "startAmount": {
+              "value": "0"
+            },
+            "listPrice": {
+              "currencyCode": "USD",
+              "nanos": 28026420
+            }
+          }
+        ],
+        "unitInfo": {
+          "unit": "h",
+          "unitDescription": "hour",
+          "unitQuantity": {
+            "value": "1"
+          }
+        },
+        "aggregationInfo": {
+          "level": "LEVEL_ACCOUNT",
+          "interval": "INTERVAL_MONTHLY"
+        }
+      }
+    },
+    {
+      "consumptionModel": "consumptionModels/D97B-0795-975B",
+      "consumptionModelDescription": "Compute Flexible CUD - 1 Year",
+      "valueType": "rate",
+      "rate": {
+        "tiers": [
+          {
+            "startAmount": {
+              "value": "0"
+            },
+            "listPrice": {
+              "currencyCode": "USD",
+              "nanos": 20179022
+            }
+          }
+        ],
+        "unitInfo": {
+          "unit": "h",
+          "unitDescription": "hour",
+          "unitQuantity": {
+            "value": "1"
+          }
+        },
+        "aggregationInfo": {
+          "level": "LEVEL_ACCOUNT",
+          "interval": "INTERVAL_MONTHLY"
+        }
+      }
+    }
+  ]
+}

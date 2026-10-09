@@ -1,0 +1,91 @@
+{
+  "schema_version": "2",
+  "input_id": "example-t16-c1",
+  "input_sha256": "5ac876759bffa3065c06970f7c7af82d45b42256a8f882581e71a3f06d2ca460",
+  "prices_sha256": "e8a57342367a74be0c4ae3efce74b7c77eef70723b233984853d65bf74c41923",
+  "generated_at": "2026-10-09T00:02:00Z",
+  "queried_at": "2026-10-09T00:01:00Z",
+  "status": "complete",
+  "candidates": [
+    {
+      "candidate_id": "aws-example",
+      "target": "aws",
+      "region": "ap-northeast-2",
+      "configuration_status": "assumed",
+      "assumptions": [
+        "단가 · 환율 · 구성은 합성값이다.",
+        "실제 견적에 필요한 다른 자원은 이 계약 예시 범위에 포함하지 않았다.",
+        "기존 공유 자원을 증설 없이 사용하므로 이 예시의 증분은 0이다."
+      ],
+      "items": [
+        {
+          "item_id": "nodes",
+          "cost_type": "fixed",
+          "status": "complete",
+          "total_usd": {
+            "min": "146",
+            "max": "146"
+          },
+          "incremental_usd": {
+            "min": "0",
+            "max": "0"
+          },
+          "issues": []
+        },
+        {
+          "item_id": "db",
+          "cost_type": "fixed",
+          "status": "complete",
+          "total_usd": {
+            "min": "36.5",
+            "max": "36.5"
+          },
+          "incremental_usd": {
+            "min": "0",
+            "max": "0"
+          },
+          "issues": []
+        }
+      ],
+      "summary": {
+        "fixed_usd": {
+          "min": "182.5",
+          "max": "182.5"
+        },
+        "variable_usd": {
+          "min": "0",
+          "max": "0"
+        },
+        "known_total_usd": {
+          "min": "182.5",
+          "max": "182.5"
+        },
+        "known_incremental_usd": {
+          "min": "0",
+          "max": "0"
+        },
+        "total_complete": true,
+        "incremental_complete": true,
+        "total_krw": {
+          "min": "255500",
+          "max": "255500"
+        },
+        "incremental_krw": {
+          "min": "0",
+          "max": "0"
+        }
+      },
+      "budget": {
+        "basis": "total",
+        "range_krw": {
+          "min": 100001,
+          "max": 500000,
+          "currency": "KRW"
+        },
+        "status": "within",
+        "reason": "합성 구성의 완전한 계산값 255500원은 예산 상한 500000원 이하이다."
+      }
+    }
+  ],
+  "issues": []
+}

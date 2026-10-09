@@ -1,0 +1,48 @@
+{
+  "schema_version": "1",
+  "baseline_sha256": "0742bd18faa987f2ca2cfab5bd9f5b4c0ec0437cee209a4dab05c6970c6faaa2",
+  "alternative_sha256": "53a86a68126c03192034284260848460428e27c048c0c4725ef3afcc1a363776",
+  "generated_at": "2026-10-09T14:51:54Z",
+  "status": "partial",
+  "candidates": [
+    {
+      "candidate_id": "demo-aws",
+      "basis": "total",
+      "currency": "USD",
+      "status": "complete",
+      "monthly_savings": {
+        "min": "19.4876",
+        "max": "27.9624"
+      },
+      "reason": "Difference of resource quotes only; unpriced operating costs and KRW exchange-rate differences are excluded"
+    },
+    {
+      "candidate_id": "demo-gcp",
+      "basis": "total",
+      "currency": "USD",
+      "status": "partial",
+      "monthly_savings": null,
+      "reason": "Difference of resource quotes only; unpriced operating costs and KRW exchange-rate differences are excluded"
+    },
+    {
+      "candidate_id": "demo-onprem",
+      "basis": "total",
+      "currency": "USD",
+      "status": "complete",
+      "monthly_savings": {
+        "min": "0",
+        "max": "0"
+      },
+      "reason": "Difference of resource quotes only; unpriced operating costs and KRW exchange-rate differences are excluded"
+    }
+  ],
+  "issues": [
+    {
+      "candidate_id": "demo-gcp",
+      "item_id": null,
+      "code": "unknown_savings",
+      "message": "A complete baseline and alternative quote are required; no assumed saving percentage is used",
+      "retryable": false
+    }
+  ]
+}

@@ -1,0 +1,13 @@
+{
+  "status": "error",
+  "output": null,
+  "issues": [
+    {
+      "candidate_id": "aws-example",
+      "item_id": null,
+      "code": "invalid_input",
+      "message": "candidates[0].target: aws | gcp | onprem만 허용한다.",
+      "retryable": false
+    }
+  ]
+}
