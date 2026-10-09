@@ -12,6 +12,10 @@
 
 - `skills/`: 스킬 인계값(`target`, `services`)을 `.deploy/config.yaml`에서 `.deploy/plan.yaml`로 분리. `config.yaml`은 CODEOWNERS 리뷰 대상이라 janto 산출물 PR마다 오너 승인이 붙었다. `check-artifacts.sh`가 `config.yaml`에 인계값이 있으면 실패 (T13)
 
+## v1.13.1
+
+- GCP Monitoring 대시보드의 열 수를 API가 반환하는 JSON 문자열로 지정해, 적용 후에도 같은 변경이 반복되는 문제를 해결한다(T4).
+
 ## v1.13.0
 
 - GCP 구현체(T4): GKE · Artifact Registry · Cloud SQL · Secret Manager · Cloud Monitoring과 WIF/GCS bootstrap을 추가한다. 기존 AWS · onprem 기본 설정은 유지한다.
