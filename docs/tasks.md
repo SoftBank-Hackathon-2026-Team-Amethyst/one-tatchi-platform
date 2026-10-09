@@ -260,25 +260,20 @@ Claude Code는 `/todo-task`, Codex는 `$todo-task`로 이 순서를 따르는 �
 
 **어디에 필요** 테마의 "온프레미스(로컬)". 같은 앱이 내 노트북에서도 뜬다는 이식성 장면에 쓴다.
 
-**만들 것** 맥북(M2 · 16GB)에 k3d(k3s) · Cloudflare Tunnel · self-hosted runner 설치, `modules/*/onprem` Terraform 구현체(Helm Postgres 등), 같은 App Chart로 demo-app 배포.
+**만들 것** 맥북(M2 · 16GB)에 k3d(k3s) · Cloudflare Tunnel을 띄우고, 온프레미스 Terraform 모듈과 demo-app의 `infra/envs/onprem` 루트로 test 환경을 구성해 같은 App Chart로 앱을 배포한다. runner를 통한 자동 배포는 T5, 온프레미스 관측은 T17에서 다룬다.
 
 - **우선순위** P0 · **영역** 레포 · 인프라 · **담당** 원가연
 - **선행** `T20` · **후속** `T17`, `T19` · **설계 문서** 6.4
 
-**목표** 같은 App Chart로 로컬 맥북에서도 게시판이 고정 주소로 뜬다.
+**목표** 같은 App Chart로 로컬 맥북의 게시판이 Cloudflare Quick Tunnel HTTPS 주소에서 동작한다.
 
 **할 일**
 - [x] k3d(또는 OrbStack)로 k3s 클러스터 생성, Docker VM 메모리 6~8GB
-- [ ] 잠자기 방지(`caffeinate`), 전원 연결
 - [x] k3s 설치, Cloudflare Tunnel → HTTPS 주소 (클러스터 안 cloudflared Quick Tunnel `*.trycloudflare.com`. 고정 도메인은 쓰지 않기로 함, 필요하면 `tunnel.token_secret`으로 Named Tunnel 전환. Traefik 대신 터널이 Service로 바로 연결)
-- [ ] 맥북에 self-hosted runner 설치(demo-app 레포, 라벨 `onprem`, push 이벤트 전용)
-- [ ] platform의 `modules/*/onprem` 구현: cluster, database(Helm Postgres), registry(GHCR), secrets, observability(Prometheus) (진행 중: cluster · cluster_addons · database(StatefulSet Postgres, TLS) · registry 완료, secrets는 External Secrets kubernetes provider로 `cloud-secrets` 제공. observability 남음. 맥북 루트는 demo-app `infra/envs/onprem`)
-- [ ] runner가 GHCR 차트·이미지를 pull할 수 있는지 확인
-- [ ] 이미지를 멀티 아키텍처(`linux/amd64` + `linux/arm64`)로 빌드
-- [ ] App Chart로 demo-app 배포, 재부팅 후 자동 복구 확인 (진행 중: test 네임스페이스에 be · fe 배포, DB 연결 · 마이그레이션 · 방명록 쓰기 확인. 이미지는 로컬 빌드 후 `k3d image import`. 재부팅 복구 미확인)
-- [ ] (시간이 남으면) 리눅스 머신에서 같은 절차 확인
+- [ ] platform의 온프레미스 cluster · cluster_addons(터널 · secrets) · database · registry 모듈을 demo-app `infra/envs/onprem`에서 태그로 참조해 구성
+- [ ] App Chart로 demo-app의 be · fe를 맥북 test에 배포하고 터널 HTTPS 주소에서 화면 · 게시판 API · DB 연결 확인
 
-**완료 기준** 터널 주소에서 게시판이 동작하고, 재부팅 후에도 자동으로 뜬다.
+**완료 기준** 맥북 test 환경의 게시판 화면과 API가 Cloudflare Tunnel HTTPS 주소에서 동작하고 DB에 연결된다.
 
 ### [T24] AWS 구현체
 
@@ -405,6 +400,7 @@ Claude Code는 `/todo-task`, Codex는 `$todo-task`로 이 순서를 따르는 �
 - [ ] 재사용 `deploy.yml`에 대상 · 환경 입력, prod job에 environment 연결
 - [ ] test에서 검증한 같은 이미지를 prod에 사용(rebase 머지 또는 PR head SHA 조회)
 - [ ] 환경별 `concurrency`, 테스트 슬롯 1개
+- [ ] 온프레미스 runner에서 GHCR 차트·이미지를 받아 test 배포하는 경로 확인
 
 **완료 기준** yolo push는 test만, main 머지는 test → prod로 간다.
 
