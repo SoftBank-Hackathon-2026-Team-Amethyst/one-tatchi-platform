@@ -229,7 +229,7 @@ Claude Code는 `/todo-task`, Codex는 `$todo-task`로 이 순서를 따르는 �
 
 **어디에 필요** Terraform 모듈 · App Chart · 공통 워크플로를 한곳에 두고 태그로 배포한다. demo-app이 참조할 원본.
 
-**만들 것** `one-tatchi-platform`의 모듈 계약(`variables.tf` · `outputs.tf`), App Chart, 재사용 워크플로 4개, 태그 시 차트를 GHCR에 올리는 릴리스 워크플로, 첫 태그 `v1.0.0`.
+**만들 것** `one-tatchi-platform`의 모듈 계약(`variables.tf` · `outputs.tf`), App Chart, 재사용 워크플로 `checks.yml` · `infra.yml` · `deploy.yml`, 태그 시 차트를 GHCR에 올리는 릴리스 워크플로, 첫 태그 `v1.0.0`. `report.yml`은 T10, 배포 스킬은 T13에서 만든다.
 
 - **우선순위** P0 · **영역** 레포 · 인프라 · **담당** 원가연
 - **선행** `T1` · **후속** `T3`, `T4`, `T11`, `T21`, `T24` · **설계 문서** 6.1
@@ -242,9 +242,7 @@ Claude Code는 `/todo-task`, Codex는 `$todo-task`로 이 순서를 따르는 �
 - [x] 첫 태그 `v1.0.0` 달기 (`release.yml` 성공, 차트 3개 GHCR에 올라감)
 - [x] GHCR 차트 패키지 3개 public 전환 (org 설정에서 public 패키지 허용 후 웹 UI로 전환, 로그인 없이 `helm pull` 확인)
 - [x] `.github/workflows/`: 재사용 워크플로 `checks.yml` · `infra.yml` · `deploy.yml`(`on: workflow_call`), 레포 자체 `ci.yml` · `release.yml` (`deploy.yml`은 AWS 전용으로 옮겼다. 대상 입력은 T5에서 추가)
-- [ ] 재사용 `report.yml`(yolo 배포 리포트, T10과 맞춤)
 - [x] `bootstrap/` 이동
-- [ ] `skills/` 이동 (T13과 맞춤)
 - [x] 릴리스 규칙: 시맨틱 버전 태그(v1.2.0), 변경 기록(`CHANGELOG.md`)
 - [x] 태그 보호: `v*.*.*` 생성 · 수정 · 삭제는 관리자만 (룰셋 `release-tags`)
 - [x] main 보호: PR 필수 · 필수 검사(`terraform` · `charts` · `iac-scan`), 리뷰 승인 0명 (룰셋 `main`)
@@ -422,6 +420,7 @@ Claude Code는 `/todo-task`, Codex는 `$todo-task`로 이 순서를 따르는 �
 **목표** 두 스킬이 demo-app에 PR 또는 `yolo/*` 브랜치를 만든다. 스킬은 직접 apply하지 않는다.
 
 **할 일**
+- [ ] 기존 배포 스킬을 platform의 `skills/`로 이동
 - [ ] platform의 `skills/`를 새 계약에 맞게 수정: 로컬 자격증명으로 apply하는 단계 제거
 - [ ] `/janto-deploy`: 리뷰 지점 1 → 기능 브랜치 + main PR
 - [ ] `/yolo-deploy`: `yolo/<기능>` push
