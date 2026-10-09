@@ -13,10 +13,7 @@ from botocore.exceptions import (
 )
 
 
-class LookupError(Exception):
-    def __init__(self, code, message, retryable=False):
-        super().__init__(message)
-        self.code, self.message, self.retryable = code, message, retryable
+from pricing_errors import LookupError
 
 
 # API field names are discovered before use. Explicit usage_type selects a

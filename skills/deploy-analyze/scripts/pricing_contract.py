@@ -59,7 +59,7 @@ def usage(value, path):
 
 def validate_input(data):
     fields(data, "schema_version input_id created_at template_version monthly_hours monthly_budget budget_basis fx candidates", "input")
-    require(data["schema_version"] == "1", "schema_version: unsupported version")
+    require(data["schema_version"] in ("1", "2"), "schema_version: unsupported version")
     string(data["input_id"], "input_id")
     utc_time(data["created_at"], "created_at")
     require(isinstance(data["template_version"], str) and re.fullmatch(r"v\d+\.\d+\.\d+", data["template_version"]) is not None,

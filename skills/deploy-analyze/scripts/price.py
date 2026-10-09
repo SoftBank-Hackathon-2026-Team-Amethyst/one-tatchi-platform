@@ -46,20 +46,26 @@ def write_result(path, result):
             temporary.unlink(missing_ok=True)
 
 
-def lookup(data, provider=None):
-    from pricing_aws import AWSPrices, LookupError
+def lookup(data, provider=None, gcp_provider=None):
+    from pricing_aws import AWSPrices
+    from pricing_gcp import GCPPrices
+    from pricing_errors import LookupError
 
     provider = provider or AWSPrices()
-    result = {"schema_version": "1", "input_id": data["input_id"], "input_sha256": input_hash(data),
+    gcp_provider = gcp_provider or GCPPrices()
+    result = {"schema_version": "2", "input_id": data["input_id"], "input_sha256": input_hash(data),
               "queried_at": timestamp(), "status": "complete", "candidates": [], "issues": []}
     for candidate in data["candidates"]:
         output = {key: candidate[key] for key in ("candidate_id", "target", "region")}
         output["items"] = []
         for item in candidate["items"]:
             try:
-                if candidate["target"] != "aws":
-                    raise LookupError("unsupported_resource", "Price lookup for this target is not implemented yet")
-                price = provider.lookup(candidate, item)
+                if candidate["target"] == "aws":
+                    price = provider.lookup(candidate, item)
+                elif candidate["target"] == "gcp":
+                    price = gcp_provider.lookup(candidate, item)
+                else:
+                    raise LookupError("unsupported_resource", "Onprem operating costs do not have a cloud catalog price")
                 output["items"].append(dict(item_id=item["item_id"], status="available", price=price, issue=None))
             except LookupError as exc:
                 error = issue(candidate["candidate_id"], item["item_id"], exc.code, exc.message, exc.retryable)
@@ -73,7 +79,7 @@ def lookup(data, provider=None):
 
 def main(argv=None):
     try:
-        parser = Parser(description="Validate a pricing input or look up AWS public On-Demand prices")
+        parser = Parser(description="Validate a pricing input or look up AWS/GCP public On-Demand prices")
         commands = parser.add_subparsers(dest="command", required=True)
         validate = commands.add_parser("validate")
         validate.add_argument("--input", required=True)

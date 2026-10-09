@@ -1,0 +1,29 @@
+{
+  "services": [
+    {
+      "name": "services/COMPUTE",
+      "serviceId": "COMPUTE",
+      "displayName": "Compute Engine"
+    },
+    {
+      "name": "services/GKE",
+      "serviceId": "GKE",
+      "displayName": "Kubernetes Engine"
+    },
+    {
+      "name": "services/SQL",
+      "serviceId": "SQL",
+      "displayName": "Cloud SQL"
+    },
+    {
+      "name": "services/REGISTRY",
+      "serviceId": "REGISTRY",
+      "displayName": "Artifact Registry"
+    },
+    {
+      "name": "services/LOGGING",
+      "serviceId": "LOGGING",
+      "displayName": "Cloud Logging"
+    }
+  ]
+}

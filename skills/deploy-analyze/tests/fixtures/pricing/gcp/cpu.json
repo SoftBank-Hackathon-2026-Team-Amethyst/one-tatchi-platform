@@ -1,0 +1,42 @@
+{
+  "name": "services/COMPUTE/skus/CPU-EXAMPLE",
+  "skuId": "CPU-EXAMPLE",
+  "description": "Synthetic E2 core in Seoul",
+  "category": {
+    "serviceDisplayName": "Compute Engine",
+    "resourceFamily": "Compute",
+    "resourceGroup": "CPU",
+    "usageType": "OnDemand"
+  },
+  "serviceRegions": [
+    "asia-northeast3"
+  ],
+  "geoTaxonomy": {
+    "type": "REGIONAL",
+    "regions": [
+      "asia-northeast3"
+    ]
+  },
+  "pricingInfo": [
+    {
+      "effectiveTime": "2026-01-01T00:00:00Z",
+      "currencyConversionRate": 1,
+      "pricingExpression": {
+        "usageUnit": "h",
+        "baseUnit": "s",
+        "baseUnitConversionFactor": 3600,
+        "displayQuantity": 1,
+        "tieredRates": [
+          {
+            "startUsageAmount": 0,
+            "unitPrice": {
+              "currencyCode": "USD",
+              "units": "0",
+              "nanos": 21177000
+            }
+          }
+        ]
+      }
+    }
+  ]
+}

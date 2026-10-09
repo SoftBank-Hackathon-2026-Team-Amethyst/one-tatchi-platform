@@ -1,7 +1,7 @@
 {
-  "schema_version": "1",
+  "schema_version": "2",
   "input_id": "example-t16-c1",
-  "input_sha256": "7ea587990492fa42c945b067f4cfcae653878db0295e62f938ae67e7cbcc4441",
+  "input_sha256": "5ac876759bffa3065c06970f7c7af82d45b42256a8f882581e71a3f06d2ca460",
   "queried_at": "2026-10-09T00:01:00Z",
   "status": "partial",
   "candidates": [

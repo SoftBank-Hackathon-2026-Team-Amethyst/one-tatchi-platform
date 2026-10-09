@@ -1,0 +1,51 @@
+{
+  "name": "services/REGISTRY/skus/STORE-EXAMPLE",
+  "skuId": "STORE-EXAMPLE",
+  "description": "Synthetic registry storage",
+  "category": {
+    "serviceDisplayName": "Artifact Registry",
+    "resourceFamily": "Storage",
+    "resourceGroup": "Storage",
+    "usageType": "OnDemand"
+  },
+  "serviceRegions": [],
+  "geoTaxonomy": {
+    "type": "GLOBAL",
+    "regions": []
+  },
+  "pricingInfo": [
+    {
+      "effectiveTime": "2026-01-01T00:00:00Z",
+      "currencyConversionRate": 1,
+      "pricingExpression": {
+        "usageUnit": "GiBy.mo",
+        "baseUnit": "By.s",
+        "baseUnitConversionFactor": 2821793513472000,
+        "displayQuantity": 1,
+        "tieredRates": [
+          {
+            "startUsageAmount": 0,
+            "unitPrice": {
+              "currencyCode": "USD",
+              "units": "0",
+              "nanos": 100000000
+            }
+          },
+          {
+            "startUsageAmount": 10,
+            "unitPrice": {
+              "currencyCode": "USD",
+              "units": "0",
+              "nanos": 50000000
+            }
+          }
+        ]
+      },
+      "aggregationInfo": {
+        "aggregationLevel": "ACCOUNT",
+        "aggregationInterval": "MONTHLY",
+        "aggregationCount": 1
+      }
+    }
+  ]
+}

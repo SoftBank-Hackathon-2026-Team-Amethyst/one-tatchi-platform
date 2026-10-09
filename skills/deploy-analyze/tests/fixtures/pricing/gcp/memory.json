@@ -1,0 +1,42 @@
+{
+  "name": "services/COMPUTE/skus/RAM-EXAMPLE",
+  "skuId": "RAM-EXAMPLE",
+  "description": "Synthetic E2 RAM in Seoul",
+  "category": {
+    "serviceDisplayName": "Compute Engine",
+    "resourceFamily": "Compute",
+    "resourceGroup": "RAM",
+    "usageType": "OnDemand"
+  },
+  "serviceRegions": [
+    "asia-northeast3"
+  ],
+  "geoTaxonomy": {
+    "type": "REGIONAL",
+    "regions": [
+      "asia-northeast3"
+    ]
+  },
+  "pricingInfo": [
+    {
+      "effectiveTime": "2026-01-01T00:00:00Z",
+      "currencyConversionRate": 1,
+      "pricingExpression": {
+        "usageUnit": "GiBy.h",
+        "baseUnit": "By.s",
+        "baseUnitConversionFactor": 3865470566400,
+        "displayQuantity": 1,
+        "tieredRates": [
+          {
+            "startUsageAmount": 0,
+            "unitPrice": {
+              "currencyCode": "USD",
+              "units": "0",
+              "nanos": 2847000
+            }
+          }
+        ]
+      }
+    }
+  ]
+}

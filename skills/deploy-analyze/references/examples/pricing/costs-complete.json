@@ -1,8 +1,8 @@
 {
-  "schema_version": "1",
+  "schema_version": "2",
   "input_id": "example-t16-c1",
-  "input_sha256": "7ea587990492fa42c945b067f4cfcae653878db0295e62f938ae67e7cbcc4441",
-  "prices_sha256": "befe884857a7b26307e504602dbfb5c996cda964392ee4c9cf83b9b2c983c54e",
+  "input_sha256": "5ac876759bffa3065c06970f7c7af82d45b42256a8f882581e71a3f06d2ca460",
+  "prices_sha256": "e8a57342367a74be0c4ae3efce74b7c77eef70723b233984853d65bf74c41923",
   "generated_at": "2026-10-09T00:02:00Z",
   "queried_at": "2026-10-09T00:01:00Z",
   "status": "complete",

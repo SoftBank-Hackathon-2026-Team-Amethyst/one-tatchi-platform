@@ -1,0 +1,59 @@
+{
+  "schema_version": "2",
+  "input_id": "example-t16-gcp",
+  "created_at": "2026-10-09T00:00:00Z",
+  "template_version": "v1.16.0",
+  "monthly_hours": "730",
+  "monthly_budget": {
+    "min": 100001,
+    "max": 500000,
+    "currency": "KRW"
+  },
+  "budget_basis": "total",
+  "fx": {
+    "usd_to_krw": "1400",
+    "as_of": "2026-10-09",
+    "source": "계약 검증용 합성 환율, 실제 환율 아님"
+  },
+  "candidates": [
+    {
+      "candidate_id": "gcp-example",
+      "target": "gcp",
+      "region": "asia-northeast3",
+      "configuration_status": "assumed",
+      "assumptions": [
+        "계약 검증용 합성 SKU·구성. 실제 T4 설정과 실제 가격을 나타내지 않는다."
+      ],
+      "items": [
+        {
+          "item_id": "cpu",
+          "resource_id": "gke-node",
+          "resource_kind": "gke_node",
+          "billing_dimension": "cpu_hours",
+          "attributes": {
+            "resource_family": "Compute",
+            "resource_group": "CPU",
+            "description": "Synthetic E2 core in Seoul"
+          },
+          "quantity": 3,
+          "shared": true,
+          "cost_type": "fixed",
+          "unit": "vcpu_hour",
+          "monthly_usage": {
+            "min": "1460",
+            "max": "1460"
+          },
+          "incremental_usage": {
+            "min": "0",
+            "max": "0"
+          },
+          "source": {
+            "path": "synthetic-example",
+            "ref": null,
+            "note": "노드 3대·각 2 vCPU·730시간 합성 시나리오. 구성 확인은 C4에서 수행한다."
+          }
+        }
+      ]
+    }
+  ]
+}

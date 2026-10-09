@@ -1,6 +1,6 @@
 # 가격 조회 · 비용 계산 계약 (T16 / C1)
 
-이 문서는 배포 분석 도구의 구성 입력, 단가 조회 결과, 비용 계산 결과와 실패 처리 계약을 정의한다. 스킬 원본은 platform에, 실제 분석 산출물은 대상 앱의 `.deploy/analysis/`에 둔다. C1은 계약과 예시를 추가하는 커밋이다. C2에서 입력 검증과 AWS 단가 조회를 구현했다. GCP 조회는 C3, 비용 계산은 C5에서 추가한다.
+이 문서는 배포 분석 도구의 구성 입력, 단가 조회 결과, 비용 계산 결과와 실패 처리 계약을 정의한다. 스킬 원본은 platform에, 실제 분석 산출물은 대상 앱의 `.deploy/analysis/`에 둔다. C1은 계약과 예시를 추가하는 커밋이다. C2에서 입력 검증과 AWS 단가 조회를 구현했고 C3에서 GCP 단가 조회를 연결했다. 비용 계산은 C5에서 추가한다.
 
 ## 확정한 도구 구성
 
@@ -21,7 +21,7 @@
 
 ## CLI 계약
 
-validate와 AWS lookup은 실행할 수 있다. calculate는 C5에서 구현할 인터페이스이며 아직 실행할 수 없다. `<skill-dir>`은 설치된 deploy-analyze 디렉터리다. 모든 파일 경로를 명시하며 작업 디렉터리에서 앱 루트를 추측하지 않는다.
+validate와 AWS · GCP lookup은 실행할 수 있다. calculate는 C5에서 구현할 인터페이스이며 아직 실행할 수 없다. `<skill-dir>`은 설치된 deploy-analyze 디렉터리다. 모든 파일 경로를 명시하며 작업 디렉터리에서 앱 루트를 추측하지 않는다.
 
 ```sh
 python <skill-dir>/scripts/price.py validate --input <app-root>/.deploy/analysis/pricing-input.json
@@ -78,7 +78,7 @@ usage_type은 공급자 카탈로그에서 확인한 정확한 usagetype 문자�
 
 Hrs · hrs · Hours는 hour, GB-Mo · GB-month는 gb_month, GB는 gb, Requests는 request, LCU-Hrs는 lcu_hour로 정규화한다. 변환 계수는 1이다. 단위가 맞지 않거나 조건부 appliesTo가 있는 항목은 미조회로 남긴다. GB를 GiB로 임의 변환하지 않는다.
 
-C2에서 GCP 항목과 온프레미스의 비어 있지 않은 항목은 unsupported_resource로 남기고 AWS 성공 결과는 보존한다. 온프레미스의 빈 items는 조회할 클라우드 항목이 없어 complete이며 운영 비용 미산정 가정은 입력에 유지한다. 비용과 예산 판정은 아직 생성하지 않는다.
+C3에서 GCP 조회를 연결했다. 온프레미스의 비어 있지 않은 항목은 unsupported_resource로 남긴다. 어느 공급자의 조회가 실패해도 다른 공급자의 성공 결과는 보존한다. 온프레미스의 빈 items는 조회할 클라우드 항목이 없어 complete이며 운영 비용 미산정 가정은 입력에 유지한다. 비용과 예산 판정은 아직 생성하지 않는다.
 
 로컬 테스트:
 
@@ -88,9 +88,43 @@ uv run --no-project --with-requirements skills/deploy-analyze/requirements.txt p
 
 [pricing 워크플로](../../../.github/workflows/pricing.yml)가 변경된 스킬의 가격 조회와 기존 브리프 테스트를 함께 실행한다. 합성 API 응답 테스트와 실제 API 실조회는 구분한다.
 
+## C3 GCP 조회 사용법과 지원 범위
+
+lookup 명령과 입력 파일 형식은 AWS와 같다. 후보 target은 gcp, 견적 region은 asia-northeast3 같은 실제 리전 코드다. 스킬의 requirements.txt에 google-auth와 requests를 추가했다.
+
+인증은 google.auth.default()로 기존 ADC를 읽는다. 기존 사용자 ADC의 스코프는 유지한다. 스코프가 필요한 서비스 계정 자격증명에는 cloud-billing.readonly를 메모리에서만 적용한다. 도구는 gcloud 로그인, ADC 파일 작성, IAM 변경, API 활성화를 수행하지 않는다. 기존 인증과 quota project 설정으로 Catalog API를 사용할 수 있어야 한다. 자격증명 로드 · 갱신 실패는 authentication_failed, API 비활성은 api_disabled로 기록한다.
+
+Cloud Billing Catalog API의 services.list와 services.skus.list를 사용한다. 서비스 ID를 추측하지 않고 표시 이름으로 서비스를 찾으며, SKU 조회 시 currencyCode=USD를 명시한다. 페이지 크기는 5000이고 다음 페이지 토큰을 끝까지 처리한다. 동일 실행에서는 서비스와 SKU 목록을 재사용한다. 연결 제한은 5초, 응답 제한은 15초이며 인증 갱신은 최대 1회다. HTTP 429와 5xx는 재시도 가능 사유를 남기고 자체 Catalog 재시도는 하지 않는다.
+
+[Catalog API 계약](https://docs.cloud.google.com/billing/docs/reference/rest/v1/services.skus/list)에 따라 리전 · 카테고리 · 소비 방식과 가격 적용 시점을 확인한다. 조회 시각과 effectiveTime은 구분한다. 전역 SKU는 GLOBAL 지리 정보 또는 명시적인 global 서비스 리전이 있을 때만 사용하며, 빈 리전 목록만으로 전역이라고 추정하지 않는다.
+
+| resource_kind / billing_dimension | 조회할 서비스 표시 이름 |
+|---|---|
+| gke / cluster_hours | Kubernetes Engine |
+| gke_node / cpu_hours, memory_hours | Compute Engine |
+| gcp_disk / storage | Compute Engine |
+| cloud_nat / gateway_hours, processed_data | Compute Engine |
+| gcp_load_balancer / load_balancer_hours, processed_data | Compute Engine |
+| cloud_sql / cpu_hours, memory_hours, instance_hours, storage | Cloud SQL |
+| artifact_registry / storage | Artifact Registry |
+| gcp_logs / ingestion, storage | Cloud Logging |
+| gcp_internet_egress / transfer | Compute Engine |
+
+각 항목의 attributes에 resource_family · resource_group과 정확한 description 또는 sku_id를 지정한다. 두 선택자를 함께 주면 모두 일치해야 한다. service_id를 추가하면 같은 표시 이름의 서비스를 구분할 수 있다. usage_type은 생략 시 OnDemand이며 다른 방식은 기본 견적에서 받지 않는다. 서버 크기나 SKU 설명을 추측하지 않고, 실제 T4 설정을 카탈로그의 정확한 항목으로 옮기는 규칙은 C4에서 정리한다. 후보가 여럿이면 ambiguous_sku로 남긴다.
+
+CPU와 메모리는 각각 별도 item_id와 billing_dimension으로 기록한다. CPU 단위는 vcpu_hour, 메모리는 gib_hour를 사용할 수 있다. 예를 들어 노드 3대에 각 2 vCPU를 730시간 사용하면 quantity=3, monthly_usage=1460 vcpu_hour를 입력한다. 이는 단가 조회 입력의 사용량 예시이며 C3에서 월 비용은 계산하지 않는다.
+
+단가와 구간 경계는 baseUnit · baseUnitConversionFactor로 정규화한다. h/s는 hour 또는 vcpu_hour, GiBy.h/GiBy.s/By.s는 gib_hour, GiBy.mo는 gib_month, GBy.mo는 gb_month, GiBy/GBy/By는 gib 또는 gb, count는 request를 지원한다. 필요한 baseUnit이 맞지 않으면 unsupported_unit으로 남긴다. 같은 월 단위는 공급자의 월 기준을 그대로 유지하며 바이트·초에서 월로 변환할 때의 기준은 730시간이다. displayQuantity는 표시 권장값이므로 가격에 곱하지 않는다.
+
+공개 유료 구성의 기본 단가를 조회한다. 크레딧 · 약정 · 계정별 할인은 적용하지 않는다. 전체 단가가 0인 무료 SKU는 기본 후보에서 제외하고, 0원 구간이 있는 SKU는 무료 한도의 자격과 공유 범위가 확인되지 않아 unsupported_resource로 남긴다. 유료 SKU를 확정하지 못하면 가격을 임의 대체하지 않는다.
+
+provider_details는 GCP price의 추가 근거다. 키는 usage_unit, base_unit, base_unit_conversion_factor, display_quantity, currency_conversion_rate, aggregation, effective_time, tiers다. 수치는 십진 문자열로 보존하며 tiers는 원본 시작 사용량 from, 정수부 units 문자열, nanos 정수를 담는다. aggregation은 공급자 aggregationLevel · aggregationInterval · aggregationCount 또는 null이다. 실제 계산기는 계정/프로젝트와 일/월 집계 범위를 확인해야 하며, 특히 일 단위 구간 요금을 월 사용량에 그대로 적용하면 안 된다. 이 처리는 C5에서 구현한다.
+
+[gcp-input.json](examples/pricing/gcp-input.json)과 [gcp-prices-complete.json](examples/pricing/gcp-prices-complete.json)은 합성 서울 CPU 단가의 입력 · 결과 견본이다. 실제 API 조회 근거가 아니다.
+
 ## 공통 형식과 파일 연결
 
-세 JSON 객체의 `schema_version`은 `"1"`이다. 지원하지 않는 버전, 중복 JSON 키, 필수 키 누락, 정의되지 않은 키, 잘못된 타입은 오류다. 확장을 추가하면 계약 버전을 갱신한다.
+현재 입력 · 단가 · 계산 결과 예시의 `schema_version`은 `"2"`다. C3에서 GCP 원본 가격 근거를 보존할 provider_details를 추가하면서 버전을 올렸다. 입력 검증기는 기존 버전 `"1"` 입력도 지원하고 해시는 원래 입력 그대로 계산한다. lookup 출력은 항상 버전 `"2"`이며 계산 결과의 버전 2 구현은 C5에서 진행한다. 지원하지 않는 버전, 중복 JSON 키, 필수 키 누락, 정의되지 않은 키, 잘못된 타입은 오류다. 확장을 추가하면 계약 버전을 갱신한다.
 
 - 금액 · 사용량 · 수량은 음수가 아닌 유한 십진 문자열이다. 지수 표기, NaN, Infinity와 쉼표를 허용하지 않는다. 개수 `quantity`는 양의 정수다.
 - 조회 · 생성 시각은 UTC RFC 3339 문자열, 기준일은 `YYYY-MM-DD`다.
@@ -146,7 +180,7 @@ uv run --no-project --with-requirements skills/deploy-analyze/requirements.txt p
 
 - status가 `available`이면 price를 기록하고 issue는 null이다.
 - status가 `unavailable`이면 price는 null이고 issue에 원인을 남긴다.
-- price 키: `sku`, `provider_service`, `currency`, `source`, `effective_at`, `unit`, `source_unit`, `source_usage_per_unit`, `tiers`.
+- price 필수 키: `sku`, `provider_service`, `currency`, `source`, `effective_at`, `unit`, `source_unit`, `source_usage_per_unit`, `tiers`. 버전 2에서는 선택 키 provider_details를 추가한다. AWS는 기존 필수 키를 유지하고 GCP는 provider_details에 원본 가격 · 변환 · 집계 근거를 기록한다.
 - currency는 USD다. source는 조회 API 식별자 또는 공식 자료 URL이다. 조회 시각과 가격 적용 시점을 구분한다.
 - source_usage_per_unit은 정규화 단위 1에 해당하는 원본 사용량의 양의 십진 문자열이다. tiers의 단가는 이미 정규화 단위당 USD로 변환되어 있어 계산기에서 중복 환산하지 않는다.
 - tiers는 `{from, to, unit_price}` 배열이다. 경계와 금액은 십진 문자열이며 마지막 to만 null이다. 첫 구간은 0에서 시작하고 구간은 빈틈 · 겹침 없이 오름차순이다. 구간 경계는 정규화 사용량 기준이다. 단일 요금도 `[0, 무한대)` 구간 하나로 표현한다.
@@ -201,5 +235,5 @@ budget 키는 `basis`, `range_krw`, `status`, `reason`이다. basis와 range_krw
 
 
 - C1 검증: JSON 파싱, 입력 · 결과의 필드와 식별자 연결, 해시 일치, 합성 비용 재계산, partial의 null · 누락 사유, 입력 오류 예시를 확인한다.
-- C2~C5 검증: 이 계약을 구현하는 CLI와 검증기의 정상 · 부분 실패 · 입력 오류, 단위 · 구간 요금, 해시 불일치 · 기존 파일 보존 테스트를 추가한다.
+- C2 · C3 검증: 입력 검증, AWS · GCP 응답 정규화, ADC 보존과 공급자별 실패 처리는 자동 테스트로 확인한다. C5에서는 계산기와 결과 연결 검증을 추가한다. 이 계약을 구현하는 CLI와 검증기의 정상 · 부분 실패 · 입력 오류, 단위 · 구간 요금, 해시 불일치 · 기존 파일 보존 테스트를 추가한다.
 - C7 검증: 실제 API 단가 · 조회 시각과 demo-app 분석 보고서를 검증한다. C1 예시를 실제 조회 증거로 사용하지 않는다.
