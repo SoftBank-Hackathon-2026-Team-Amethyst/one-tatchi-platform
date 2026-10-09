@@ -36,6 +36,8 @@ elif a[:2] == ["run", "list"]:
     print(json.dumps(runs))
 elif a[:2] == ["run", "watch"]:
     sys.exit(s.get("watch_exit", 0))
+elif a[:2] == ["pr", "list"]:
+    print(json.dumps(s.get("pulls", [])))
 elif a[:2] == ["run", "view"]:
     if "--log-failed" in a:
         if s.get("log_error"):
@@ -371,6 +373,33 @@ class RepairLoopTests(unittest.TestCase):
         self.assertEqual(self.s.head(), sha)
         self.assertEqual(self.s.remote_sha(), sha)
         self.assertTrue(self.s.clean())
+
+    def test_t8_merge_and_branch_deletion_are_observed_without_push(self):
+        data = self.run_data(checks="success", deployment="success", conclusion="success")
+        data["jobs"].append({"name": "test / yolo-pr", "status": "completed", "conclusion": "success"})
+        pull = {"url": "https://github.com/test/app/pull/1", "state": "MERGED", "headRefOid": self.initial}
+        self.scenario_for(data, pulls=[pull])
+        self.g("push", "origin", "--delete", "yolo/test")
+        self.s.watch(discovery_seconds=0)
+        self.assertEqual(self.s.report()["status"], "complete")
+        self.assertEqual(self.s.report()["pull_request"], pull)
+        self.assertIsNone(self.s.remote_sha(missing_ok=True))
+        self.assertEqual(self.s.head(), self.initial)
+
+    def test_unexplained_branch_deletion_stops(self):
+        self.scenario_for(self.run_data(checks="success", deployment="success", conclusion="success"))
+        self.g("push", "origin", "--delete", "yolo/test")
+        with self.assertRaises(loop.Stop):
+            self.s.watch(discovery_seconds=0)
+
+    def test_t8_failure_is_not_an_app_repair(self):
+        data = self.run_data(checks="success", deployment="success")
+        data["jobs"].append({"name": "test / yolo-pr", "status": "completed", "conclusion": "failure"})
+        self.scenario_for(data)
+        self.s.watch(discovery_seconds=0)
+        self.assertEqual(self.s.state["status"], "stopped")
+        with self.assertRaises(loop.Stop):
+            self.repair()
 
     def test_scope_and_corrupted_state_cannot_reset(self):
         with self.assertRaises(loop.Stop):

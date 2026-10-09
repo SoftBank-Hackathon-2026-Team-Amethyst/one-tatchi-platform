@@ -48,6 +48,8 @@ mkdir -p "$app/db"; echo "SELECT 1;" > "$app/db/init.sql"
 cat > "$app/.deploy/config.yaml" <<'EOF'
 template_version: v1.9.0
 compliance: regulated
+EOF
+cat > "$app/.deploy/plan.yaml" <<'EOF'
 target: onprem
 services:
   - name: demo-app-be
@@ -76,6 +78,35 @@ sed -i.bak 's/template_version: v1.8.0/template_version: v1.9.0/' "$app/.deploy/
 sed -i.bak -E 's/(@|template-ref: |\?ref=)v1\.8\.0/\1v1.9.0/g; s/chart-version: 1\.8\.0/chart-version: 1.9.0/' "$app"/.github/workflows/*.yml "$app"/infra/envs/*/*.tf
 find "$app" -name '*.bak' -delete
 bash "$check" "$app" >/dev/null || { echo "되돌린 뒤 통과해야 한다" >&2; exit 1; }
+
+echo "== config.yaml에 인계값이 들어가면 실패"
+echo "target: onprem" >> "$app/.deploy/config.yaml"
+if bash "$check" "$app" >"$tmp/check4.log" 2>&1; then echo "config.yaml의 target을 놓쳤다" >&2; exit 1; fi
+grep -q 'plan.yaml' "$tmp/check4.log"
+sed -i.bak '/^target: onprem$/d' "$app/.deploy/config.yaml"; rm -f "$app/.deploy/config.yaml.bak"
+bash "$check" "$app" >/dev/null || { echo "되돌린 뒤 통과해야 한다" >&2; exit 1; }
+
+echo "== 참조 버전에 맞게 T8 입력을 렌더"
+for version in v1.8.0 v1.13.0 v1.14.0; do
+  common[0]="TEMPLATE_VERSION=$version"
+  common[1]="CHART_VERSION=${version#v}"
+  bash "$render" "$skill/templates/.github/workflows/deploy.yml.tmpl" "$tmp/compat.yml" "${common[@]}" >/dev/null
+  case "$version" in
+    v1.8.0) ! grep -q 'promote-mode:' "$tmp/compat.yml"; ! grep -q 'yolo-auto-merge:' "$tmp/compat.yml" ;;
+    v1.13.0) grep -q "promote-mode:.*startsWith" "$tmp/compat.yml"; ! grep -q 'yolo-auto-merge:' "$tmp/compat.yml" ;;
+    v1.14.0) grep -q 'promote-mode: branch' "$tmp/compat.yml"; grep -q 'yolo-auto-merge: true' "$tmp/compat.yml" ;;
+  esac
+  if command -v actionlint >/dev/null; then actionlint -shellcheck='' "$tmp/compat.yml"; fi
+done
+
+echo "== 비어 있는 서비스 · 보호 값이 들어간 plan은 실패"
+cp "$app/.deploy/plan.yaml" "$tmp/plan-original.yaml"
+printf 'target: onprem\nservices: []\n' > "$app/.deploy/plan.yaml"
+if bash "$check" "$app" >/dev/null 2>&1; then echo "빈 서비스를 놓쳤다" >&2; exit 1; fi
+cp "$tmp/plan-original.yaml" "$app/.deploy/plan.yaml"
+echo 'compliance: none' >> "$app/.deploy/plan.yaml"
+if bash "$check" "$app" >/dev/null 2>&1; then echo "plan의 보호 값을 놓쳤다" >&2; exit 1; fi
+cp "$tmp/plan-original.yaml" "$app/.deploy/plan.yaml"
 
 echo "== 자리표시자가 남으면 실패"
 echo "host: @@HOST_TEST@@" >> "$app/deploy/onprem/values.yaml"

@@ -29,17 +29,17 @@ Claude Code는 `/todo-task`, Codex는 `$todo-task`로 이 순서를 따르는 �
 
 ## 역할 분담
 
-**원가연** · 플랫폼 코어 (6개, P0 6개)
+**원가연** · 플랫폼 코어 (7개, P0 7개)
 - `T1` 레포 두 개와 bootstrap (P0)
 - `T3` 온프레미스 구현체 (로컬 맥북) (P0)
 - `T5` test / prod 분리와 브랜치 흐름 (P0)
 - `T20` 템플릿 레포 구성과 릴리스 (P0)
 - `T21` 레포 간 참조 검증 (P0)
 - `T13` janto / yolo 두 경로로 스킬 정리 (P0)
-
-**이소울** · 파이프라인 (7개, P0 5개)
-- `T6` 규제 여부에 따른 운영 관문 (P0)
 - `T8` yolo main PR 자동 생성 · 자동 머지 (P0)
+
+**이소울** · 파이프라인 (6개, P0 4개)
+- `T6` 규제 여부에 따른 운영 관문 (P0)
 - `T9` 배포 시간 2분대 단축 (P0)
 - `T23` 초기 인프라 세팅 (계정 · 권한) (P0)
 - `T22` 템플릿 버전 업데이트 흐름 (P1)
@@ -80,7 +80,7 @@ Claude Code는 `/todo-task`, Codex는 `$todo-task`로 이 순서를 따르는 �
 | 도메인 이름과 DNS 관리 위치 | T2 | **결정**: 운영 `onetatchi.soulee.dev` / 테스트 `yolo.onetatchi.soulee.dev`. `soulee.dev`(Cloudflare)에서 Route53으로 위임 |
 | 온프레미스 데모 머신 | T3 | **결정: 원가연 맥북 (M2 · 16GB, k3d).** 시간이 남으면 리눅스 머신 |
 | 두 번째 클라우드 | T4 | GCP |
-| yolo의 main PR 생성 · 자동 머지 주체 | T8 | GHA 또는 에이전트 |
+| yolo의 main PR 생성 · 자동 머지 주체 | T8 | GitHub Actions (ADR 0010) |
 | AI 승격 판단 기준값과 관찰 시간 | T7 | 에러율 0%, p95 기준값, 60초 관찰 |
 | 규제 대상 판정 기준 | T6, T15 | 개인정보 · 결제 · 금융 데이터를 다루면 `regulated` |
 | `yolo-debt` 이슈 처리 기한과 담당 | T10 | 다음 janto 배포 전까지 해소 |
@@ -582,13 +582,13 @@ Claude Code는 `/todo-task`, Codex는 `$todo-task`로 이 순서를 따르는 �
 
 **만들 것** yolo가 test 승격 후 `main` PR을 만들고 auto-merge를 거는 단계(GHA job 또는 스킬)와 GitHub App 토큰.
 
-- **우선순위** P0 · **영역** 파이프라인 (platform 재사용 워크플로) · **담당** 이소울
+- **우선순위** P0 · **영역** 파이프라인 (platform 재사용 워크플로) · **담당** 원가연
 - **선행** `T7` · **후속** `T10` · **설계 문서** 6.1
 
 **목표** test 승격 후 사람 개입 없이 `main`에 머지된다.
 
 **할 일**
-- [ ] 주체 결정: GHA 또는 에이전트(12장 미결정 8번)
+- [ ] GitHub Actions가 test 실제 승격 확인 뒤 main PR을 생성한다 (ADR 0010)
 - [ ] GHA라면 GitHub App 토큰(기본 토큰으로 만든 PR은 워크플로를 실행하지 않음)
 - [ ] `gh pr create` + `gh pr merge --auto --rebase`
 - [ ] PR 본문에 yolo 배포 리포트, 라벨 `yolo`

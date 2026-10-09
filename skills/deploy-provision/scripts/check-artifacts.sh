@@ -27,6 +27,23 @@ else
   case "$compliance" in regulated|none) ;; *) fail "$cfg: compliance는 regulated | none 이어야 한다 (지금: '$compliance')" ;; esac
 fi
 
+# 계획과 보호 설정을 분리한다. 읽기만 하며 config.yaml을 다시 쓰지 않는다.
+plan=.deploy/plan.yaml
+[ -f "$plan" ] || fail "$plan 가 없다 (target · services는 config.yaml에서 분리)"
+if command -v yq >/dev/null && [ -f "$plan" ]; then
+  target="$(yq -r '.target' "$plan" 2>/dev/null)"
+  case "$target" in aws|onprem|gcp) ;; *) fail "$plan: target은 aws | onprem | gcp 이어야 한다" ;; esac
+  yq -o=json '.' "$plan" | jq -e '.services | type == "array" and length > 0 and all(.[];
+    (.name | type == "string" and length > 0) and (.path | type == "string" and length > 0))' >/dev/null 2>&1 \
+    || fail "$plan: services는 name · path가 있는 비어 있지 않은 배열이어야 한다"
+  yq -o=json '.' "$plan" | jq -e 'has("compliance") or has("template_version")' >/dev/null 2>&1 \
+    && fail "$plan: compliance · template_version은 config.yaml에만 둔다"
+  if [ -f "$cfg" ]; then
+    yq -o=json '.' "$cfg" | jq -e 'has("target") or has("services")' >/dev/null 2>&1 \
+      && fail "$cfg: target · services는 plan.yaml로 옮긴다"
+  fi
+fi
+
 # 3. 버전 표기 일치
 if [ -n "$version" ]; then
   ver="${version#v}"
@@ -47,6 +64,9 @@ fi
 # 3b. 템플릿 버전보다 새 입력을 쓰지 않는지 (호출부 입력이 없으면 워크플로가 startup_failure로 시작도 못 한다)
 if [ -n "$version" ] && [ -f .github/workflows/deploy.yml ]; then
   minor="$(echo "$version" | cut -d. -f2)"; major="$(echo "${version#v}" | cut -d. -f1)"
+  if /usr/bin/grep -Eq '^[[:space:]]*(yolo-auto-merge:|promote-mode: branch)' .github/workflows/deploy.yml && [ "$major" -eq 1 ] && [ "$minor" -lt 14 ]; then
+    fail "deploy.yml: yolo-auto-merge · branch 모드는 템플릿 v1.14.0부터다 (지금 $version)"
+  fi
   if /usr/bin/grep -q '^\s*promote-mode:' .github/workflows/deploy.yml && [ "$major" -eq 1 ] && [ "$minor" -lt 9 ]; then
     fail "deploy.yml: promote-mode 입력은 템플릿 v1.9.0부터다 (지금 $version). 줄을 지우거나 버전을 올린다"
   fi
@@ -70,8 +90,8 @@ if [ -f .deploy/smoke.json ]; then
   else skip "jq가 없어 smoke.json 형식"; fi
 fi
 
-# 6. 서비스별 Dockerfile · 값 파일 (config.yaml의 services)
-if [ -f "$cfg" ] && command -v yq >/dev/null; then
+# 6. 서비스별 Dockerfile · 값 파일 (plan.yaml의 services)
+if [ -f "$plan" ] && command -v yq >/dev/null; then
   while IFS=$'\t' read -r name path; do
     [ -n "$name" ] || continue
     [ -f "$path/Dockerfile" ] || fail "$name: $path/Dockerfile 이 없다"
@@ -81,9 +101,9 @@ if [ -f "$cfg" ] && command -v yq >/dev/null; then
     if [ -f "$path/Dockerfile" ]; then
       /usr/bin/grep -Eq '^USER[[:space:]]+[0-9]+' "$path/Dockerfile" || fail "$name: Dockerfile에 숫자 UID의 USER 가 없다 (App Chart runAsNonRoot)"
     fi
-  done < <(yq -r '.services[]? | [.name, .path] | @tsv' "$cfg" 2>/dev/null)
+  done < <(yq -r '.services[]? | [.name, .path] | @tsv' "$plan" 2>/dev/null)
 else
-  skip "yq가 없거나 config.yaml이 없어 서비스별 Dockerfile 검사"
+  skip "yq가 없거나 plan.yaml이 없어 서비스별 Dockerfile 검사"
 fi
 
 # 7. terraform fmt

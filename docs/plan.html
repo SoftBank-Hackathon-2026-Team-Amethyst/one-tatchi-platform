@@ -321,7 +321,7 @@ flowchart LR
 <ol>
   <li><b>push 즉시 test 배포</b>: <code>yolo/*</code> 브랜치에 push가 일어나면 GitHub Actions가 바로 실행된다. 검사를 통과하면 이미지를 빌드(태그 = 커밋 SHA)하고, <code>helm upgrade</code>로 test 네임스페이스에 반영한다. Argo Rollouts가 새 버전(green)을 기존 버전(blue) 옆에 띄우고, 이 시점에는 아직 blue가 트래픽을 받는다. PR 리뷰나 머지를 기다리지 않는다.</li>
   <li><b>AI 승격</b>: 다음 job이 green의 지표(에러율, p95 응답시간, 재시작 수, 헬스체크)를 일정 시간(예: 60초) 수집해 AI에 넘긴다. AI가 근거와 함께 <code>promote</code>를 내면 <code>kubectl argo rollouts promote</code>로 트래픽을 green으로 넘기고, <code>abort</code>를 내면 green을 버리고 여기서 멈춘다. 판단 근거는 배포 리포트에 남는다.</li>
-  <li><b>→ prod</b>: test에서 승격되면 <code>yolo/*</code> → <code>main</code> PR이 자동으로 만들어지고, 검사가 통과하면 자동 머지된다(주체는 GHA 또는 에이전트, 12장). 이어서 <b>test에서 검증한 같은 이미지</b>를 prod 네임스페이스에 같은 방식(green 생성 → AI 판단 → promote)으로 반영한다. 규제 대상이면 이 단계 앞에서 승인자 승인을 기다리고, 아니면 바로 진행한다.</li>
+  <li><b>→ prod</b>: test에서 승격되면 <code>yolo/*</code> → <code>main</code> PR이 자동으로 만들어지고, 검사가 통과하면 자동 머지된다(주체는 GitHub Actions, ADR 0010). 이어서 <b>test에서 검증한 같은 이미지</b>를 prod 네임스페이스에 같은 방식(green 생성 → AI 판단 → promote)으로 반영한다. 규제 대상이면 이 단계 앞에서 승인자 승인을 기다리고, 아니면 바로 진행한다.</li>
 </ol>
 <p class="small">janto(그림 1-a)의 "머지 후 test 배포 · 승인 후 prod 승격"도 같은 장치를 쓴다. 차이는 test 배포가 사람 머지 뒤에 일어나고, AI 판단을 사람이 확인한 뒤 promote하며, prod 앞에서 항상 승인을 받는다는 점이다.</p>
 
@@ -462,7 +462,7 @@ sequenceDiagram
     CI->>Test: 빌드 → helm upgrade → green
     Test-->>AI: 지표
     AI->>Test: promote 또는 abort 직접 실행
-    Note over Skill,CI: main PR 자동 생성 · 검사 통과 시 자동 머지<br/>주체: GHA 또는 에이전트 (미결정, 12장)
+    Note over Skill,CI: main PR 자동 생성 · 검사 통과 시 자동 머지<br/>주체: GitHub Actions (ADR 0010)
     CI->>GH: yolo 배포 리포트 (감사 로그 · yolo-debt 이슈)
   end
   alt janto 또는 규제 대상
@@ -484,7 +484,7 @@ sequenceDiagram
     <tr><td>리뷰·머지</td><td>리뷰 지점 2: 사람이 변경 계획을 확인하고 머지</td><td>없음</td></tr>
     <tr><td>테스트 배포</td><td><code>main</code> 머지 후 자동</td><td>push 즉시 자동</td></tr>
     <tr><td>AI 승격 판단</td><td>리뷰 지점 3: AI가 제안, 사람이 실행</td><td>AI가 실행</td></tr>
-    <tr><td><code>main</code> 반영</td><td>이미 머지됨</td><td>PR 자동 생성, 검사 통과 시 자동 머지. 주체는 GHA 또는 에이전트 (미결정, 12장)</td></tr>
+    <tr><td><code>main</code> 반영</td><td>이미 머지됨</td><td>PR 자동 생성, 검사 통과 시 자동 머지. 주체는 GitHub Actions (ADR 0010)</td></tr>
     <tr><td>운영 승격</td><td>승인자 승인 필수</td><td>서비스의 규제 여부(<code>.deploy/config.yaml</code>의 <code>compliance</code>)가 정한다. <code>regulated</code>(금융·결제·개인정보 등)이면 승인자 승인 후 반영, <code>none</code>이면 승인 없이 자동 반영하고 yolo 배포 리포트를 남긴다 (6.6)</td></tr>
     <tr><td>기록</td><td>감사 로그</td><td>감사 로그 + yolo 배포 리포트, 문제가 있으면 <code>yolo-debt</code> 이슈</td></tr>
   </tbody>
@@ -1185,7 +1185,7 @@ flowchart LR
     <tr><td>5</td><td>Grafana 위치 (각 클러스터 vs 중앙 1개)</td><td>AWS 클러스터에 중앙 1개</td></tr>
     <tr><td>6</td><td>규제 대상 판정 기준 (어떤 답이면 <code>regulated</code>인가)</td><td>개인정보·결제·금융 데이터를 다루면 regulated</td></tr>
     <tr><td>7</td><td><code>yolo-debt</code> 이슈 처리 기한과 담당</td><td>다음 janto 배포 전까지 해소</td></tr>
-    <tr><td>8</td><td>yolo의 <code>main</code> PR 생성·자동 머지 주체<br><span class="small"><b>GHA</b>: AI 승격 job에 이어 바로 실행, 로컬이 꺼져 있어도 됨, "반영은 파이프라인만" 원칙과 일치. 기본 토큰으로 만든 PR은 다른 워크플로를 실행하지 않으므로 GitHub App 토큰이 필요.<br><b>에이전트</b>: 스킬 흐름 안에서 PR 내용(분석 요약, 수정 이력)을 풍부하게 작성. 대신 test 배포와 AI 판단이 끝날 때까지 로컬 스킬이 켜져 있어야 함.<br>공통: <code>gh pr merge --auto --rebase</code>로 GitHub 자동 머지를 쓰고, rebase로 커밋 SHA를 유지해 test와 같은 이미지를 prod에 쓴다.</span></td><td>GHA 또는 에이전트</td></tr>
+    <tr><td>8</td><td>yolo의 <code>main</code> PR 생성·자동 머지 주체<br><span class="small"><b>GHA</b>: AI 승격 job에 이어 바로 실행, 로컬이 꺼져 있어도 됨, "반영은 파이프라인만" 원칙과 일치. 기본 토큰으로 만든 PR은 다른 워크플로를 실행하지 않으므로 GitHub App 토큰이 필요.<br><b>에이전트</b>: 스킬 흐름 안에서 PR 내용(분석 요약, 수정 이력)을 풍부하게 작성. 대신 test 배포와 AI 판단이 끝날 때까지 로컬 스킬이 켜져 있어야 함.<br>공통: <code>gh pr merge --auto --rebase</code>로 GitHub 자동 머지를 쓰고, GitHub rebase 머지는 새 SHA를 만들므로 main에서 새 SHA로 test를 다시 검증한 뒤 그 이미지를 prod에 쓴다(ADR 0010).</span></td><td>GitHub Actions (ADR 0010)</td></tr>
   </tbody>
 </table>
 

@@ -12,6 +12,17 @@
 
 - `yolo-deploy`: push SHA에 맞는 Actions 실행 추적, 보호 경로 검사, 최대 3회 수정 커밋·push 및 중단 후 상태 복원 도구 추가. 기록만을 위한 추가 배포 제거 (T14)
 
+## v1.14.0
+
+- `deploy.yml` (T8): `yolo-auto-merge: true`로 test의 모든 서비스가 해당 커밋으로 승격됐음을 확인한 뒤 GitHub App으로 main PR을 만든다. PR 검사 완료를 기다리고 `--match-head-commit`으로 검증한 head에 rebase 자동 머지를 요청한다. 일반 리뷰와 CODEOWNERS 규칙은 유지한다.
+- `promote-mode: branch`: yolo push 및 yolo PR이 머지된 main push는 auto, janto와 수동 재실행은 manual. GitHub rebase는 SHA를 바꾸므로 main에서 test를 다시 검증한 뒤 같은 이미지를 prod에 쓴다.
+- 스킬 호출부는 참조 버전에 맞춰 새 입력을 렌더한다. yolo 실행 기록은 push 전에 쓰고, 완료 기록을 위한 재push 대신 Actions artifact와 PR에 결과를 남긴다.
+- `target·services`는 `.deploy/plan.yaml`, 보호 값 `compliance·template_version`은 `.deploy/config.yaml`로 분리한다 (T13).
+
+## v1.13.1
+
+- GCP Monitoring 대시보드의 열 수를 API가 반환하는 JSON 문자열로 지정해, 적용 후에도 같은 변경이 반복되는 문제를 해결한다(T4).
+
 ## v1.13.0
 
 - GCP 구현체(T4): GKE · Artifact Registry · Cloud SQL · Secret Manager · Cloud Monitoring과 WIF/GCS bootstrap을 추가한다. 기존 AWS · onprem 기본 설정은 유지한다.

@@ -15,11 +15,11 @@
 | `CLUSTER_NAME` | onprem k3d 클러스터 이름 (context는 `k3d-<이름>`) | `onetouch` |
 | `REPOSITORIES_HCL` | 이미지 저장소 이름 목록, HCL 리스트 문자열 | `["demo-app-be", "demo-app-fe"]` |
 | `PUBLIC_SERVICE`, `PUBLIC_SERVICE_PORT` | onprem Quick Tunnel이 연결할 서비스와 포트 (`public: true`인 서비스) | `demo-app-fe`, `3000` |
-| `DEFAULT_TARGET` | `config.yaml`의 `target`. 레포 변수 `DEPLOY_TARGET`이 없을 때의 기본값 | `onprem` |
+| `DEFAULT_TARGET` | `plan.yaml`의 `target`. 레포 변수 `DEPLOY_TARGET`이 없을 때의 기본값 | `onprem` |
 | `CLUSTER_AWS` | EKS 클러스터 이름 (`infra/envs/aws` 변수 `name`) | `one-tatchi` |
 | `CLUSTER_ONPREM` | self-hosted runner의 kube context (`k3d-<이름>`) | `k3d-onetouch` |
 | `HOST_TEST`, `HOST_PROD` | aws만. 서비스 도메인. 없으면 빈 값(ALB 주소로 HTTP) | `yolo.onetatchi.soulee.dev` / `onetatchi.soulee.dev` |
-| `SERVICES_JSON` | `deploy.yml` 입력 `services`. `config.yaml`의 `services` 순서대로 `{"name","path","values","migration"?}` | 아래 |
+| `SERVICES_JSON` | `deploy.yml` 입력 `services`. `plan.yaml`의 `services` 순서대로 `{"name","path","values","migration"?}` | 아래 |
 | `NODE_DIRS`, `PYTHON_DIRS`, `IMAGE_DIRS` | `checks.yml` 입력. 런타임별 서비스 경로 JSON 배열 | `["be","fe"]`, `[]`, `["be","fe"]` |
 | `DB_INIT` | 테스트 전에 Postgres에 넣을 SQL. 없으면 빈 값 | `db/init.sql` |
 | `OWNERS` | CODEOWNERS에 넣을 사람(GitHub 로그인). AI 계정은 넣지 않는다 | `@silano08 @soulee-dev` |
@@ -89,9 +89,10 @@ platform 모듈을 `?ref=@@TEMPLATE_VERSION@@`로 참조하는 Terraform 루트.
 - `README.md`: 사람이 실행할 명령(aws는 SSO 로그인 → plan만, apply는 CI; onprem은 기기에서 apply).
 - `.terraform.lock.hcl`은 `terraform init -backend=false` 뒤 커밋한다.
 
-### `.deploy/config.yaml`
+### `.deploy/config.yaml`, `.deploy/plan.yaml`
 
-`template_version`(처음 한 번), `compliance`(`write_brief.py`만), `target` · `services`(`deploy-analyze`). 형식은 `deploy-analyze/references/report-format.md`. `config-guard`가 `compliance`와 `template_version` 형식을 검사한다.
+`config.yaml`: `template_version`(처음 한 번), `compliance`(`write_brief.py`만). 파이프라인이 읽고 CODEOWNERS 리뷰 대상이라 **스킬은 그 밖의 키를 넣지 않는다**(넣으면 janto PR마다 오너 리뷰가 붙는다). `config-guard`가 형식을 검사한다.
+`plan.yaml`: `target` · `services`(`deploy-analyze`가 쓴다). 형식은 `deploy-analyze/references/report-format.md`.
 
 ### `.deploy/smoke.json`
 
@@ -118,14 +119,15 @@ platform 모듈을 `?ref=@@TEMPLATE_VERSION@@`로 참조하는 Terraform 루트.
 
 platform 재사용 워크플로를 **호출만** 한다. 검사 단계를 끄는 입력은 없다.
 
-- `deploy.yml`: `pull_request` → checks, `push yolo/**` → checks → test, `push main` → checks → test → prod, `workflow_dispatch` → 대상 골라 재배포. yolo 브랜치에서는 `promote-mode: auto`(AI 판단대로 실행), 그 외 `manual`(사람이 Slack 버튼). **호출부 입력은 참조하는 템플릿 버전에 있는 것만 넘긴다.** 없는 입력을 넘기면 워크플로가 `startup_failure`로 시작하지 못한다(`promote-mode`는 v1.9.0부터). 각 입력이 생긴 버전은 platform `CHANGELOG.md`.
+- `deploy.yml`: `pull_request` → checks, `push yolo/**` → checks → test, `push main` → checks → test → prod, `workflow_dispatch` → 대상 골라 재배포. yolo 브랜치에서는 `promote-mode: auto`(AI 판단대로 실행), 그 외 `manual`(사람이 Slack 버튼). **호출부 입력은 참조하는 템플릿 버전에 있는 것만 넘긴다.** 없는 입력을 넘기면 워크플로가 `startup_failure`로 시작하지 못한다(`promote-mode`는 v1.9.0부터, `branch` 모드와 `yolo-auto-merge`는 v1.14.0부터). 각 입력이 생긴 버전은 platform `CHANGELOG.md`.
+- v1.14.0부터 test 호출에 `yolo-auto-merge: true`, test/prod에 `promote-mode: branch`를 넘긴다. yolo 승격 뒤 PR 검사 → rebase 자동 머지, main에서는 새 SHA로 test 재검증 → 같은 이미지로 prod 배포한다. janto main은 manual을 유지한다. `render.sh`는 이전 버전에서 이 입력을 조정한다.
 - `infra.yml`(aws): `infra/**` PR → plan 코멘트, main → apply.
 - `template-update.yml`: 새 태그 알림 → 버전 올리는 PR.
 - 호출부의 `with:` 값만 바꾼다. 새 job을 끼워 검사를 건너뛰게 만들지 않는다.
 
 ### `.github/CODEOWNERS`
 
-`.deploy/config.yaml`과 `CODEOWNERS` 자신을 사람 리뷰 대상으로 묶는다(T6). 이미 있으면 그대로 둔다. AI 계정을 오너로 넣지 않는다.
+`.deploy/config.yaml`과 `CODEOWNERS` 자신을 사람 리뷰 대상으로 묶는다(T6). 이미 있으면 그대로 둔다. AI 계정을 오너로 넣지 않는다. `.deploy/plan.yaml`을 보호 경로에 추가하지 않는다. 다만 레포 전체에 요구되는 일반 리뷰 규칙은 그대로 적용된다.
 
 ### `.deploy/log/`
 

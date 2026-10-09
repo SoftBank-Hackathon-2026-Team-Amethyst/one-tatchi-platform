@@ -39,6 +39,8 @@ python3 "<skill-dir>/scripts/repair_loop.py" report
 
 `watch`는 실행 생성 최대 2분, 선택된 실행 완료 최대 30분을 기다린다. 시간 초과로 원격 실행을 취소하지 않는다. 실행 ID·attempt가 바뀌거나 조건에 맞는 실행이 여러 개면 중단한다.
 
+v1.14.0의 T8 자동 PR job은 앱 수정 대상이 아니다. 성공하면 같은 head SHA의 PR 주소·상태를 보고한다. 원격 브랜치가 사라졌다면 해당 job 성공과 같은 SHA의 PR 머지를 확인한 경우에만 정상 완료로 처리하며, 삭제된 브랜치를 다시 push하지 않는다.
+
 | status | 다음 동작 |
 |---|---|
 | `ready` | 현재 SHA를 `watch` |

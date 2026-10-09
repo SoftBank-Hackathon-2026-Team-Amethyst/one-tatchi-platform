@@ -1,11 +1,11 @@
 ---
 name: yolo-deploy
-description: 웹앱을 예외 경로(yolo)로 테스트 환경까지 한 번에 올린다. 질문과 리뷰 없이 분석 → 배포 산출물 생성 → yolo 브랜치 push → 검사 · test 배포를 지켜보고, 검사가 실패하면 앱 코드를 고쳐 다시 push(최대 3회). 사용자가 명시적으로 "yolo", "/yolo-deploy", "리뷰 없이 바로 테스트"를 요청할 때만 쓴다. 정석 경로는 janto-deploy.
+description: 웹앱을 예외 경로(yolo)로 test 승격 후 main PR 자동 머지까지 연결한다. 질문과 리뷰 없이 분석 → 배포 산출물 생성 → yolo/기능 브랜치 push → 검사 · test 배포를 지켜보고, 검사가 실패하면 앱 코드를 고쳐 다시 push(최대 3회). 사용자가 명시적으로 "yolo", "/yolo-deploy", "리뷰 없이 바로 테스트"를 요청할 때만 쓴다. 정석 경로는 janto-deploy.
 ---
 
 # yolo-deploy
 
-대상 레포(현재 폴더)를 분석해 산출물을 만들고 **`yolo/<기능>` 브랜치에 push**한다. push가 곧 test 배포다. 이 스킬도 apply · 릴리스 · 머지를 직접 하지 않는다. 검사는 어떤 경우에도 생략할 수 없다.
+대상 레포(현재 폴더)를 분석해 산출물을 만들고 **`yolo/<기능>` 브랜치에 push**한다. push가 곧 test 배포다. v1.14.0부터 승격 뒤 PR 생성·자동 머지는 GitHub Actions가 맡는다. 이 스킬도 apply · 릴리스 · 머지를 직접 하지 않는다. 검사는 어떤 경우에도 생략할 수 없다.
 
 ## 전제
 
@@ -22,13 +22,13 @@ description: 웹앱을 예외 경로(yolo)로 테스트 환경까지 한 번에 
    - 분석기는 브리프가 비어 있는 항목을 코드와 문서로 추정하고 모두 보고서의 **가정** 절에 적는다.
 2. **리뷰 지점 1 자동 승인.** 추천을 보여 주지 않고 진행한다. 보여 줬을 내용(대상 · 월 비용 · 가정)을 실행 기록에 적는다. 예산 범위를 넘는 추천이면 비용이 가장 낮은 구성으로 바꾸고 그 사실을 적는다.
 3. **산출물** → `deploy-provision`. 로컬 검증(이미지 빌드, lint · test, `terraform fmt` · `validate`, `check-artifacts.sh`)이 실패하면 고친다(수정 범위는 아래 "고칠 수 있는 것"). 템플릿 본문은 고칠 수 없다.
-4. **커밋 · push.** 자동 승인한 추천·비용·가정과 실행자, 규제 설정을 기존 실행 기록에 포함한다. `[yolo] <무엇을>` 메시지로 커밋하고 `git push -u origin yolo/<기능>`. push가 `checks` → `test` 배포를 일으킨다.
+4. **기록 · 커밋 · push.** push 전에 `.deploy/log/<YYYYMMDD-HHMMSS>-yolo.md`에 실행자, 시각, 대상, compliance, 가정, 자동 승인한 추천과 경고를 적는다. 이 push의 SHA·검사·승격 결과는 Actions artifact와 자동 PR 본문이 기록한다. `[yolo] <무엇을>` 메시지로 커밋하고 `git push -u origin yolo/<기능>`. push가 `checks` → `test` 배포를 일으킨다.
 5. **수정 루프 초기화.** [references/repair-loop.md](references/repair-loop.md)를 읽고 `scripts/repair_loop.py init`에 분석으로 확인한 앱 소스, 서비스 Dockerfile, 배포 값 파일, 보호할 커스텀 테스트 경로, 로컬 검사 명령을 전달한다. 최초 push 뒤 깨끗한 작업 트리에서 범위와 SHA를 고정한다. 이후 수정 커밋·push는 이 도구의 `retry`로만 한다.
 6. **지켜보기.** `python3 "<skill-dir>/scripts/repair_loop.py" watch`. 저장소·워크플로·push 이벤트·브랜치·SHA가 맞는 실행만 관찰한다. JSON의 `status`를 확인한다(종료 코드 0만으로 배포 성공이라고 판단하지 않는다).
    - `checks_failed`: 아래 수정 루프. 최대 3회.
    - `complete`: 검사와 test 배포 job 성공. 실행 요약에서 test 주소와 AI 판단·실제 승격 여부를 별도로 확인한다.
-   - `stopped` 또는 명령 오류: 실패 원인과 실행 링크를 보고하고 멈춘다. 배포 실패, 취소, 권한·조회 오류는 앱 수정으로 해결하지 않는다.
-7. **마무리 보고.** `report`로 검사·배포 결과, 수정 회차·파일·근거, 실행 링크, 남은 오류를 보고한다. 최종 상태와 원본 로그는 Git 관리 디렉터리에 남고 수정 이력은 수정 커밋에 포함된다. **기록만을 위해 추가 commit/push하지 않는다.** S3 리포트·`yolo-debt`는 T10, main PR 자동 생성·머지는 T8이 맡는다. 그때까지 main 반영은 사람이 PR을 열어 janto 경로로 진행한다.
+   - `stopped` 또는 명령 오류: 실패 원인과 실행 링크를 보고하고 멈춘다. 배포 실패, 자동 PR(`yolo-pr`) 실패, 취소, 권한·조회 오류는 앱 수정으로 해결하지 않는다.
+7. **마무리 보고.** `report`로 검사·배포 결과, 수정 회차·파일·근거, 실행 링크, 자동 PR 주소·머지 상태, 남은 오류를 보고한다. 최종 상태와 원본 로그는 Git 관리 디렉터리에 남고 수정 이력은 수정 커밋에 포함된다. **기록만을 위해 추가 commit/push하지 않는다.** S3 리포트·`yolo-debt`는 T10, main PR 자동 생성·머지는 T8 파이프라인이 맡는다. 일반 리뷰·CODEOWNERS 규칙에 걸리면 PR은 리뷰를 기다린다. v1.14.0 미만은 test까지만 끝나며 이 한계를 알린다.
 
 ## 수정 루프 (검사 실패 시)
 
@@ -48,5 +48,5 @@ FR-11 / T14. 도구가 수집한 `log_path`의 실패 로그와 앱 코드를 �
 
 - 사용자에게 질문. 브리프 · 리뷰 지점 · 비용 초과 · 경고 모두 기록으로 대신한다.
 - `terraform apply`, `helm`, `kubectl`, `docker push`, 클라우드 CLI 쓰기.
-- main 직접 push, main PR 자동 머지(T8 전까지), prod 승인 · 승격 조작.
+- main 직접 push, main PR 직접 머지(자동 머지는 T8 파이프라인), prod 승인 · 승격 조작.
 - `compliance`를 `none`으로 바꾸는 일. yolo 경로에서는 `config-guard`가 막는다.

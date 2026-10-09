@@ -136,8 +136,10 @@ class Session:
         except ValueError as exc:
             raise Stop("GitHub 응답이 올바른 JSON이 아님") from exc
 
-    def remote_sha(self):
+    def remote_sha(self, missing_ok=False):
         lines = git(self.root, "ls-remote", "--heads", "origin", f"refs/heads/{self.branch}").splitlines()
+        if not lines and missing_ok:
+            return None
         if len(lines) != 1:
             raise Stop("원격 yolo 브랜치를 하나로 확인할 수 없음")
         return lines[0].split()[0]
@@ -306,7 +308,8 @@ class Session:
     def watch(self, discovery_seconds=120, watch_seconds=1800, poll_seconds=5):
         if self.state["status"] in {"committing", "pending_push"}:
             raise Stop("미완료 commit/push 상태를 먼저 확인할 것")
-        if self.head() != self.state["sha"] or not self.clean() or self.remote_sha() != self.state["sha"]:
+        if (self.head() != self.state["sha"] or not self.clean()
+                or self.remote_sha(missing_ok=True) not in {None, self.state["sha"]}):
             raise Stop("로컬·원격 커밋 또는 작업 트리가 예상 상태와 다름")
         deadline = time.monotonic() + discovery_seconds
         while True:
@@ -333,9 +336,22 @@ class Session:
         self.gh("run", "watch", str(run["databaseId"]), "--repo", self.state["repo"],
                 "--exit-status", "--compact", timeout=watch_seconds, allow_failure=True)
         data = self.view(run)
-        if self.remote_sha() != self.state["sha"]:
-            raise Stop("관찰 중 원격 브랜치가 변경됨")
         status, reason = self.classify(data)
+        remote = self.remote_sha(missing_ok=True)
+        if remote not in {None, self.state["sha"]}:
+            raise Stop("관찰 중 원격 브랜치가 변경됨")
+        yolo_pr = any(j["name"].split(" / ")[-1] == "yolo-pr" and j["conclusion"] == "success"
+                      for j in data["jobs"])
+        if status == "complete" and yolo_pr:
+            pulls = self.gh_json("pr", "list", "--repo", self.state["repo"], "--head", self.branch,
+                                 "--state", "all", "--limit", "100", "--json", "url,state,headRefOid")
+            matches = [p for p in pulls if p["headRefOid"] == self.state["sha"]]
+            if len(matches) != 1:
+                raise Stop("T8 자동 PR을 관찰한 SHA와 연결할 수 없음")
+            self.state["pull_request"] = matches[0]
+        if remote is None and not (status == "complete" and yolo_pr
+                                   and self.state["pull_request"]["state"] == "MERGED"):
+            raise Stop("원격 브랜치가 삭제됐지만 해당 SHA의 T8 머지를 확인할 수 없음")
         if data["conclusion"] != "success":
             logs = self.gh("run", "view", str(run["databaseId"]), "--repo", self.state["repo"],
                            "--attempt", str(run["attempt"]), "--log-failed").stdout
@@ -421,6 +437,7 @@ class Session:
                 "remaining": MAX_REPAIRS - s["repairs"], "history": s["history"],
                 "run_url": run.get("url"), "run_sha": run.get("headSha"),
                 "run_attempt": run.get("attempt"), "log_path": run.get("log_path"),
+                "pull_request": s.get("pull_request"),
                 "jobs": [{"name": j["name"], "conclusion": j["conclusion"]} for j in run.get("jobs", [])],
                 "promotion": "not_verified", "state_path": str(self.path)}
 
