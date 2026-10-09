@@ -263,7 +263,7 @@ Claude Code는 `/todo-task`, Codex는 `$todo-task`로 이 순서를 따르는 �
 **만들 것** 맥북(M2 · 16GB)에 k3d(k3s) · Cloudflare Tunnel을 띄우고, 온프레미스 Terraform 모듈과 demo-app의 `infra/envs/onprem` 루트로 test 환경을 구성해 같은 App Chart로 앱을 배포한다. runner를 통한 자동 배포는 T5, 온프레미스 관측은 T17에서 다룬다.
 
 - **우선순위** P0 · **영역** 레포 · 인프라 · **담당** 원가연
-- **선행** `T20` · **후속** `T17`, `T19` · **설계 문서** 6.4
+- **선행** `T20` · **후속** `T17`, `T19`, `T27` · **설계 문서** 6.4
 
 **목표** 같은 App Chart로 로컬 맥북의 게시판이 Cloudflare Quick Tunnel HTTPS 주소에서 동작한다.
 
@@ -275,6 +275,28 @@ Claude Code는 `/todo-task`, Codex는 `$todo-task`로 이 순서를 따르는 �
 
 **완료 기준** 맥북 test 환경의 게시판 화면과 API가 Cloudflare Tunnel HTTPS 주소에서 동작하고 DB에 연결된다.
 
+
+### [T27] 온프레미스 보완 (재부팅 · 이미지 · 비밀값)
+
+**어디에 필요** T3로 맥북 데모는 뜨지만, 재부팅하면 사람이 손대야 하고 일부 단계가 실패를 숨긴다. 데모 당일 맥북 하나로 test · prod를 안정적으로 보여 주려면 필요하다.
+
+**만들 것** 맥북 자동 시작 설정(Docker Desktop · runner · k3d), 재부팅 복구 절차, onprem 배포 실패 처리, 멀티 아키텍처 이미지, 로컬 state의 비밀값 정리.
+
+- **우선순위** P1 · **영역** 레포 · 인프라 · **담당** 원가연
+- **선행** `T3` · **후속** `T19` · **설계 문서** 6.4
+
+**목표** 맥북을 재부팅해도 사람 조작 없이 test · prod가 다시 뜨고, onprem 배포가 실패를 숨기지 않는다.
+
+**할 일**
+- [ ] 잠자기 방지(`caffeinate` 또는 `pmset`), 전원 연결, Docker Desktop 로그인 시 자동 시작
+- [ ] 재부팅 후 자동 복구 확인: k3d 노드 · self-hosted runner(launchd) · cloudflared가 다시 뜨고, 바뀐 터널 주소를 확인하는 방법을 README에
+- [ ] onprem 배포에서 터널 주소를 못 찾으면 실패로 끝낸다 (지금은 주소 `/`로 성공 처리)
+- [ ] 검사한 이미지를 그대로 배포: `linux/amd64` + `linux/arm64` 멀티 아키텍처로 한 번 빌드하고 checks · deploy가 같은 이미지를 쓴다
+- [ ] 비밀값이 로컬 Terraform state에 평문으로 남지 않게 한다 (DB 비밀번호 · k3d 관리자 인증서, NFR-2)
+- [ ] database: 할 일에 적힌 Helm Postgres로 바꿀지 결정 (지금 StatefulSet)
+- [ ] (시간이 남으면) 리눅스 머신에서 같은 절차 확인
+
+**완료 기준** 맥북 재부팅 후 손대지 않고 test · prod 게시판이 터널 주소에서 동작하고, 터널이 없을 때 배포가 실패한다.
 ### [T24] AWS 구현체
 
 **어디에 필요** AWS에 실제로 VPC · EKS · RDS 등을 만드는 Terraform 코드. 첫 배포 대상(Happy Path).
