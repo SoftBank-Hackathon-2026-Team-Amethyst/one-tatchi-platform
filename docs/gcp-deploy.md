@@ -1,6 +1,6 @@
 # GCP 배포
 
-대상 프로젝트는 `one-tatchi-gejkm`, 리전은 서울 `asia-northeast3`이다. 구현체는 v1.13.0부터 제공한다. AWS 계정·state·도메인과 onprem 설정은 유지한다.
+대상 프로젝트는 `one-tatchi-gejkm`, 리전은 서울 `asia-northeast3`이다. 구현체는 v1.13.0부터 제공하며 반복 plan 변경을 수정한 v1.13.1을 사용한다. AWS 계정·state·도메인과 onprem 설정은 유지한다. [실제 검증 결과](t4-validation.md)를 참고한다.
 
 ## 인증과 state
 
@@ -52,7 +52,7 @@ curl http://<active-IP>/health
 curl http://<active-IP>/api/info
 ```
 
-`/health`의 database가 connected이고 `/api/info`의 dbConnected가 true여야 DB 연결 검증이다. 메모리 모드의 HTTP 200만으로 완료 처리하지 않는다. 두 번째 버전이 Paused인 상태에서 preview와 active를 확인하고 rollout workflow_dispatch target=gcp로 promote한 뒤 stable 태그를 확인한다. GCP preview는 별도 IP이며 AWS의 `:8080` 주소 규칙을 사용하지 않는다.
+`/health`의 database가 connected이고 `/api/info`의 dbConnected가 true여야 DB 연결 검증이다. 메모리 모드의 HTTP 200만으로 완료 처리하지 않는다. 두 번째 버전이 Paused인 상태에서 preview와 active를 확인하고 main의 rollout workflow_dispatch target=gcp로 promote한 뒤 stable 태그를 확인한다. rollout은 deployment environment를 지정하지 않아 작업 브랜치의 CI 인증은 허용되지 않는다. GCP preview는 별도 IP이며 AWS의 `:8080` 주소 규칙을 사용하지 않는다.
 
 `terraform output dashboard_url`의 Cloud Monitoring 대시보드와 Logs Explorer에서 해당 GKE 지표·로그를 확인한다. 기존 중앙 Grafana는 변경하지 않는다.
 
