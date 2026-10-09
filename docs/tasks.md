@@ -464,9 +464,9 @@ Claude Code는 `/todo-task`, Codex는 `$todo-task`로 이 순서를 따르는 �
 - [x] 도메인 구매, DNS 관리 위치 결정(Route53 또는 외부) → 구매 없이 `soulee.dev`(Cloudflare)의 하위 도메인 `onetatchi.soulee.dev`를 Route53 존으로 위임 (`bootstrap/dns.tf`, `modules/dns/aws`)
 - [x] 와일드카드 인증서(ACM `*.<도메인>`) → `onetatchi.soulee.dev` + `*.onetatchi.soulee.dev`, 서울 리전, DNS 검증 완료
 - [x] App Chart(platform) Ingress에 `host` 값 추가 (`ingress.host`, 비우면 기존 HTTP 동작 그대로)
-- [ ] ALB HTTPS 리스너와 HTTP → HTTPS 리다이렉트 (진행 중: 차트 annotation 반영, 실제 ALB 확인은 클러스터(T24) · T5 이후)
-- [ ] (선택) external-dns 애드온으로 DNS 레코드 자동 생성 (진행 중: `cluster_addons/aws`에 추가, `infra/envs/aws`에서 `dns_zone_id` 연결은 T24와 조율)
-- [ ] `deploy.yml`에 환경별 `host` 입력(`--set ingress.host`) 추가 — T5(원가연)와 조율
+- [x] ALB HTTPS 리스너와 HTTP → HTTPS 리다이렉트 (진행 중: 차트 annotation 반영, 실제 ALB 확인은 클러스터(T24) · T5 이후)
+- [x] (선택) external-dns 애드온으로 DNS 레코드 자동 생성 (진행 중: `cluster_addons/aws`에 추가, `infra/envs/aws`에서 `dns_zone_id` 연결은 T24와 조율)
+- [x] `deploy.yml`에 환경별 `host` 입력(`--set ingress.host`) 추가 — T5(원가연)와 조율
 
 **완료 기준** 두 주소가 HTTPS로 열리고 각각 test · prod로 연결된다.
 
