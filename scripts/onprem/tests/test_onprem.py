@@ -139,11 +139,17 @@ class LifecycleTests(unittest.TestCase):
 
     def test_stop_only_unloads_owned_services(self):
         with tempfile.TemporaryDirectory() as tmp, patch.object(ctl, "run") as run:
-            run.return_value.returncode = 0
+            stopped = set()
+            def launchctl(args, **kwargs):
+                if args[1] == "bootout":
+                    stopped.add(args[2])
+                return subprocess.CompletedProcess(args, int(args[1] == "print" and args[2] in stopped))
+            run.side_effect = launchctl
             config = self.config(Path(tmp))
             ctl.stop_services(config)
             calls = [c.args[0] for c in run.call_args_list]
             self.assertEqual(sum(c[1] == "bootout" for c in calls), 3)
+            self.assertEqual(sum(c[1] == "print" for c in calls), 6)
             self.assertTrue(all(c[0] == "launchctl" for c in calls))
 
     def test_existing_database_password_is_preserved(self):

@@ -190,6 +190,10 @@ def stop_services(config, uninstall=False):
         domain = f"gui/{os.getuid()}/{label}"
         if not run(["launchctl", "print", domain], check=False).returncode:
             run(["launchctl", "bootout", domain])
+            # bootout may return while runsvc.sh is still stopping its listener.
+            # A following start must not mistake that terminating job for a loaded service.
+            wait_for(lambda: run(["launchctl", "print", domain], check=False).returncode != 0,
+                     timeout=30, interval=0.2)
         if uninstall:
             (Path.home() / f"Library/LaunchAgents/{label}.plist").unlink(missing_ok=True)
     # Never stop/delete Docker, the cluster, DB, or its state. These can be used by other work.
