@@ -10,6 +10,10 @@
 
 ## Unreleased
 
+## v1.9.0
+
+- `release.yml`: Slack 봇 이미지 `ghcr.io/<org>/slack-bot:<버전>`(amd64 · arm64)을 함께 올린다. 대상 레포 인프라가 같은 버전으로 띄운다 (T26)
+- `slack-bot/manifest.yaml`: 앱 이름 `배포하는 우사기`(봇 `deploy-usagi`), `/rollout` 설명을 따옴표로 감싸 매니페스트 파싱 오류 수정 (T26)
 - `deploy.yml`: Paused인 서비스들을 묶어 AI 승격 판단(`promote-judge`)을 거친다. 입력 `promote-mode`(기본 `manual` → 실행은 지금처럼 버튼으로 사람이), `promote-window-seconds`(기본 30, 서비스 동시 관찰), 시크릿 `ANTHROPIC_API_KEY`(선택). Slack 알림에 AI 판단 · 근거, auto 실행은 감사 로그(`requested-by: ai-judge`), 판단 근거는 artifact `promote-judgment-<환경>`. auto로 promote한 뒤에는 버튼이 `undo`만 남는다 (T7)
 - `promote-judge`: 입력 `release` → `releases`(공백 구분). 서비스마다 판단하고 하나라도 abort면 전체 abort (ADR 0005). `executed`는 명령이 성공했을 때만 남긴다 (T7)
 
