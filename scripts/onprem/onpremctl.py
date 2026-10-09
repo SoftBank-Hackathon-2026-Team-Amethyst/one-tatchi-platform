@@ -126,6 +126,7 @@ def install(config, start=True):
     runner = Path(config["runner_dir"])
     if not (runner / ".runner").exists() or not any((runner / p).exists() for p in ("runsvc.sh", "bin/runsvc.sh")):
         raise RuntimeError("register the official runner first; .runner and bin/runsvc.sh are required")
+    validate_runner_paths(runner)
     if (runner / ".service").exists():
         existing = (runner / ".service").read_text().strip()
         if existing and existing != labels(config)["runner"]:
@@ -163,6 +164,17 @@ def install(config, start=True):
     # Our restore LaunchAgent opens Docker at login; no unsupported Docker settings-file edits.
     if start:
         start_services(config)
+
+
+def validate_runner_paths(runner):
+    metadata = json.loads((runner / ".runner").read_text(encoding="utf-8-sig"))
+    work = Path(metadata.get("workFolder", "_work"))
+    if not work.is_absolute():
+        work = runner / work
+    # Runner's generated `bash ... {0}` command can split a script path at whitespace.
+    # Check before copying files or changing any service; our launchd paths may contain spaces.
+    if any(char.isspace() for path in (runner.resolve(), work.resolve()) for char in str(path)):
+        raise RuntimeError("runner and work directory paths must not contain whitespace; use a fixed path such as ~/.local/share/one-tatchi/runners/secondary")
 
 
 def start_services(config):

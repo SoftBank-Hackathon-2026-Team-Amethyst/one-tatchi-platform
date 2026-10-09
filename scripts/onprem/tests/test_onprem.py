@@ -117,6 +117,18 @@ class LifecycleTests(unittest.TestCase):
             with self.assertRaisesRegex(RuntimeError, "state is missing"):
                 ctl.check_ownership(self.config(Path(tmp)), True)
 
+    def test_runner_and_absolute_work_paths_must_not_contain_spaces(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            for dirname, work in (("runner space", "_work"), ("runner", str(root / "work space"))):
+                runner = root / dirname
+                runner.mkdir(exist_ok=True)
+                (runner / ".runner").write_text(json.dumps({"workFolder": work}), encoding="utf-8-sig")
+                with self.subTest(dirname=dirname), self.assertRaisesRegex(RuntimeError, "whitespace"):
+                    ctl.validate_runner_paths(runner)
+            (root / "runner/.runner").write_text('{"workFolder":"_work"}', encoding="utf-8-sig")
+            ctl.validate_runner_paths(root / "runner")
+
     def test_state_must_match_cluster(self):
         with tempfile.TemporaryDirectory() as tmp:
             config = self.config(Path(tmp))

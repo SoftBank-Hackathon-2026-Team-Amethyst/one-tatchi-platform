@@ -6,7 +6,7 @@ T17의 브랜치와 `t17-local`은 보존한다. 아직 두 기기의 T27 완료
 ## 자동 검사
 
 - `scripts/tests/run.sh`: Linux 컨테이너에서 기존 T7·T13·T14·지표·버전 갱신 검사와 신규 onprem/OCI 검사 통과.
-- 신규 onprem 26개, OCI 11개, yolo 승격 11개 Python 테스트 통과. 기기 라우팅은 기본 `onprem`과 추가 `onprem-secondary`를 사용한다.
+- 신규 onprem 27개, OCI 11개, yolo 승격 11개 Python 테스트 통과. 기기 라우팅은 기본 `onprem`과 추가 `onprem-secondary`를 사용한다.
 - macOS 기본 Bash 3.2에서도 템플릿 렌더/산출물 검사를 실행했다. 값에 따옴표가 추가되던 기존 문자열 치환을 수정했고 v1/v2 계약 분기 모두 통과했다.
 - Terraform fmt, 변경 모듈 init/validate, Helm의 digest 렌더/기존 tag 호환, Trivy IaC HIGH/CRITICAL 검사 통과.
 - actionlint 1.7.12: 새 workflow 입력/표현식 오류 없음. 기존 `actions/create-github-app-token@v3`의 client-id에 관한 내장 메타데이터 오탐은 공식 v3 action.yml로 대조했다. 공식 정의에는 client-id가 존재하고 app-id는 필수가 아니다.
@@ -37,6 +37,11 @@ BE archive를 격리된 임시 레지스트리로 Skopeo `--all --preserve-diges
 두 아키텍처가 함께 발행됐고 원격 index digest가 위 BE digest와 일치했다. hosted Actions 연동 검증은 별도로 남아 있다.
 
 ## 남은 실기 검증
+
+실제 hosted [검증 실행](https://github.com/SoftBank-Hackathon-2026-Team-Amethyst/demo-app/actions/runs/37924044466)에서
+두 아키텍처 검사 → 같은 run artifact 다운로드 → GHCR digest 보존 발행은 통과했다.
+첫 배포는 앱 적용 전 Bash 실행 경로의 공백 때문에 실패했다. secondary runner만 공백 없는 고정 경로로 이동하고 같은 등록 ID와 검사 이미지를 유지해 실패한 배포 job만 재실행한다.
+installer에도 실제 runner/work 경로 검사와 BOM이 있는 공식 설정 파일 테스트를 추가했다.
 
 - hosted Actions의 같은-run artifact 발행·digest 배포와 test→prod 실제 승격 확인.
 - 현재 맥북의 test/prod 검증 데이터 저장, 외부 5초 간격 probe와 잠금/화면 꺼짐 30분, runner 진단 및 재시작 없음 확인.
