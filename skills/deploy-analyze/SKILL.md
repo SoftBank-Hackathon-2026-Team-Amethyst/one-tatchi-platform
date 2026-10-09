@@ -58,7 +58,7 @@ description: 웹앱 배포 전에 사용자 수, 예산, 데이터 취급, 배�
 다섯 결과를 읽고 [references/report-format.md](references/report-format.md)대로 두 파일을 쓴다.
 
 - `.deploy/report.md`: 사람이 리뷰 지점 1에서 읽는 분석 보고서. 결론(추천)이 맨 위.
-- `.deploy/config.yaml`: `target`, `services` 키를 추가 · 갱신한다. **`compliance`는 건드리지 않고**(1단계 스크립트만 쓴다), `template_version`도 건드리지 않는다(`deploy-provision`과 `template-update`가 쓴다). 다른 키와 주석은 보존한다.
+- `.deploy/plan.yaml`: `target`, `services`. 스킬 사이의 인계값이라 통째로 다시 쓴다. **`.deploy/config.yaml`은 건드리지 않는다**(`compliance`는 1단계 스크립트가, `template_version`은 `deploy-provision` · `template-update`가 쓴다. CODEOWNERS 리뷰 대상).
 
 ### 배포 대상 추천 규칙
 
@@ -67,7 +67,7 @@ description: 웹앱 배포 전에 사용자 수, 예산, 데이터 취급, 배�
 1. **규제가 먼저다.** 브리프의 민감 데이터 답변이 `yes`이고 서비스 분석이 데이터 국내 · 사내 보관을 요구하면 `onprem`. 규제가 있어도 보관 위치 요구가 없으면 클라우드도 가능하다(운영 승인은 `compliance`가 따로 강제한다).
 2. **선호가 있으면 따른다.** `preferred_target`이 `aws` · `gcp` · `onprem`이면 그 값. 규제 규칙과 충돌하면 보고서에 충돌을 적고 규제를 따른다.
 3. **`auto`면** 코드에 남은 흔적(클라우드 SDK · 설정), 예산 분석의 비용 비교 순으로 정한다. 근거가 없으면 `aws`.
-4. **`gcp` 구현체(T4)가 아직 없다.** `gcp`를 추천하게 되면 보고서에 "GCP 구현체 전까지는 aws로 배포" 대안을 함께 적고, `config.yaml`의 `target`은 지금 배포 가능한 값(`aws` 또는 `onprem`)으로 둔다.
+4. **`gcp` 구현체(T4)가 아직 없다.** `gcp`를 추천하게 되면 보고서에 "GCP 구현체 전까지는 aws로 배포" 대안을 함께 적고, `plan.yaml`의 `target`은 지금 배포 가능한 값(`aws` 또는 `onprem`)으로 둔다.
 5. **온프레미스는 클러스터가 있어야 한다.** 브리프 · 레포에 self-hosted runner와 kube context 정보가 없으면 `onprem`을 추천하지 않고 보고서에 조건을 적는다.
 
 추천에는 이유 한 줄과, 검토했다가 버린 대안마다 한 줄을 붙인다.
@@ -78,7 +78,7 @@ description: 웹앱 배포 전에 사용자 수, 예산, 데이터 취급, 배�
 
 ## 끝난 상태
 
-- `.deploy/brief.md`, `.deploy/config.yaml`(`compliance`, `target`, `services`)
+- `.deploy/brief.md`, `.deploy/config.yaml`(`compliance`), `.deploy/plan.yaml`(`target`, `services`)
 - `.deploy/analysis/` 아래 결과 5개, `.deploy/report.md`
 - 추정한 값이 모두 보고서 **가정** 절에 있다
 

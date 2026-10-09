@@ -18,9 +18,9 @@ description: 웹앱을 정석 경로(ちゃんと)로 배포 준비한다. 브�
 사용자가 쓰는 언어로 대화하고 문서를 쓴다. 시작 시각을 기록한다.
 
 0. **준비.** `git fetch origin && git switch -c deploy/<기능> origin/main`. `<기능>`은 짧은 영문 kebab-case(예: `deploy/first-deployment`, `deploy/add-worker`). `yolo/`로 시작하는 이름은 쓰지 않는다(yolo 경로가 된다).
-1. **분석** → `deploy-analyze` (janto 모드). 브리프 질문 5개를 묻고 분석기 5개를 돌려 `.deploy/brief.md`, `.deploy/analysis/*.md`, `.deploy/report.md`, `.deploy/config.yaml`을 만든다.
+1. **분석** → `deploy-analyze` (janto 모드). 브리프 질문 5개를 묻고 분석기 5개를 돌려 `.deploy/brief.md`, `.deploy/analysis/*.md`, `.deploy/report.md`, `.deploy/plan.yaml`(그리고 `config.yaml`의 `compliance`)을 만든다.
 2. **리뷰 지점 1: 추천 인프라.** `.deploy/report.md`의 추천(배포 대상, 구성, 예상 월 비용, 필요한 코드 수정, 가정)을 요약해 보여 주고 `AskUserQuestion`으로 승인 · 수정 · 중단을 받는다.
-   - 수정: 바뀐 전제로 `.deploy/report.md`와 `.deploy/config.yaml`(`target`, `services`)을 고치고 같은 지점을 다시 보여 준다. `compliance`는 여기서 고치지 않는다(브리프 답변으로만 정해진다).
+   - 수정: 바뀐 전제로 `.deploy/report.md`와 `.deploy/plan.yaml`(`target`, `services`)을 고치고 같은 지점을 다시 보여 준다. `compliance`는 여기서 고치지 않는다(브리프 답변으로만 정해진다).
    - 중단: 브랜치를 남기고 멈춘다. 만든 파일 목록을 알린다.
 3. **산출물** → `deploy-provision`. Dockerfile, 값 파일, `infra/envs/<대상>`, `.deploy/smoke.json`, 워크플로 호출부, CODEOWNERS를 만들고 로컬 검증(이미지 빌드, lint · test, `terraform fmt` · `validate`, `check-artifacts.sh`)을 통과시킨다. 실패하면 산출물이나 앱 코드를 고친다. 템플릿 본문은 고칠 수 없다.
 4. **커밋 · push · PR.**

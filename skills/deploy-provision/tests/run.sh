@@ -48,6 +48,8 @@ mkdir -p "$app/db"; echo "SELECT 1;" > "$app/db/init.sql"
 cat > "$app/.deploy/config.yaml" <<'EOF'
 template_version: v1.9.0
 compliance: regulated
+EOF
+cat > "$app/.deploy/plan.yaml" <<'EOF'
 target: onprem
 services:
   - name: demo-app-be
@@ -75,6 +77,13 @@ grep -q 'promote-mode' "$tmp/check3.log"
 sed -i.bak 's/template_version: v1.8.0/template_version: v1.9.0/' "$app/.deploy/config.yaml"
 sed -i.bak -E 's/(@|template-ref: |\?ref=)v1\.8\.0/\1v1.9.0/g; s/chart-version: 1\.8\.0/chart-version: 1.9.0/' "$app"/.github/workflows/*.yml "$app"/infra/envs/*/*.tf
 find "$app" -name '*.bak' -delete
+bash "$check" "$app" >/dev/null || { echo "되돌린 뒤 통과해야 한다" >&2; exit 1; }
+
+echo "== config.yaml에 인계값이 들어가면 실패"
+echo "target: onprem" >> "$app/.deploy/config.yaml"
+if bash "$check" "$app" >"$tmp/check4.log" 2>&1; then echo "config.yaml의 target을 놓쳤다" >&2; exit 1; fi
+grep -q 'plan.yaml' "$tmp/check4.log"
+sed -i.bak '/^target: onprem$/d' "$app/.deploy/config.yaml"; rm -f "$app/.deploy/config.yaml.bak"
 bash "$check" "$app" >/dev/null || { echo "되돌린 뒤 통과해야 한다" >&2; exit 1; }
 
 echo "== 자리표시자가 남으면 실패"

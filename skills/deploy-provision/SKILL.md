@@ -1,15 +1,15 @@
 ---
 name: deploy-provision
-description: 분석 결과(.deploy/config.yaml, .deploy/report.md)로 대상 레포에 배포 산출물을 만든다. Dockerfile, App Chart 값 파일, infra/envs/<대상> Terraform 루트(원격 모듈 태그 참조), .deploy/smoke.json, 재사용 워크플로 호출부, CODEOWNERS. 아무것도 apply하지 않는다. janto-deploy / yolo-deploy의 산출물 단계이거나, 설정이 바뀐 뒤 산출물을 다시 맞출 때 쓴다.
+description: 분석 결과(.deploy/plan.yaml, .deploy/report.md)로 대상 레포에 배포 산출물을 만든다. Dockerfile, App Chart 값 파일, infra/envs/<대상> Terraform 루트(원격 모듈 태그 참조), .deploy/smoke.json, 재사용 워크플로 호출부, CODEOWNERS. 아무것도 apply하지 않는다. janto-deploy / yolo-deploy의 산출물 단계이거나, 설정이 바뀐 뒤 산출물을 다시 맞출 때 쓴다.
 ---
 
 # deploy-provision
 
-`.deploy/config.yaml`의 `target` · `services`로 배포 산출물을 만들어 작업 트리에 둔다. **apply · push · PR은 하지 않는다**(호출한 스킬이 한다). 템플릿 본문은 platform 레포에 있고, 여기서는 변수 값과 호출부만 만든다.
+`.deploy/plan.yaml`의 `target` · `services`로 배포 산출물을 만들어 작업 트리에 둔다. **apply · push · PR은 하지 않는다**(호출한 스킬이 한다). 템플릿 본문은 platform 레포에 있고, 여기서는 변수 값과 호출부만 만든다.
 
 ## 입력
 
-- `.deploy/config.yaml`(`template_version`, `compliance`, `target`, `services`)과 `.deploy/report.md`. 없으면 `deploy-analyze`를 먼저 하라고 알리고 멈춘다.
+- `.deploy/plan.yaml`(`target`, `services`), `.deploy/config.yaml`(`template_version`, `compliance`), `.deploy/report.md`. `plan.yaml` · `report.md`가 없으면 `deploy-analyze`를 먼저 하라고 알리고 멈춘다.
 - `.deploy/analysis/codebase.md`(필요한 코드 수정, 검사 입력), `.deploy/analysis/service.md`(smoke 요청 후보).
 - 이 스킬의 `templates/`(산출물 원형)과 [references/artifacts.md](references/artifacts.md)(파일별 규칙과 자리표시자 표).
 - 모드(janto · yolo)는 로컬 검증 실패 때 사람에게 물을지(janto) 바로 고칠지(yolo)만 가른다.
@@ -40,8 +40,9 @@ description: 분석 결과(.deploy/config.yaml, .deploy/report.md)로 대상 레
    | `infra/envs/aws/*` | `templates/infra/envs/aws/*.tmpl` | `target: aws` |
    | `infra/envs/onprem/*` | `templates/infra/envs/onprem/*.tmpl` | `target: onprem` |
    | `.deploy/smoke.json` | `templates/.deploy/smoke.json.tmpl` | 항상. 서비스 분석의 smoke 후보로 채운다 |
-   | `.deploy/config.yaml` | 직접 편집 | `template_version`만 추가. `compliance` · `target` · `services`는 건드리지 않는다 |
-4. **값 파일 다듬기.** 렌더한 `deploy/values-<서비스>.yaml`에 서비스별 값(`env`, `envFromSecrets`, `migration`, `ingress.paths`, `writablePaths`, `resources`)을 `config.yaml`의 `services`와 코드베이스 분석대로 채운다. App Chart가 받는 키만 쓴다(`charts/app/values.yaml`이 기준). 비밀값은 쓰지 않는다.
+   | `.deploy/config.yaml` | 직접 편집 | 없을 때 `template_version` · 주석을 추가. 있으면 건드리지 않는다(CODEOWNERS 리뷰 대상). `compliance`는 `write_brief.py`만 쓴다 |
+   | `.deploy/plan.yaml` | 읽기만 | `deploy-analyze`가 쓴 인계값 |
+4. **값 파일 다듬기.** 렌더한 `deploy/values-<서비스>.yaml`에 서비스별 값(`env`, `envFromSecrets`, `migration`, `ingress.paths`, `writablePaths`, `resources`)을 `plan.yaml`의 `services`와 코드베이스 분석대로 채운다. App Chart가 받는 키만 쓴다(`charts/app/values.yaml`이 기준). 비밀값은 쓰지 않는다.
 5. **로컬 검증.** 모두 통과해야 다음으로 간다.
    ```sh
    "<skill-dir>/scripts/check-artifacts.sh" .          # 자리표시자 잔존 · 버전 표기 일치 · 필수 파일 · smoke.json 형식

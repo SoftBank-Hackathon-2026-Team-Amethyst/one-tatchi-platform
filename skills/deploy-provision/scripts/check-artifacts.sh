@@ -70,8 +70,13 @@ if [ -f .deploy/smoke.json ]; then
   else skip "jq가 없어 smoke.json 형식"; fi
 fi
 
-# 6. 서비스별 Dockerfile · 값 파일 (config.yaml의 services)
-if [ -f "$cfg" ] && command -v yq >/dev/null; then
+# 6. 서비스별 Dockerfile · 값 파일 (plan.yaml의 services)
+plan=.deploy/plan.yaml
+[ -f "$plan" ] || fail "$plan 이 없다 (deploy-analyze가 쓴다)"
+if [ -f "$cfg" ] && command -v yq >/dev/null && yq -e '.target or .services' "$cfg" >/dev/null 2>&1; then
+  fail "$cfg: target · services는 $plan 으로 옮긴다 (config.yaml은 CODEOWNERS 리뷰 대상)"
+fi
+if [ -f "$plan" ] && command -v yq >/dev/null; then
   while IFS=$'\t' read -r name path; do
     [ -n "$name" ] || continue
     [ -f "$path/Dockerfile" ] || fail "$name: $path/Dockerfile 이 없다"
@@ -81,9 +86,9 @@ if [ -f "$cfg" ] && command -v yq >/dev/null; then
     if [ -f "$path/Dockerfile" ]; then
       /usr/bin/grep -Eq '^USER[[:space:]]+[0-9]+' "$path/Dockerfile" || fail "$name: Dockerfile에 숫자 UID의 USER 가 없다 (App Chart runAsNonRoot)"
     fi
-  done < <(yq -r '.services[]? | [.name, .path] | @tsv' "$cfg" 2>/dev/null)
+  done < <(yq -r '.services[]? | [.name, .path] | @tsv' "$plan" 2>/dev/null)
 else
-  skip "yq가 없거나 config.yaml이 없어 서비스별 Dockerfile 검사"
+  skip "yq가 없거나 plan.yaml이 없어 서비스별 Dockerfile 검사"
 fi
 
 # 7. terraform fmt
