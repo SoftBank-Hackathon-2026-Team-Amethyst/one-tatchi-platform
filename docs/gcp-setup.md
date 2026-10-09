@@ -1,68 +1,84 @@
-# GCP 배포
+# GCP 접속 설정
 
-대상 프로젝트는 `one-tatchi-gejkm`, 리전은 서울 `asia-northeast3`이다. 구현체는 v1.13.0부터 제공한다. AWS 계정·state·도메인과 onprem 설정은 유지한다.
+팀원이 자기 구글 계정으로 GCP 콘솔과 CLI를 쓰는 방법. 서비스 계정 키(JSON)는 만들지 않고, 각자 `gcloud` 로그인으로만 쓴다. GitHub Actions는 Workload Identity Federation으로 들어간다(T4).
 
-## 인증과 state
+## 프로젝트
 
-로컬에서는 팀 계정의 `onetatchi` gcloud configuration을 사용한다. ADC를 바꾸지 않고 명령 실행 시 단기 토큰을 환경변수로 전달한다.
+| 항목 | 값 |
+|---|---|
+| 프로젝트 ID | `one-tatchi-gejkm` |
+| 콘솔 | https://console.cloud.google.com/home/dashboard?project=one-tatchi-gejkm |
+| 작업 리전 | `asia-northeast3` (서울) |
+| 결제 | 원가연의 해커톤 결제 계정 |
+| 켜 둔 API | Compute, GKE, Cloud SQL, Artifact Registry, Secret Manager, IAM · IAM Credentials · STS(Workload Identity), Resource Manager, Service Networking, Monitoring, Logging, Billing Budgets |
 
-```bash
-export GOOGLE_OAUTH_ACCESS_TOKEN="$(gcloud --configuration onetatchi auth print-access-token)"
-export CLOUDSDK_ACTIVE_CONFIG_NAME=onetatchi
-```
+## 권한
 
-bootstrap/gcp는 GCS state 버킷과 WIF를 만든다. 자세한 최초 이전 절차는 [bootstrap 안내](../bootstrap/gcp/README.md)를 따른다. demo-app 루트는 GCS prefix `demo-app/gcp`를 사용하고 bootstrap은 `bootstrap/gcp`를 사용한다. Terraform state·plan은 Git에 넣지 않는다.
+| 이름 | 구글 계정 | 역할 | 이유 |
+|---|---|---|---|
+| 원가연 | (프로젝트 소유자) | Owner | 프로젝트 · 결제 관리 |
+| 배규태 | `bktpbktp@gmail.com` | Owner | T4(GCP 구현체) 담당. 서비스 계정 · IAM까지 Terraform으로 만든다 |
+| 이소울 | `alus20x@gmail.com` | Editor | 리소스 생성 · 조회. 권한 변경은 못 한다 |
+| 김형래 | `hyeongrae.99@gmail.com` | Editor | 위와 같음 |
+| 배준범 | (계정 없음) | — | 필요하면 구글 계정을 만들어 원가연에게 요청 |
 
-GitHub Variables: `GCP_PROJECT`, `GCP_REGION`, `GCP_CLUSTER`, `GCP_WIF_PROVIDER`, `GCP_PLAN_WIF_PROVIDER`, `GCP_PLAN_IDENTITY`, `GCP_DEPLOY_IDENTITY`, `GCP_TF_STATE_BUCKET`. AWS 변수와 기본 `DEPLOY_TARGET`은 그대로 둔다.
+권한 변경은 원가연에게 요청한다. Owner는 초대 메일을 **수락해야** 적용된다.
 
-## 최초 생성
-
-demo-app의 `infra/envs/gcp`에서 실행한다. GKE 인증 플러그인과 Helm이 필요하다.
-
-```bash
-terraform init -backend-config=bucket=one-tatchi-gejkm-tfstate
-terraform validate
-# 클러스터 생성 전 Helm provider가 연결할 대상이 없으므로 최초에만 분리한다.
-terraform apply -target=module.network -target=module.cluster -target=module.registry -target=module.database -target=module.observability
-terraform apply
-terraform plan
-```
-
-최종 plan에 의도하지 않은 변경이 없어야 한다. GKE private 노드 3대, Cloud SQL private IP, Argo Rollouts, External Secrets, test/prod namespace와 DB Secret을 확인한다.
+## 1. gcloud 설치
 
 ```bash
-gcloud --configuration onetatchi container clusters get-credentials one-tatchi-gcp --region asia-northeast3
-kubectl get nodes
-kubectl get clustersecretstore cloud-secrets
-kubectl get externalsecret -A
+gcloud --version   # Google Cloud SDK x.y.z 이면 통과
 ```
 
-DB는 Postgres 17, 기본 `db-g1-small`·단일 영역·SSD 20GB·백업 1개다. 공개 IP 없이 TLS를 요구한다. demo-app의 GCP 값은 Postgres.js에 `PGSSL=require`를 전달하고 기존 service-base의 psql 연결도 sslmode=require를 사용한다. 이 설정은 암호화를 요구하지만 서버 인증서의 이름·CA 검증을 제공하지 않는다. 실제 개인정보를 처리하는 운영은 Cloud SQL Connector 또는 검증할 CA를 별도 연결한다.
+없으면 설치한다.
 
-## 앱 배포와 확인
+- macOS: `brew install --cask gcloud-cli`
+- Windows: `winget install Google.CloudSDK`
+- Linux / WSL: [설치 안내](https://cloud.google.com/sdk/docs/install)
 
-같은 `deploy/values-be.yaml` · `deploy/values-fe.yaml`과 App Chart를 사용한다. `deploy/gcp/values.yaml`에는 GKE NEG, gce Ingress, TLS 연결용 환경값만 덧붙인다. FE만 외부에 공개하고 기존 FE → BE 프록시를 유지한다.
-
-demo-app `deploy` workflow_dispatch에서 target=gcp, environment=test를 선택하면 test만 검증한다. 기존 기본값은 test 검증 후 prod이며 규제 대상 prod 승인 관문은 유지한다. prod에는 test에서 stable로 승격한 같은 이미지 태그만 배포한다.
+## 2. 로그인과 기본값
 
 ```bash
-kubectl -n test get rollout,svc,ingress
-kubectl -n test get ingress demo-app-fe -o jsonpath='{.status.loadBalancer.ingress[0].ip}'
-curl http://<active-IP>/health
-curl http://<active-IP>/api/info
+gcloud auth login                              # 브라우저에서 위 표의 내 구글 계정으로 로그인
+gcloud auth application-default login          # Terraform 등 도구가 쓸 자격증명
+gcloud config set project one-tatchi-gejkm
+gcloud config set compute/region asia-northeast3
 ```
 
-`/health`의 database가 connected이고 `/api/info`의 dbConnected가 true여야 DB 연결 검증이다. 메모리 모드의 HTTP 200만으로 완료 처리하지 않는다. 두 번째 버전이 Paused인 상태에서 preview와 active를 확인하고 rollout workflow_dispatch target=gcp로 promote한 뒤 stable 태그를 확인한다. GCP preview는 별도 IP이며 AWS의 `:8080` 주소 규칙을 사용하지 않는다.
+## 3. 확인
 
-`terraform output dashboard_url`의 Cloud Monitoring 대시보드와 Logs Explorer에서 해당 GKE 지표·로그를 확인한다. 기존 중앙 Grafana는 변경하지 않는다.
+```bash
+gcloud projects describe one-tatchi-gejkm --format='value(projectId,lifecycleState)'
+# one-tatchi-gejkm  ACTIVE 이면 끝
+```
 
-## 비용과 정리
+## 매일 쓰기
 
-GKE 노드·Regional 관리 기능·NAT·Cloud SQL·Ingress LB와 로그·지표에 비용이 발생한다. active/preview와 test/prod마다 LB가 따로 생길 수 있다. 데모를 유지할 시간은 운영 담당자가 정한다. 삭제 시 앱 Helm 릴리스를 먼저 제거해 Ingress LB와 NEG 정리를 기다린 뒤 GCP 환경 루트를 destroy한다. bootstrap은 별도이며 state 버킷을 삭제하지 않는다. PSA peering은 다른 managed service 보호를 위해 자동으로 삭제하지 않는다.
+```bash
+# GKE 접속 (클러스터가 생긴 뒤)
+gcloud container clusters get-credentials <클러스터> --region asia-northeast3
 
-## 공유 결정
+# 다른 GCP 프로젝트와 섞어 쓰면 설정을 따로 둔다
+gcloud config configurations create onetatchi
+gcloud config configurations activate onetatchi
+```
 
-- [ADR 0006: CI와 state](adr/0006-gcp-ci-state.md)
-- [ADR 0007: 공통 차트와 GKE Ingress](adr/0007-gcp-ingress.md)
-- [ADR 0008: DB 비밀번호](adr/0008-gcp-database-credentials.md)
-- [ADR 0009: 관측](adr/0009-gcp-observability.md)
+Terraform은 `application-default` 자격증명을 그대로 쓴다.
+
+## 규칙
+
+- **서비스 계정 키(JSON)를 만들지 않는다.** CI는 Workload Identity Federation, 사람은 `gcloud` 로그인으로만 쓴다.
+- **자격증명을 공유하지 않는다.** `~/.config/gcloud` 내용, 토큰을 채팅이나 레포에 올리지 않는다.
+- **서울 리전만 쓴다.** `asia-northeast3`
+- **비용을 확인한다.** 안 쓰는 GKE 노드 · Cloud SQL은 꺼 두거나 지운다.
+
+## 문제 해결
+
+| 증상 | 해결 |
+|---|---|
+| `PERMISSION_DENIED` | 권한 할당 전이거나 Owner 초대를 아직 수락하지 않았다. 메일함 확인, 원가연에게 요청 |
+| `API ... has not been used in project` | 위 표에 없는 API다. 원가연에게 켜 달라고 요청 |
+| Terraform이 `could not find default credentials` | `gcloud auth application-default login` |
+| 다른 프로젝트에 리소스가 생김 | `gcloud config get-value project`로 현재 프로젝트 확인 |
+
+T4 모듈 배포와 기존 ADC를 유지하는 단기 토큰 인증 방법은 [GCP 배포 안내](gcp-deploy.md)를 따른다.
