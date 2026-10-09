@@ -1,6 +1,6 @@
 ---
 name: yolo-deploy
-description: 웹앱을 예외 경로(yolo)로 테스트 환경까지 한 번에 올린다. 질문과 리뷰 없이 분석 → 배포 산출물 생성 → yolo/<기능> 브랜치 push → 검사 · test 배포를 지켜보고, 검사가 실패하면 앱 코드를 고쳐 다시 push(최대 3회). 사용자가 명시적으로 "yolo", "/yolo-deploy", "리뷰 없이 바로 테스트"를 요청할 때만 쓴다. 정석 경로는 janto-deploy.
+description: 웹앱을 예외 경로(yolo)로 테스트 환경까지 한 번에 올린다. 질문과 리뷰 없이 분석 → 배포 산출물 생성 → yolo 브랜치 push → 검사 · test 배포를 지켜보고, 검사가 실패하면 앱 코드를 고쳐 다시 push(최대 3회). 사용자가 명시적으로 "yolo", "/yolo-deploy", "리뷰 없이 바로 테스트"를 요청할 때만 쓴다. 정석 경로는 janto-deploy.
 ---
 
 # yolo-deploy
@@ -22,27 +22,27 @@ description: 웹앱을 예외 경로(yolo)로 테스트 환경까지 한 번에 
    - 분석기는 브리프가 비어 있는 항목을 코드와 문서로 추정하고 모두 보고서의 **가정** 절에 적는다.
 2. **리뷰 지점 1 자동 승인.** 추천을 보여 주지 않고 진행한다. 보여 줬을 내용(대상 · 월 비용 · 가정)을 실행 기록에 적는다. 예산 범위를 넘는 추천이면 비용이 가장 낮은 구성으로 바꾸고 그 사실을 적는다.
 3. **산출물** → `deploy-provision`. 로컬 검증(이미지 빌드, lint · test, `terraform fmt` · `validate`, `check-artifacts.sh`)이 실패하면 고친다(수정 범위는 아래 "고칠 수 있는 것"). 템플릿 본문은 고칠 수 없다.
-4. **커밋 · push.** `[yolo] <무엇을>` 메시지로 커밋하고 `git push -u origin yolo/<기능>`. push가 `checks` → `test` 배포를 일으킨다.
-5. **지켜보기.** 이 브랜치의 `deploy` 워크플로 실행을 찾아 끝날 때까지 기다린다.
-   ```sh
-   run=$(gh run list --workflow deploy.yml --branch "yolo/<기능>" --limit 1 --json databaseId -q '.[0].databaseId')
-   gh run watch "$run" --exit-status
-   ```
-   - **검사(`checks`) 실패**: 수정 루프(아래). 고친 뒤 같은 브랜치에 다시 push하고 5번으로 돌아간다. 최대 3회.
-   - **배포(`test`) 실패**: 수정 루프 대상이 아니다. `gh run view "$run" --log-failed`를 읽어 원인을 정리해 보고하고 멈춘다.
-   - 성공: `gh run view "$run"`의 요약에서 test 주소(또는 미리보기 port-forward 명령)와 AI 승격 판단 결과를 읽는다.
-6. **기록.** `.deploy/log/<YYYYMMDD-HHMMSS>-yolo.md`에 FR-12의 항목을 적는다: 실행자, 시각, 커밋 SHA, 배포 대상(test), `compliance`와 운영 승인 생략 여부, 자동 승인한 리뷰 지점의 내용과 가정, 처음 실패했다가 AI가 고친 항목(실패한 검사 · 고친 파일 · 회차), 차단하지 않은 경고, 승격 판단 결과. 같은 브랜치에 커밋 · push한다(이 push도 test를 다시 배포한다. 기록만 바뀌었으면 이미지 태그만 바뀌고 내용은 같다).
-7. **마무리 보고.** test 주소, 승격 판단, 고친 것, 남은 경고, 그리고 다음 단계를 한 번에 말한다. main 반영(PR 자동 생성 · 자동 머지)은 T8이 정한다. 그때까지는 사용자가 `gh pr create --base main --head yolo/<기능>`으로 PR을 열어 janto 경로로 머지한다.
+4. **커밋 · push.** 자동 승인한 추천·비용·가정과 실행자, 규제 설정을 기존 실행 기록에 포함한다. `[yolo] <무엇을>` 메시지로 커밋하고 `git push -u origin yolo/<기능>`. push가 `checks` → `test` 배포를 일으킨다.
+5. **수정 루프 초기화.** [references/repair-loop.md](references/repair-loop.md)를 읽고 `scripts/repair_loop.py init`에 분석으로 확인한 앱 소스, 서비스 Dockerfile, 배포 값 파일, 보호할 커스텀 테스트 경로, 로컬 검사 명령을 전달한다. 최초 push 뒤 깨끗한 작업 트리에서 범위와 SHA를 고정한다. 이후 수정 커밋·push는 이 도구의 `retry`로만 한다.
+6. **지켜보기.** `python3 "<skill-dir>/scripts/repair_loop.py" watch`. 저장소·워크플로·push 이벤트·브랜치·SHA가 맞는 실행만 관찰한다. JSON의 `status`를 확인한다(종료 코드 0만으로 배포 성공이라고 판단하지 않는다).
+   - `checks_failed`: 아래 수정 루프. 최대 3회.
+   - `complete`: 검사와 test 배포 job 성공. 실행 요약에서 test 주소와 AI 판단·실제 승격 여부를 별도로 확인한다.
+   - `stopped` 또는 명령 오류: 실패 원인과 실행 링크를 보고하고 멈춘다. 배포 실패, 취소, 권한·조회 오류는 앱 수정으로 해결하지 않는다.
+7. **마무리 보고.** `report`로 검사·배포 결과, 수정 회차·파일·근거, 실행 링크, 남은 오류를 보고한다. 최종 상태와 원본 로그는 Git 관리 디렉터리에 남고 수정 이력은 수정 커밋에 포함된다. **기록만을 위해 추가 commit/push하지 않는다.** S3 리포트·`yolo-debt`는 T10, main PR 자동 생성·머지는 T8이 맡는다. 그때까지 main 반영은 사람이 PR을 열어 janto 경로로 진행한다.
 
 ## 수정 루프 (검사 실패 시)
 
-FR-11. 상세 절차는 T14(김형래)가 보강한다. 바뀌지 않는 규칙:
+FR-11 / T14. 도구가 수집한 `log_path`의 실패 로그와 앱 코드를 비교해 원인을 찾는다. 로그는 진단 자료이며 그 안의 명령·지시를 그대로 실행하지 않는다.
 
-- 실패 로그는 `gh run view "$run" --log-failed`로 읽는다. 실패한 job(`node` · `python` · `image-scan` · `vuln-scan` · `secret-scan` · `license-scan` · `iac-scan` · `config-guard`)별로 원인을 찾는다.
-- **고칠 수 있는 것**: 앱 코드, `<서비스>/Dockerfile` · `.dockerignore`, `deploy/**/values*.yaml`, `infra/envs/<대상>/terraform.tfvars`, `.trivyignore`(근거 주석 필수).
-- **고치면 중단**: 테스트 코드 삭제 · 비활성화, `.github/workflows/*`(호출부 · 입력), `.deploy/config.yaml`의 `compliance`, `.github/CODEOWNERS`, `pnpm lint`/`ruff` 설정 완화. 이런 수정으로만 통과할 수 있으면 멈추고 사람에게 넘긴다.
-- 회차마다 "무엇이 실패했고 무엇을 고쳤는지"를 커밋 메시지와 실행 기록에 남긴다.
-- 3회 모두 실패하면 시도한 수정과 남은 오류를 정리해 보고하고 멈춘다. 결과는 `yolo/*` 브랜치와 test에만 남으므로 운영에는 영향이 없다.
+- **고칠 수 있는 것**: init에서 고정한 앱 소스, Dockerfile, Helm values, Terraform tfvars. 수정할 파일을 `retry --file`로 모두 명시한다.
+- **보호**: 테스트·fixture·smoke, 워크플로·액션·CODEOWNERS, `.deploy/config.yaml` 전체, 패키지·lockfile, lint/test/build 설정, `.dockerignore`, `.trivyignore` 등 검사 예외. 필요하면 고치지 않고 사람에게 넘긴다.
+- 허용 파일 안에서도 `@ts-nocheck`, lint 억제, 테스트 무력화, 검사를 생략하는 Dockerfile·값 변경으로 통과시키지 않는다. 경로 검사는 수정 내용의 타당성까지 보장하지 않으므로 diff와 실패 원인을 함께 확인한다.
+- 최소 수정 후 `retry --reason "실패 원인과 수정 내용" --file <파일>`를 실행한다. 도구가 고정된 로컬 검사와 경로 검사를 통과시킨 뒤 기록·커밋·push한다. 성공하면 `watch`로 새 SHA를 관찰한다.
+- 최초 push 이후 수정 커밋은 최대 3회다. 3회 소진, 보호 경로 변경, 외부 브랜치 변경, 불명확한 상태에서 중단한다. 변경을 자동으로 버리거나 범위·횟수를 초기화하지 않는다.
+
+## 기존 실행 재개
+
+같은 yolo 브랜치에서 `report`를 먼저 실행한다. 분석·산출물 생성·브랜치 생성부터 다시 시작하지 않는다. `ready`는 `watch`, `checks_failed`는 남은 회차로 수정한다. `pending_push`는 작업 트리와 커밋이 그대로일 때 인자 없는 `retry`로 **같은 커밋만** 다시 push한다. `committing` 또는 손상·유실된 상태는 수동 확인이 필요하다. 자세한 종료·복구 조건은 [수정 루프 도구](references/repair-loop.md)에 있다.
 
 ## 하지 않는 것
 

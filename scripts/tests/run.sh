@@ -48,5 +48,8 @@ bash "$(dirname "$scripts")/.github/actions/promote-judge/tests/run.sh" >/dev/nu
 echo "== deploy-provision 템플릿 · 산출물 검사 (T13)"
 bash "$(dirname "$scripts")/skills/deploy-provision/tests/run.sh" >/dev/null
 
+echo "== yolo 자동 수정 루프 (T14)"
+python3 -B -m unittest discover -s "$(dirname "$scripts")/skills/yolo-deploy/tests"
+
 echo "통과"
 bash "$(dirname "$scripts")/.github/actions/image-push/tests/run.sh"
