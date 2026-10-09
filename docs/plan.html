@@ -607,7 +607,7 @@ flowchart TB
     direction LR
     a["aws/<br/>VPC · EKS · ECR · RDS<br/>Secrets Manager · ALB · CloudWatch · IAM OIDC"]
     g["gcp/<br/>VPC · GKE · Artifact Registry · Cloud SQL<br/>Secret Manager · GCLB · Cloud Monitoring · WIF"]
-    o["onprem/<br/>k3s · GHCR · 클러스터 안 Postgres<br/>k8s Secret · Traefik + Funnel · Prometheus · self-hosted runner"]
+    o["onprem/<br/>k3s · GHCR · 클러스터 안 Postgres<br/>k8s Secret · Cloudflare Quick Tunnel · Prometheus · self-hosted runner"]
   end
   env["환경 루트 (envs/demo-aws, demo-gcp, demo-onprem)<br/>source 경로만 다름"]
   app --> CT
@@ -626,12 +626,12 @@ flowchart TB
     <tr><td>registry</td><td>ECR</td><td>Artifact Registry</td><td>GHCR</td></tr>
     <tr><td>database</td><td>RDS Postgres</td><td>Cloud SQL</td><td>클러스터 안 Postgres</td></tr>
     <tr><td>secrets</td><td>Secrets Manager + External Secrets</td><td>Secret Manager + External Secrets</td><td>k8s Secret</td></tr>
-    <tr><td>ingress</td><td>ALB (LB Controller)</td><td>GCLB</td><td>Traefik + Tailscale Funnel</td></tr>
+    <tr><td>ingress</td><td>ALB (LB Controller)</td><td>GCLB</td><td>Cloudflare Quick Tunnel → Service (Ingress 없음, 환경마다 터널 하나)</td></tr>
     <tr><td>observability</td><td>CloudWatch</td><td>Cloud Monitoring</td><td>Prometheus</td></tr>
     <tr><td>ci_identity</td><td>IAM OIDC 역할</td><td>Workload Identity Federation</td><td>self-hosted runner</td></tr>
   </tbody>
 </table>
-<p class="small">온프레미스 원칙: 관리형 서비스를 쓰지 않는다. 그래야 "로컬 노트북이든 사내 서버든 같은 방식으로 돈다"가 성립한다. 외부 노출은 Tailscale Funnel(고정 HTTPS 주소)로 하고, 배포는 맥북의 self-hosted runner가 바깥 방향 연결로 받는다.</p>
+<p class="small">온프레미스 원칙: 관리형 서비스를 쓰지 않는다. 그래야 "로컬 노트북이든 사내 서버든 같은 방식으로 돈다"가 성립한다. 외부 노출은 클러스터 안 cloudflared의 Quick Tunnel(<code>*.trycloudflare.com</code>, 계정 · 도메인 불필요)로 하고, 배포는 맥북의 self-hosted runner가 바깥 방향 연결로 받는다. 둘 다 바깥 방향 연결이라 공유기 설정이 필요 없다. Quick Tunnel은 터널 하나에 주소 하나라 Ingress 컨트롤러(Traefik)를 두지 않고 환경(test · prod)마다 터널이 FE Service로 바로 연결한다. 그래서 온프레미스만 <code>ingress.enabled=false</code>이고 green 미리보기는 <code>port-forward</code>로 본다. 주소는 cloudflared가 재시작되면 바뀐다(고정 도메인이 필요하면 Named Tunnel 토큰으로 바꾼다).</p>
 
 <h3 id="s6-5">6.5 릴리스와 AI 승격 판단</h3>
 <figure>
@@ -686,7 +686,7 @@ stateDiagram-v2
     <tr><td>앱 배포 도구</td><td>Helm(App Chart) + Argo Rollouts</td><td>Terraform helm_release / ArgoCD</td><td>매 커밋 이미지 변경을 Terraform이 맡으면 state 잠금 충돌. ArgoCD는 반영 주체가 둘이 된다</td></tr>
     <tr><td>환경 분리</td><td>네임스페이스 분리</td><td>클러스터 분리</td><td>비용과 생성 시간 유지. 해커톤 범위에 충분</td></tr>
     <tr><td>테스트 주소</td><td>호스트 기반</td><td>경로 기반 / 포트 기반</td><td>경로 기반은 앱 수정 필요. 포트 기반은 도메인 없이 가능하지만 사용자 경험이 나쁨</td></tr>
-    <tr><td>온프레미스</td><td>로컬 맥북(k3d) + k3s + Tailscale Funnel. 시간이 남으면 리눅스 머신</td><td>대형 EC2를 온프레미스로 취급 / 공유기 포트포워딩</td><td>테마의 "온프레미스(로컬)"와 일치. Funnel은 도메인 없이 고정 주소. 포트포워딩은 CGNAT·포트 차단 위험</td></tr>
+    <tr><td>온프레미스</td><td>로컬 맥북(k3d) + k3s + Cloudflare Quick Tunnel. 시간이 남으면 리눅스 머신</td><td>대형 EC2를 온프레미스로 취급 / 공유기 포트포워딩 / Tailscale Funnel + Traefik / Cloudflare Named Tunnel(고정 도메인)</td><td>테마의 "온프레미스(로컬)"와 일치. Quick Tunnel은 계정 · 도메인 없이 바로 HTTPS 주소가 나와 팀에서 이쪽으로 정했다. 단점: 재시작하면 주소가 바뀌어 FR-10의 고정 도메인은 온프레미스에서 충족하지 못한다(데모 전 주소 확인). 포트포워딩은 CGNAT·포트 차단 위험</td></tr>
   </tbody>
 </table>
 
@@ -697,7 +697,7 @@ stateDiagram-v2
   <tbody>
     <tr><td>파이프라인이 3분 데모보다 길다</td><td>높음</td><td>BE·FE 병렬, Docker 레이어 캐시, 베이스 이미지 사전 빌드. 데모 시작과 동시에 실행하고 대기 중 구조 설명</td></tr>
     <tr><td>클라우드 최초 생성 실패</td><td>높음</td><td>플랫폼은 데모 전에 미리 구축. 사전 검증에서 OIDC·애드온 교착 문제를 겪고 해결함 (9장)</td></tr>
-    <tr><td>로컬 PC 절전·네트워크 문제</td><td>중간</td><td>맥북 잠자기 방지(caffeinate · 전원 연결), k3s·tailscaled·runner 자동 시작, 데모 전 점검</td></tr>
+    <tr><td>로컬 PC 절전·네트워크 문제</td><td>중간</td><td>맥북 잠자기 방지(caffeinate · 전원 연결), k3s·cloudflared·runner 자동 시작, 터널 주소 변경 확인, 데모 전 점검</td></tr>
     <tr><td>AI가 검사를 우회</td><td>중간</td><td>템플릿·테스트·워크플로 경로 수정 시 검사 실패, CODEOWNERS</td></tr>
     <tr><td>yolo 자동 수정이 잘못된 방향으로 고침</td><td>중간</td><td>최대 3회 제한, 수정 범위는 앱 코드·Dockerfile·변수 파일만, 결과는 테스트 환경에만 반영. 운영은 사람 승인</td></tr>
     <tr><td>AI 승격 판단 오판</td><td>중간</td><td>규제 대상은 운영에 사람 승인. 비규제 yolo는 판단 근거를 배포 리포트에 남기고, 운영에서도 Blue-Green 롤백 버튼으로 즉시 복구</td></tr>
@@ -943,11 +943,11 @@ flowchart LR
   <summary><span class="st p0">P0</span> <b>T3</b> 온프레미스 구현체 (로컬 맥북) <span class="small">· 원가연</span></summary>
   <div class="task-body">
     <p><b>어디에 필요</b> 테마의 "온프레미스(로컬)". 같은 앱이 내 노트북에서도 뜬다는 이식성 장면에 쓴다.</p>
-    <p><b>만들 것</b> 맥북(M2 · 16GB)에 k3d(k3s) · Tailscale Funnel · self-hosted runner 설치, <code>modules/*/onprem</code> Terraform 구현체(Helm Postgres 등), 같은 App Chart로 demo-app 배포.</p>
+    <p><b>만들 것</b> 맥북(M2 · 16GB)에 k3d(k3s) · Cloudflare Quick Tunnel · self-hosted runner 설치, <code>modules/*/onprem</code> Terraform 구현체(Helm Postgres 등), 같은 App Chart로 demo-app 배포.</p>
     <p><b>목표</b> 같은 App Chart로 로컬 맥북에서도 게시판이 고정 주소로 뜬다.</p>
     <p><b>세부 작업</b></p>
-    <ul class="checklist"><li>k3d(또는 OrbStack)로 k3s 클러스터 생성, Docker VM 메모리 6~8GB</li><li>잠자기 방지(<code>caffeinate</code>), 전원 연결</li><li>k3s 설치(Traefik), Tailscale Funnel → 고정 HTTPS 주소</li><li>맥북에 self-hosted runner 설치(demo-app 레포, 라벨 <code>onprem</code>, push 이벤트 전용)</li><li>platform의 <code>modules/*/onprem</code> 구현: cluster, database(Helm Postgres), registry(GHCR), secrets, observability(Prometheus)</li><li>runner가 GHCR 차트·이미지를 pull할 수 있는지 확인</li><li>이미지를 멀티 아키텍처(<code>linux/amd64</code> + <code>linux/arm64</code>)로 빌드</li><li>App Chart로 demo-app 배포, 재부팅 후 자동 복구 확인</li><li>(시간이 남으면) 리눅스 머신에서 같은 절차 확인</li></ul>
-    <p><b>완료 기준</b> Funnel 주소에서 게시판이 동작하고, 재부팅 후에도 자동으로 뜬다.</p>
+    <ul class="checklist"><li>k3d(또는 OrbStack)로 k3s 클러스터 생성, Docker VM 메모리 6~8GB</li><li>잠자기 방지(<code>caffeinate</code>), 전원 연결</li><li>k3s 설치, Cloudflare Quick Tunnel → HTTPS 주소 (Traefik 없이 터널이 Service로 연결)</li><li>맥북에 self-hosted runner 설치(demo-app 레포, 라벨 <code>onprem</code>, push 이벤트 전용)</li><li>platform의 <code>modules/*/onprem</code> 구현: cluster, database(Helm Postgres), registry(GHCR), secrets, observability(Prometheus)</li><li>runner가 GHCR 차트·이미지를 pull할 수 있는지 확인</li><li>이미지를 멀티 아키텍처(<code>linux/amd64</code> + <code>linux/arm64</code>)로 빌드</li><li>App Chart로 demo-app 배포, 재부팅 후 자동 복구 확인</li><li>(시간이 남으면) 리눅스 머신에서 같은 절차 확인</li></ul>
+    <p><b>완료 기준</b> 터널 주소에서 게시판이 동작하고, 재부팅 후에도 자동으로 뜬다.</p>
     <p class="small"><b>선행</b> <a class="tlink" href="#t20">T20</a> · <b>후속</b> <a class="tlink" href="#t17">T17</a>, <a class="tlink" href="#t19">T19</a> · <b>관련</b> 6.4</p>
   </div>
 </details>
@@ -1130,7 +1130,7 @@ flowchart LR
     <p><b>만들 것</b> 데모 사전 점검 체크리스트 문서와 리허설 2회 기록(걸린 시간, 문제점).</p>
     <p><b>목표</b> 3분 안에 라이브 데모가 끝난다.</p>
     <p><b>세부 작업</b></p>
-    <ul class="checklist"><li>사전 점검: 클러스터, 도메인, 맥북 k3d, Funnel, runner, GHCR 접근</li><li>데모용 HTML 변경 준비</li><li>3분 타이머로 2회 이상</li><li>실패 대비: 직전 상태로 되돌리는 방법</li></ul>
+    <ul class="checklist"><li>사전 점검: 클러스터, 도메인, 맥북 k3d, 터널 주소, runner, GHCR 접근</li><li>데모용 HTML 변경 준비</li><li>3분 타이머로 2회 이상</li><li>실패 대비: 직전 상태로 되돌리는 방법</li></ul>
     <p><b>완료 기준</b> 리허설 2회 연속 3분 안에 성공한다.</p>
     <p class="small"><b>선행</b> <a class="tlink" href="#t2">T2</a>, <a class="tlink" href="#t3">T3</a>, <a class="tlink" href="#t9">T9</a> · <b>후속</b> 없음 · <b>관련</b> 10장</p>
   </div>
