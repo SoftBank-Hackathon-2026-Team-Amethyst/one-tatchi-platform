@@ -29,12 +29,13 @@ Claude Code는 `/todo-task`, Codex는 `$todo-task`로 이 순서를 따르는 �
 
 ## 역할 분담
 
-**원가연** · 플랫폼 코어 (5개, P0 5개)
+**원가연** · 플랫폼 코어 (6개, P0 6개)
 - `T1` 레포 두 개와 bootstrap (P0)
 - `T3` 온프레미스 구현체 (로컬 맥북) (P0)
 - `T5` test / prod 분리와 브랜치 흐름 (P0)
 - `T20` 템플릿 레포 구성과 릴리스 (P0)
 - `T21` 레포 간 참조 검증 (P0)
+- `T13` janto / yolo 두 경로로 스킬 정리 (P0)
 
 **이소울** · 파이프라인 (7개, P0 5개)
 - `T6` 규제 여부에 따른 운영 관문 (P0)
@@ -45,8 +46,7 @@ Claude Code는 `/todo-task`, Codex는 `$todo-task`로 이 순서를 따르는 �
 - `T2` 도메인과 HTTPS (P0)
 - `T26` Slack 버튼으로 머지 · 승인 · 승격 (P1). 담당 필요
 
-**김형래** · 에이전트 스킬 (5개, P0 4개)
-- `T13` janto / yolo 두 경로로 스킬 정리 (P0)
+**김형래** · 에이전트 스킬 (4개, P0 3개)
 - `T14` yolo 자동 수정 루프 (P0)
 - `T15` 브리프 질문 UX (P0)
 - `T24` AWS 구현체 (P0)
@@ -414,7 +414,7 @@ Claude Code는 `/todo-task`, Codex는 `$todo-task`로 이 순서를 따르는 �
 
 **만들 것** `skills/`의 `/janto-deploy` · `/yolo-deploy` 스킬 문서(SKILL.md)와 산출물 생성 규칙(Dockerfile, values, tfvars, `config.yaml`, `smoke.yaml`, 워크플로 호출부).
 
-- **우선순위** P0 · **영역** 스킬 · **담당** 김형래
+- **우선순위** P0 · **영역** 스킬 · **담당** 원가연
 - **선행** `T21`, `T25` · **후속** `T14` · **설계 문서** 6.1, 6.3
 
 **목표** 두 스킬이 demo-app에 PR 또는 `yolo/*` 브랜치를 만든다. 스킬은 직접 apply하지 않는다.
