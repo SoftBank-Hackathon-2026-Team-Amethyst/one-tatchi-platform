@@ -104,6 +104,26 @@ jobs:
           esac
           echo "environment=$environment" >> "$GITHUB_OUTPUT"
           echo "### 운영 관문: compliance=$compliance → environment \`$environment\`" >> "$GITHUB_STEP_SUMMARY"
+      # 사람 승인이 필요하면 Slack에 승인 · 거절 버튼을 올린다 (T26). 봇(one-tatchi-bot)이 prod environment의
+      # 승인 규칙(custom deployment protection rule)으로 등록돼 있어 버튼만으로 승인된다.
+      - if: steps.gate.outputs.environment == 'prod'
+        uses: actions/checkout@v7
+        with:
+          repository: SoftBank-Hackathon-2026-Team-Amethyst/one-tatchi-platform
+          ref: ${{ inputs.template-ref }}
+          path: .platform
+          sparse-checkout: .github/actions
+      - if: steps.gate.outputs.environment == 'prod'
+        uses: ./.platform/.github/actions/slack-notify
+        with:
+          token: ${{ secrets.SLACK_BOT_TOKEN }}
+          channel: ${{ vars.SLACK_CHANNEL_ID }}
+          action: 운영 승인 대기
+          target: all@${{ inputs.target }}.prod
+          result: waiting
+          details: "규제 대상(compliance: regulated)이라 운영 반영 전에 사람 승인이 필요해요. test에서 검증한 같은 이미지를 올립니다."
+          buttons: approve reject
+          approval: ${{ github.run_id }}@prod
 
   # 서비스는 한 job 안에서 배열 순서대로(BE 먼저) 배포한다.
   # environment 승인은 job마다 걸리므로, 서비스마다 job을 나누면 prod 승인을 서비스 수만큼 받아야 한다.

@@ -47,7 +47,8 @@ class AppToken:
 
 
 class GitHub:
-    """대상 레포의 워크플로를 실행하고 PR을 머지합니다. 봇은 클러스터에 직접 접근하지 않습니다."""
+    """대상 레포의 워크플로를 실행하고 PR을 머지하고 운영 배포를 승인합니다.
+    봇은 클러스터에 직접 접근하지 않습니다."""
 
     def __init__(
         self,
@@ -92,4 +93,17 @@ class GitHub:
     def comment(self, number: int, body: str) -> None:
         self._request(
             "POST", f"/repos/{self.repository}/issues/{number}/comments", json={"body": body}
+        )
+
+    def run_url(self, run_id: int) -> str:
+        return f"https://github.com/{self.repository}/actions/runs/{run_id}"
+
+    def review_protection_rule(
+        self, run_id: int, environment: str, state: str, comment: str
+    ) -> None:
+        # 봇이 등록된 custom deployment protection rule만 처리할 수 있다 (Deployments 쓰기 권한).
+        self._request(
+            "POST",
+            f"/repos/{self.repository}/actions/runs/{run_id}/deployment_protection_rule",
+            json={"environment_name": environment, "state": state, "comment": comment},
         )
