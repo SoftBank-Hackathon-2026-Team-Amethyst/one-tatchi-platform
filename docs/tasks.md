@@ -563,10 +563,10 @@ Claude Code는 `/todo-task`, Codex는 `$todo-task`로 이 순서를 따르는 �
 **목표** 검사 실패를 AI가 최대 3회까지 고쳐 통과시킨다.
 
 **할 일**
-- [ ] `gh run watch`로 대기, `gh run view --log-failed`로 실패 로그 수집
-- [ ] 수정 허용: 앱 코드, Dockerfile, 값 파일. 템플릿은 다른 레포라 애초에 수정 불가
-- [ ] demo-app 안의 금지 경로(테스트, 워크플로 호출부, config의 compliance)를 건드리면 중단
-- [ ] 최대 3회, 실패 시 정리해 보고
+- [x] `gh run watch`로 대기, `gh run view --log-failed`로 실패 로그 수집
+- [x] 수정 허용: 앱 코드, Dockerfile, 값 파일. 템플릿은 다른 레포라 애초에 수정 불가
+- [x] demo-app 안의 금지 경로(테스트, 워크플로 호출부, config의 compliance)를 건드리면 중단
+- [x] 최대 3회, 실패 시 정리해 보고
 
 **완료 기준** 일부러 깨뜨린 린트 · 테스트를 AI가 고쳐 통과시킨다.
 
