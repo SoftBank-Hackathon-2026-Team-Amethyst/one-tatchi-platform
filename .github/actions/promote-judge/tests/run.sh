@@ -227,4 +227,77 @@ echo '깨진 파일' > "$tmp/m-missing/metrics.json"
 judge missing missing ANTHROPIC_API_KEY=
 [ "$(j missing .decision)" = abort ] || fail "지표가 없는데 abort가 아니다"
 
+# ---------- act.sh ----------
+# act <이름> <judgment 이름(j-*)> <모드> [환경변수...] → $tmp/a-<이름>/{calls,summary,github_output}, 종료 코드는 $act_status
+act() {
+  local name="$1" from="$2" mode="$3"; shift 3
+  mkdir -p "$tmp/a-$name"
+  [ "$from" = none ] || cp "$tmp/j-$from/judgment.json" "$tmp/a-$name/judgment.json"
+  : > "$tmp/a-$name/calls"; : > "$tmp/a-$name/summary"; : > "$tmp/a-$name/github_output"
+  act_status=0
+  env WORK_DIR="$tmp/a-$name" RELEASE=demo-app-be NAMESPACE=test TARGET=onprem ENVIRONMENT=test MODE="$mode" \
+    PROMOTE_WAIT_SECONDS=5 KUBECTL="$here/fake-kubectl" FAKE_CALLS_FILE="$tmp/a-$name/calls" \
+    GITHUB_STEP_SUMMARY="$tmp/a-$name/summary" GITHUB_OUTPUT="$tmp/a-$name/github_output" "$@" \
+    bash "$action/act.sh" > "$tmp/a-$name.log" 2>&1 || act_status=$?
+}
+calls() { cat "$tmp/a-$1/calls"; }
+
+echo "== act auto + promote → promote, Healthy 확인, 성공"
+act autopromote promote auto
+[ "$act_status" = 0 ] || fail "auto promote가 실패로 끝났다: $(cat "$tmp/a-autopromote.log")"
+[ "$(calls autopromote)" = "$(printf 'promote demo-app-be -n test\nstatus demo-app-be -n test --timeout 5s')" ] || fail "promote 호출이 틀렸다: $(calls autopromote)"
+grep -q '^executed=promote$' "$tmp/a-autopromote/github_output" || fail "executed 출력이 없다"
+grep -q 'AI 승격 판단: promote' "$tmp/a-autopromote/summary" || fail "Job Summary가 없다"
+
+echo "== act auto + promote, Healthy가 안 됨 → 실패"
+act autopromotefail promote auto FAKE_STATUS=fail
+[ "$act_status" = 1 ] || fail "Healthy가 안 됐는데 성공으로 끝났다"
+
+echo "== act auto + abort → abort 실행, step 실패"
+act autoabort veto auto
+[ "$act_status" = 1 ] || fail "auto abort인데 성공으로 끝났다"
+[ "$(calls autoabort)" = "abort demo-app-be -n test" ] || fail "abort 호출이 틀렸다: $(calls autoabort)"
+grep -q '실패한 요청' "$tmp/a-autoabort/summary" || fail "실패한 요청 표가 없다"
+
+echo "== act manual → 실행하지 않고 성공 (promote · abort 모두)"
+act manualpromote promote manual
+act_promote=$act_status
+act manualabort veto manual
+[ "$act_promote $act_status" = "0 0" ] || fail "manual인데 실패로 끝났다"
+[ -z "$(calls manualpromote)$(calls manualabort)" ] || fail "manual인데 kubectl을 실행했다"
+grep -q '^executed=$' "$tmp/a-manualabort/github_output" || fail "manual의 executed가 비어 있지 않다"
+
+echo "== act 판단 파일 없음 + auto → abort 실행, 실패"
+act nojudgment none auto
+[ "$act_status" = 1 ] && [ "$(calls nojudgment)" = "abort demo-app-be -n test" ] || fail "판단 파일이 없을 때 abort하지 않았다"
+
+echo "== act 잘못된 mode → 실행하지 않고 실패"
+act badmode promote yolo
+[ "$act_status" = 1 ] && [ -z "$(calls badmode)" ] || fail "잘못된 mode를 받아들였다"
+
+# ---------- 전체 흐름 (action.yml 순서) ----------
+# flow <이름> <가짜 green 모드> <가짜 Claude 모드> → $tmp/f-<이름>, 마지막 단계 종료 코드는 $flow_status
+flow() {
+  local name="$1" green="$2" claude="$3" w="$tmp/f-$1"
+  start_claude "$claude"
+  mkdir -p "$w"; : > "$w/calls"
+  local common=(WORK_DIR="$w" RELEASE=demo-app-be NAMESPACE=test KUBECTL="$here/fake-kubectl" FAKE_MODE="$green"
+    FAKE_CALLS_FILE="$w/calls" GITHUB_OUTPUT="$w/github_output" GITHUB_STEP_SUMMARY="$w/summary")
+  env "${common[@]}" SMOKE_FILE="$tmp/smoke.json" WINDOW_SECONDS=1 REQUEST_TIMEOUT_SECONDS=1 bash "$action/smoke.sh" > "$w/log" 2>&1
+  env "${common[@]}" MAX_ERROR_RATE=0 MAX_P95_MS=2000 MAX_RESTARTS=0 bash "$action/metrics.sh" >> "$w/log" 2>&1
+  env "${common[@]}" MODEL=claude-sonnet-5-5 ANTHROPIC_API_KEY=test-key ANTHROPIC_BASE_URL="$CLAUDE_URL" \
+    API_TIMEOUT_SECONDS=2 bash "$action/judge.sh" >> "$w/log" 2>&1
+  flow_status=0
+  env "${common[@]}" TARGET=onprem ENVIRONMENT=test MODE=auto PROMOTE_WAIT_SECONDS=5 \
+    bash "$action/act.sh" >> "$w/log" 2>&1 || flow_status=$?
+}
+
+echo "== 전체 흐름: 정상 green + AI promote → promote 실행"
+flow normal ok promote
+[ "$flow_status" = 0 ] && head -1 "$tmp/f-normal/calls" | grep -q '^promote ' || fail "정상 흐름이 promote되지 않았다: $(cat "$tmp/f-normal/log")"
+
+echo "== 전체 흐름: 500 green + AI promote → 규칙 거부권으로 abort 실행 (완료 기준)"
+flow fault fail promote
+[ "$flow_status" = 1 ] && [ "$(cat "$tmp/f-fault/calls")" = "abort demo-app-be -n test" ] || fail "500 흐름이 abort되지 않았다: $(cat "$tmp/f-fault/log")"
+
 echo "통과"

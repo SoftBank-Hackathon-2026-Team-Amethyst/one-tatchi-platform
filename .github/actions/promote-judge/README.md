@@ -12,7 +12,7 @@ Blue-Green 배포에서 green(새 버전)을 승격할지 버릴지 정한다 (T
 | 1 | `smoke.sh` | `<release>-preview`에 port-forward로 붙어 관찰 창 동안 smoke 요청을 반복한다 | `smoke-results.jsonl` |
 | 2 | `metrics.sh` | 에러율 · p95 계산, green 파드 재시작 수 · Ready 조회, 기준값과 비교 | `metrics.json` |
 | 3 | `judge.sh` | 지표와 규칙 판정을 Claude에 보내 `{decision, reason}`을 받는다 | `judgment.json` |
-| 4 | `act.sh` | auto면 `kubectl argo rollouts promote · abort`, manual이면 실행하지 않는다. Job Summary에 근거를 남긴다 | |
+| 4 | `act.sh` | auto면 `kubectl argo rollouts promote · abort`, manual이면 실행하지 않는다. Job Summary에 근거를 남긴다 | Job Summary |
 
 - 규칙 판정이 fail이면 AI 답과 관계없이 abort다 ([ADR 0004](../../../docs/adr/0004-promotion-judge-rule-veto.md)).
 - 1 · 2단계가 실패하거나, API 키가 없거나, Claude 호출이 실패 · 시간 초과 · 거절 · 형식 오류면 재시도 없이 abort다.
@@ -34,9 +34,8 @@ Blue-Green 배포에서 green(새 버전)을 승격할지 버릴지 정한다 (T
 | `max-restarts` | `0` | 허용 green 파드 재시작 수 (생성 이후 합계) |
 | `model` | `claude-sonnet-5-5` | 판단 모델 |
 | `api-timeout-seconds` | `60` | Claude API 호출 제한 시간(초). 넘으면 재시도 없이 abort |
+| `promote-wait-seconds` | `60` | auto에서 promote 뒤 Healthy를 기다리는 시간(초). 넘으면 실패 |
 | `anthropic-api-key` | `""` | 비어 있으면 AI 판단 없이 abort |
-| `slack-token` · `slack-channel` | `""` | 비어 있으면 알림 생략 |
-| `audit-bucket` | `""` | 비어 있으면 감사 로그 생략 |
 
 ## 출력
 
@@ -45,6 +44,7 @@ Blue-Green 배포에서 green(새 버전)을 승격할지 버릴지 정한다 (T
 | `decision` | `promote` \| `abort` |
 | `reason` | 판단 근거 한두 문장 |
 | `report` | 지표 · 규칙 판정 · AI 판단 JSON 파일 경로 |
+| `executed` | auto에서 실제로 실행한 조작(`promote` \| `abort`). manual이면 빈 값 |
 
 ## smoke 파일
 
@@ -116,11 +116,23 @@ Blue-Green 배포에서 green(새 버전)을 승격할지 버릴지 정한다 (T
  "rule": {"verdict": "pass", "reasons": []}, "metrics": {"requests": 120, "error_rate": 0, "p95_ms": 38, "...": "..."}}
 ```
 
+## 실행과 기록
+
+| 모드 | promote | abort | step 결과 |
+|---|---|---|---|
+| `auto` (yolo) | `kubectl argo rollouts promote` → `status`로 Healthy 확인 | `kubectl argo rollouts abort` | promote는 Healthy면 성공. **abort는 실패** — 다음 단계(main 자동 머지 · prod)로 넘어가지 않게 한다 |
+| `manual` (janto) | 실행하지 않음 | 실행하지 않음 | 항상 성공. 사람이 Slack 버튼(`rollout.yml`)으로 결정한다 |
+
+- Job Summary에 결정 · 근거 · 지표 · 실패한 요청 표를 남긴다.
+- Slack 알림과 감사 로그는 이 액션이 보내지 않는다. 호출하는 쪽(`deploy.yml`)이 출력 `decision` · `reason` · `executed`를 기존 알림 · 감사 로그 단계에 넘긴다(메시지 중복 방지, 액션 단독 테스트).
+
 ## 테스트
 
 ```bash
 bash .github/actions/promote-judge/tests/run.sh
 ```
+
+CI `scripts` 잡(`scripts/tests/run.sh`)에서도 돈다. 이 잡은 main의 필수 검사가 아니므로 PR 전에 로컬에서 확인한다.
 
 가짜 green(`tests/fake_server.py`), 가짜 kubectl(`tests/fake-kubectl`), 가짜 Claude API(`tests/fake_claude.py`)로 클러스터 · API 키 없이 돈다.
 
