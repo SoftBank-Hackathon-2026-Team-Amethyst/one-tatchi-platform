@@ -10,6 +10,8 @@
 
 ## Unreleased
 
+- `deploy.yml`: 서비스마다 job을 나누던 matrix를 없애고 환경당 job 하나에서 배열 순서대로 배포한다. environment 승인이 job마다 걸려 prod 승인을 서비스 수만큼 받아야 했다(BE 승인 후 FE가 다시 승인 대기). 감사 로그 · Slack 대상은 `all@<대상>.<환경>`, concurrency는 대상 · 환경 단위 (T5)
+- `image-push`: 빌드 · push 로직을 `push.sh`로 분리 (deploy.yml 반복문과 액션이 같이 쓴다)
 - `promote-judge` 액션: Paused green에 smoke 요청 → 지표 · 규칙 판정 → Claude 판단 → promote · abort(auto) 또는 기록(manual). 아직 deploy.yml에서 호출하지 않음 (T7)
 
 ## v1.6.1

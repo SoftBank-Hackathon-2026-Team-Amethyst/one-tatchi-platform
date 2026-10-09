@@ -85,6 +85,8 @@ jobs:
           echo "environment=$environment" >> "$GITHUB_OUTPUT"
           echo "### 운영 관문: compliance=$compliance → environment \`$environment\`" >> "$GITHUB_STEP_SUMMARY"
 
+  # 서비스는 한 job 안에서 배열 순서대로(BE 먼저) 배포한다.
+  # environment 승인은 job마다 걸리므로, 서비스마다 job을 나누면 prod 승인을 서비스 수만큼 받아야 한다.
   deploy:
     needs: gate
     # onprem은 맥북의 self-hosted runner(바깥 방향 연결)에서 돈다. push 이벤트로만 호출한다.
@@ -92,20 +94,16 @@ jobs:
     # environment를 지정하면 GitHub Deployments에 배포 기록이 남는다. prod는 승인을 기다리고, prod-auto는 바로 반영한다.
     environment:
       name: ${{ needs.gate.outputs.environment }}
-      url: ${{ steps.urls.outputs.active }}
-    # 같은 대상 · 환경 · 서비스의 배포는 동시에 돌지 않는다 (NFR-4). 대기 중인 배포는 최신 것 하나만 남는다.
+      url: ${{ steps.deploy.outputs.active }}
+    # 같은 대상 · 환경의 배포는 동시에 돌지 않는다 (NFR-4). 대기 중인 배포는 최신 것 하나만 남는다.
     concurrency:
-      group: deploy-${{ inputs.target }}-${{ inputs.environment }}-${{ matrix.service.name }}
+      group: deploy-${{ inputs.target }}-${{ inputs.environment }}
       cancel-in-progress: false
-    strategy:
-      max-parallel: 1
-      matrix:
-        service: ${{ fromJSON(inputs.services) }}
     env:
-      RELEASE: ${{ matrix.service.name }}
       TAG: ${{ github.sha }}
       NAMESPACE: ${{ inputs.namespace }}
       TARGET: ${{ inputs.target }}
+      SERVICES: ${{ inputs.services }}
     steps:
       - uses: actions/checkout@v7
       - uses: actions/checkout@v7
@@ -119,90 +117,104 @@ jobs:
           cluster: ${{ inputs.cluster }}
           role-arn: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
           region: ${{ vars.AWS_REGION }}
-      - id: image
-        uses: ./.platform/.github/actions/image-push
-        with:
-          target: ${{ inputs.target }}
-          name: ${{ matrix.service.name }}
-          path: ${{ matrix.service.path }}
-          tag: ${{ github.sha }}
-      - name: helm upgrade (green 생성)
+      - id: ecr
+        if: inputs.target == 'aws'
+        uses: aws-actions/amazon-ecr-login@v2
+      - id: deploy
+        name: 서비스 배포 (이미지 → helm upgrade → green 대기 → 주소)
         env:
-          IMAGE: ${{ steps.image.outputs.repository }}
-          VALUES: ${{ matrix.service.values }}
-          MIGRATION: ${{ matrix.service.migration }}
+          ECR_REGISTRY: ${{ steps.ecr.outputs.registry }}
+          GH_TOKEN: ${{ github.token }}
+          OWNER: ${{ github.repository_owner }}
+          SOURCE: ${{ github.server_url }}/${{ github.repository }}
           INGRESS_GROUP: ${{ inputs.ingress-group }}
+          CHART: ${{ inputs.chart-repo }}/app
+          CHART_VERSION: ${{ inputs.chart-version }}
+          ENVIRONMENT: ${{ inputs.environment }}
         run: |
-          extra=()
-          if [ -f "deploy/$TARGET/values.yaml" ]; then extra+=(-f "deploy/$TARGET/values.yaml"); fi
-          if [ -n "$MIGRATION" ]; then extra+=(--set-file migration.sql="$MIGRATION"); fi
-          if [ -n "$INGRESS_GROUP" ]; then extra+=(--set ingress.group="$INGRESS_GROUP"); fi
-          # Helm 4 기본 server-side apply는 Argo Rollouts가 바꾼 Service selector와 충돌해 두 번째 배포부터 실패한다.
-          helm upgrade --install "$RELEASE" "${{ inputs.chart-repo }}/app" \
-            --version "${{ inputs.chart-version }}" \
-            --namespace "$NAMESPACE" \
-            -f "$VALUES" \
-            "${extra[@]}" \
-            --set image.repository="$IMAGE" \
-            --set image.tag="$TAG" \
-            --server-side=false \
-            --timeout 10m
-      - name: green 대기 (Paused) 또는 Healthy
-        run: |
-          for _ in $(seq 1 60); do
-            phase="$(kubectl get rollout "$RELEASE" -n "$NAMESPACE" -o jsonpath='{.status.phase}')"
-            echo "phase=$phase"
-            case "$phase" in
-              Paused|Healthy) kubectl argo rollouts get rollout "$RELEASE" -n "$NAMESPACE"; exit 0 ;;
-              Degraded) kubectl argo rollouts get rollout "$RELEASE" -n "$NAMESPACE"; exit 1 ;;
+          wait_rollout() {
+            for _ in $(seq 1 60); do
+              phase="$(kubectl get rollout "$1" -n "$NAMESPACE" -o jsonpath='{.status.phase}')"
+              echo "phase=$phase"
+              case "$phase" in
+                Paused|Healthy) kubectl argo rollouts get rollout "$1" -n "$NAMESPACE"; return 0 ;;
+                Degraded) kubectl argo rollouts get rollout "$1" -n "$NAMESPACE"; return 1 ;;
+              esac
+              sleep 10
+            done
+            kubectl argo rollouts get rollout "$1" -n "$NAMESPACE"
+            echo "::error::$1: 10분 안에 Paused · Healthy가 되지 않았다"
+            return 1
+          }
+
+          # 서비스의 외부 주소. 없으면 active는 빈 값이다.
+          service_urls() {
+            local release="$1" host="" tunnel
+            active="" preview="(외부 주소 없음)"
+            case "$TARGET" in
+              aws)
+                # Ingress가 없는 서비스(예: FE가 클러스터 안에서 프록시하는 BE)는 외부 주소가 없다.
+                # 처음 만든 ALB는 주소가 붙기까지 시간이 걸려 잠시 기다린다.
+                if kubectl get ingress "$release" -n "$NAMESPACE" >/dev/null 2>&1; then
+                  for _ in $(seq 1 30); do
+                    host="$(kubectl get ingress "$release" -n "$NAMESPACE" -o jsonpath='{.status.loadBalancer.ingress[0].hostname}')"
+                    [ -n "$host" ] && break
+                    sleep 5
+                  done
+                fi
+                if [ -n "$host" ]; then active="http://$host/"; preview="http://$host:8080/"; fi ;;
+              onprem)
+                # Cloudflare Tunnel이 FE Service로 바로 연결한다. 환경별 터널(cloudflared-<네임스페이스>)이 있으면 그것을 쓴다.
+                # 터널의 연결 대상과 같은 서비스에만 주소를 붙인다. green은 터널에 열지 않는다.
+                tunnel="cloudflared-$NAMESPACE"
+                kubectl -n cloudflared get deploy "$tunnel" >/dev/null 2>&1 || tunnel=cloudflared
+                if kubectl -n cloudflared get deploy "$tunnel" -o jsonpath='{.spec.template.spec.containers[0].args}' | grep -q "//$release\.$NAMESPACE\."; then
+                  active="$(kubectl -n cloudflared logs "deploy/$tunnel" | grep -o 'https://[a-z0-9-]*\.trycloudflare\.com' | tail -1)/"
+                fi
+                preview="kubectl -n $NAMESPACE port-forward svc/$release-preview 8080:$(kubectl get svc "$release-preview" -n "$NAMESPACE" -o jsonpath='{.spec.ports[0].port}')" ;;
             esac
-            sleep 10
+          }
+
+          first_active="" slack=""
+          echo "### \`${TAG::7}\` → $TARGET / $ENVIRONMENT" >> "$GITHUB_STEP_SUMMARY"
+          count="$(jq length <<<"$SERVICES")"
+          for idx in $(seq 0 $((count - 1))); do
+            svc="$(jq -c ".[$idx]" <<<"$SERVICES")"
+            release="$(jq -r .name <<<"$svc")"
+            echo "::group::$release"
+
+            image="$(.platform/.github/actions/image-push/push.sh "$TARGET" "$release" "$(jq -r .path <<<"$svc")" "$TAG" | tail -1)"
+
+            extra=()
+            if [ -f "deploy/$TARGET/values.yaml" ]; then extra+=(-f "deploy/$TARGET/values.yaml"); fi
+            migration="$(jq -r '.migration // ""' <<<"$svc")"
+            if [ -n "$migration" ]; then extra+=(--set-file migration.sql="$migration"); fi
+            if [ -n "$INGRESS_GROUP" ]; then extra+=(--set ingress.group="$INGRESS_GROUP"); fi
+            # Helm 4 기본 server-side apply는 Argo Rollouts가 바꾼 Service selector와 충돌해 두 번째 배포부터 실패한다.
+            helm upgrade --install "$release" "$CHART" \
+              --version "$CHART_VERSION" \
+              --namespace "$NAMESPACE" \
+              -f "$(jq -r .values <<<"$svc")" \
+              "${extra[@]}" \
+              --set image.repository="$image" \
+              --set image.tag="$TAG" \
+              --server-side=false \
+              --timeout 10m
+
+            wait_rollout "$release"
+            service_urls "$release"
+            echo "::endgroup::"
+
+            [ -z "$first_active" ] && [ -n "$active" ] && first_active="$active"
+            slack+="*$release* active (blue): ${active:-(외부 주소 없음)} · preview (green): $preview"$'\n'
+            echo "- **$release** active (blue): ${active:-(외부 주소 없음)} · preview (green): $preview" >> "$GITHUB_STEP_SUMMARY"
           done
-          kubectl argo rollouts get rollout "$RELEASE" -n "$NAMESPACE"
-          echo "::error::10분 안에 Paused · Healthy가 되지 않았다"
-          exit 1
-      - id: urls
-        name: 주소
-        run: |
-          case "$TARGET" in
-            aws)
-              # Ingress가 없는 서비스(예: FE가 클러스터 안에서 프록시하는 BE)는 외부 주소가 없다.
-              # 처음 만든 ALB는 주소가 붙기까지 시간이 걸려 잠시 기다린다.
-              host=""
-              if kubectl get ingress "$RELEASE" -n "$NAMESPACE" >/dev/null 2>&1; then
-                for _ in $(seq 1 30); do
-                  host="$(kubectl get ingress "$RELEASE" -n "$NAMESPACE" -o jsonpath='{.status.loadBalancer.ingress[0].hostname}')"
-                  [ -n "$host" ] && break
-                  sleep 5
-                done
-              fi
-              if [ -n "$host" ]; then
-                active="http://$host/"
-                preview="http://$host:8080/"
-              else
-                active=""
-                preview="(외부 주소 없음)"
-              fi ;;
-            onprem)
-              # Cloudflare Tunnel이 FE Service로 바로 연결한다. 환경별 터널(cloudflared-<네임스페이스>)이 있으면 그것을 쓴다.
-              # green은 터널에 열지 않는다.
-              tunnel="cloudflared-$NAMESPACE"
-              kubectl -n cloudflared get deploy "$tunnel" >/dev/null 2>&1 || tunnel=cloudflared
-              active="$(kubectl -n cloudflared logs "deploy/$tunnel" | grep -o 'https://[a-z0-9-]*\.trycloudflare\.com' | tail -1)/"
-              preview="kubectl -n $NAMESPACE port-forward svc/$RELEASE-preview 8080:$(kubectl get svc "$RELEASE-preview" -n "$NAMESPACE" -o jsonpath='{.spec.ports[0].port}')" ;;
-          esac
-          echo "active=$active" >> "$GITHUB_OUTPUT"
+
           {
-            echo "slack<<END"
-            echo "active (blue): $active"
-            echo "preview (green): $preview"
-            echo "END"
+            echo "active=$first_active"
+            echo "names=$(jq -r 'map(.name) | join(" ")' <<<"$SERVICES")"
+            echo "slack<<END"; printf '%s' "$slack"; echo "END"
           } >> "$GITHUB_OUTPUT"
-          {
-            echo "### $RELEASE @ \`${TAG::7}\` → $TARGET / ${{ inputs.environment }}"
-            echo "- active (blue): $active"
-            echo "- preview (green): $preview"
-          } >> "$GITHUB_STEP_SUMMARY"
       # 감사 로그는 모든 대상이 같은 S3 버킷(Object Lock)에 남긴다. aws는 kube-access에서 이미 로그인했다.
       - if: always() && inputs.target != 'aws'
         uses: aws-actions/configure-aws-credentials@v6
@@ -213,7 +225,7 @@ jobs:
         uses: ./.platform/.github/actions/audit-log
         with:
           action: deploy
-          target: ${{ matrix.service.name }}@${{ inputs.target }}.${{ inputs.environment }}
+          target: all@${{ inputs.target }}.${{ inputs.environment }}
           result: ${{ job.status }}
           bucket: ${{ vars.AUDIT_LOG_BUCKET }}
       - if: always()
@@ -222,7 +234,8 @@ jobs:
           token: ${{ secrets.SLACK_BOT_TOKEN }}
           channel: ${{ vars.SLACK_CHANNEL_ID }}
           action: deploy
-          target: ${{ matrix.service.name }}@${{ inputs.target }}.${{ inputs.environment }}
+          target: ${{ steps.deploy.outputs.names || 'all' }}@${{ inputs.target }}.${{ inputs.environment }}
+          service: all@${{ inputs.target }}.${{ inputs.environment }}
           result: ${{ job.status }}
-          details: ${{ steps.urls.outputs.slack }}
+          details: ${{ steps.deploy.outputs.slack }}
           buttons: ${{ job.status == 'success' && 'promote abort' || '' }}
