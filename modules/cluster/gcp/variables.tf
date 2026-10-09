@@ -1,3 +1,7 @@
+variable "project_id" {
+  type = string
+}
+
 variable "name" {
   description = "GKE cluster name."
   type        = string

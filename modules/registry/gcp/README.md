@@ -18,3 +18,5 @@ Google provider에 프로젝트와 인증을 설정한다. 입력은 `repositori
 AWS ECR과 달리 GCP는 태그 변경 금지 시 태그가 있는 이미지도 정리할 수 없어 `immutable_tags = false`를 사용한다. 같은 태그를 다시 push할 수 있으므로 C7 호출부는 커밋 SHA 태그를 사용해야 한다. IAM은 이 모듈에서 변경하지 않는다. 노드 읽기는 C3, CI 쓰기는 C5에서 연결한다.
 
 참고: [GCP 정리 정책](https://docs.cloud.google.com/artifact-registry/docs/repositories/cleanup-policy), [Terraform 리소스](https://registry.terraform.io/providers/hashicorp/google/latest/docs/resources/artifact_registry_repository).
+
+`project_id`를 명시적으로 전달한다. 프로젝트 식별을 위해 인증 토큰이 포함된 client_config 데이터 소스를 state에 저장하지 않는다.

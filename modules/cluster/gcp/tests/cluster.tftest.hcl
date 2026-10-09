@@ -1,10 +1,7 @@
-mock_provider "google" {
-  mock_data "google_client_config" {
-    defaults = { project = "test-project" }
-  }
-}
+mock_provider "google" {}
 
 variables {
+  project_id          = "test-project"
   name                = "one-tatchi"
   network_id          = "projects/test-project/global/networks/one-tatchi"
   subnet_ids          = ["projects/test-project/regions/asia-northeast3/subnetworks/one-tatchi-nodes"]

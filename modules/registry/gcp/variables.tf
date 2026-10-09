@@ -1,3 +1,7 @@
+variable "project_id" {
+  type = string
+}
+
 variable "repositories" {
   description = "만들 이미지 저장소 이름 목록"
   type        = set(string)

@@ -1,5 +1,3 @@
-data "google_client_config" "current" {}
-
 locals {
   # One pool per zone avoids interpreting desired=3 as three nodes in EACH zone.
   zones = sort(var.node_locations)
@@ -13,6 +11,7 @@ locals {
 }
 
 resource "google_service_account" "nodes" {
+  project      = var.project_id
   account_id   = "${substr(var.name, 0, 18)}-nodes-${substr(md5(var.name), 0, 5)}"
   display_name = "${var.name} GKE nodes"
 }
@@ -22,7 +21,7 @@ resource "google_project_iam_member" "nodes" {
     "roles/container.defaultNodeServiceAccount",
     "roles/artifactregistry.reader",
   ])
-  project = data.google_client_config.current.project
+  project = var.project_id
   role    = each.value
   member  = "serviceAccount:${google_service_account.nodes.email}"
 }
@@ -31,6 +30,7 @@ resource "google_project_iam_member" "nodes" {
 # IAM/RBAC authenticate access; callers with fixed IPs can set authorized_networks.
 # trivy:ignore:GCP-0061
 resource "google_container_cluster" "this" {
+  project                  = var.project_id
   name                     = var.name
   location                 = var.region
   node_locations           = local.zones
@@ -72,7 +72,7 @@ resource "google_container_cluster" "this" {
   }
 
   workload_identity_config {
-    workload_pool = "${data.google_client_config.current.project}.svc.id.goog"
+    workload_pool = "${var.project_id}.svc.id.goog"
   }
 
   master_auth {
@@ -108,6 +108,7 @@ resource "google_container_cluster" "this" {
 }
 
 resource "google_container_node_pool" "this" {
+  project            = var.project_id
   for_each           = local.pools
   name               = "nodes-${each.key}"
   location           = var.region

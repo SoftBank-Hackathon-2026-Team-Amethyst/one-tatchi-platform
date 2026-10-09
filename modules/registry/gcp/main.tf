@@ -1,9 +1,7 @@
-data "google_client_config" "current" {}
-
 resource "google_artifact_registry_repository" "this" {
   for_each = var.repositories
 
-  project       = data.google_client_config.current.project
+  project       = var.project_id
   location      = var.region
   repository_id = each.value
   description   = "Docker images for ${each.value}"

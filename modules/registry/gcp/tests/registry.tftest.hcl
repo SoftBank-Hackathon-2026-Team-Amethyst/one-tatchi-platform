@@ -1,12 +1,7 @@
-mock_provider "google" {
-  mock_data "google_client_config" {
-    defaults = {
-      project = "test-project"
-    }
-  }
-}
+mock_provider "google" {}
 
 variables {
+  project_id   = "test-project"
   repositories = ["demo-app-be", "demo-app-fe"]
 }
 

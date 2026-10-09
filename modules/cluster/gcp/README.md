@@ -57,3 +57,5 @@ mock plan 테스트는 총 3대 구성, C2 범위 · Workload Identity 연결, �
 
 - [GKE node pool provider 문서](https://registry.terraform.io/providers/hashicorp/google/latest/docs/resources/container_node_pool)
 - [노드 서비스 계정 설정](https://docs.cloud.google.com/kubernetes-engine/security/configure-node-service-accounts)
+
+`project_id`를 명시적으로 전달한다. 프로젝트 식별을 위해 인증 토큰이 포함된 client_config 데이터 소스를 state에 저장하지 않는다.
