@@ -270,8 +270,8 @@ Claude Code는 `/todo-task`, Codex는 `$todo-task`로 이 순서를 따르는 �
 **할 일**
 - [x] k3d(또는 OrbStack)로 k3s 클러스터 생성, Docker VM 메모리 6~8GB
 - [x] k3s 설치, Cloudflare Tunnel → HTTPS 주소 (클러스터 안 cloudflared Quick Tunnel `*.trycloudflare.com`. 고정 도메인은 쓰지 않기로 함, 필요하면 `tunnel.token_secret`으로 Named Tunnel 전환. Traefik 대신 터널이 Service로 바로 연결)
-- [ ] platform의 온프레미스 cluster · cluster_addons(터널 · secrets) · database · registry 모듈을 demo-app `infra/envs/onprem`에서 태그로 참조해 구성
-- [ ] App Chart로 demo-app의 be · fe를 맥북 test에 배포하고 터널 HTTPS 주소에서 화면 · 게시판 API · DB 연결 확인
+- [x] platform의 온프레미스 cluster · cluster_addons(터널 · secrets) · database · registry 모듈을 demo-app `infra/envs/onprem`에서 태그로 참조해 구성
+- [x] App Chart로 demo-app의 be · fe를 맥북 test에 배포하고 터널 HTTPS 주소에서 화면 · 게시판 API · DB 연결 확인
 
 **완료 기준** 맥북 test 환경의 게시판 화면과 API가 Cloudflare Tunnel HTTPS 주소에서 동작하고 DB에 연결된다.
 
