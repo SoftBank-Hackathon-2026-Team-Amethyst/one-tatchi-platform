@@ -65,6 +65,21 @@ uv run python -m app.main
 
 명령: `/rollout <promote|abort|undo> <서비스|all>@<대상>.<환경>` (예 `/rollout promote all@aws.test`)
 
+## PR 준비 알림
+
+janto PR의 검사가 통과하면 재사용 워크플로 `pr-ready.yml`이 PR 제목 · 작성자 · 변경 규모와 머지 버튼을 올립니다. draft, `yolo/**` 브랜치(T8 자동 머지), fork PR은 알리지 않습니다. 대상 레포의 PR 워크플로에서 검사 job 뒤에 붙입니다.
+
+```yaml
+  pr-ready:
+    needs: checks
+    if: github.event_name == 'pull_request'
+    uses: SoftBank-Hackathon-2026-Team-Amethyst/one-tatchi-platform/.github/workflows/pr-ready.yml@vX.Y.Z
+    with:
+      template-ref: vX.Y.Z
+    secrets:
+      SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
+```
+
 ## 운영 승인 버튼 설정 (한 번만)
 
 봇은 GitHub App이라 environment의 required reviewers가 될 수 없습니다. 대신 대상 레포 `prod` environment의 **custom deployment protection rule**로 등록하고, 버튼을 누르면 그 규칙을 승인 · 거절합니다. 누른 사람은 승인 코멘트(`slack:<이름>(<ID>)`)로 남습니다.
