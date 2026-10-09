@@ -1,6 +1,6 @@
 # 가격 조회 · 비용 계산 계약 (T16 / C1)
 
-이 문서는 배포 분석 도구의 구성 입력, 단가 조회 결과, 비용 계산 결과와 실패 처리 계약을 정의한다. 스킬 원본은 platform에, 실제 분석 산출물은 대상 앱의 `.deploy/analysis/`에 둔다. C1은 계약과 예시를 추가하는 커밋이다. 아래 `price.py` CLI와 검증기는 C2~C5에서 구현하며, 현재 이 문서만으로 실행할 수 없다.
+이 문서는 배포 분석 도구의 구성 입력, 단가 조회 결과, 비용 계산 결과와 실패 처리 계약을 정의한다. 스킬 원본은 platform에, 실제 분석 산출물은 대상 앱의 `.deploy/analysis/`에 둔다. C1은 계약과 예시를 추가하는 커밋이다. C2에서 입력 검증과 AWS 단가 조회를 구현했다. GCP 조회는 C3, 비용 계산은 C5에서 추가한다.
 
 ## 확정한 도구 구성
 
@@ -21,7 +21,7 @@
 
 ## CLI 계약
 
-다음 명령은 구현할 인터페이스다. `<skill-dir>`은 설치된 deploy-analyze 디렉터리다. 모든 파일 경로를 명시하며 작업 디렉터리에서 앱 루트를 추측하지 않는다.
+validate와 AWS lookup은 실행할 수 있다. calculate는 C5에서 구현할 인터페이스이며 아직 실행할 수 없다. `<skill-dir>`은 설치된 deploy-analyze 디렉터리다. 모든 파일 경로를 명시하며 작업 디렉터리에서 앱 루트를 추측하지 않는다.
 
 ```sh
 python <skill-dir>/scripts/price.py validate --input <app-root>/.deploy/analysis/pricing-input.json
@@ -45,6 +45,48 @@ python <skill-dir>/scripts/price.py calculate --input <app-root>/.deploy/analysi
 | 1 | 파일 접근 · 저장 실패 또는 예상하지 못한 내부 오류다. | 새 결과를 사용 가능한 것으로 보고하지 않는다. |
 
 예산 초과는 실행 실패가 아니다. 완전한 계산 결과가 예산을 넘더라도 종료 코드는 0이며 `budget.status`로 표시한다. 예산이나 환율 미정만으로 USD 계산 자체를 partial로 만들지는 않는다.
+
+## C2 AWS 조회 사용법과 지원 범위
+
+의존성은 스킬의 requirements.txt에 있다. 다음 명령은 실제 앱 입력을 검증하거나 단가를 조회한다.
+
+```sh
+uv run --no-project --with-requirements <skill-dir>/requirements.txt python <skill-dir>/scripts/price.py validate --input <app-root>/.deploy/analysis/pricing-input.json
+uv run --no-project --with-requirements <skill-dir>/requirements.txt python <skill-dir>/scripts/price.py lookup --input <app-root>/.deploy/analysis/pricing-input.json --output <app-root>/.deploy/analysis/prices.json
+```
+
+AWS SDK 기본 자격증명 경로를 사용한다. 필요한 읽기 권한은 pricing:DescribeServices, pricing:GetAttributeValues, pricing:GetProducts다. API 클라이언트는 us-east-1에 접속하고 상품 조건은 후보의 region을 사용한다. 연결 제한은 5초, 응답 제한은 15초, SDK 표준 재시도는 최초 요청을 포함해 최대 3회다. 자격증명을 JSON이나 명령 인자에 넣지 않는다.
+
+조회는 공개 On-Demand USD 단가를 사용한다. 약정 할인 · 크레딧 · 계정별 할인과 세금은 포함하지 않는다. API 응답의 SKU와 가격 적용 시점을 보존하며, 복수 상품이나 중복 · 불연속 과금 차원을 임의로 선택하거나 더하지 않는다.
+
+| resource_kind / billing_dimension | 필수 attributes |
+|---|---|
+| ec2 / instance_hours | instance_type, operating_system, tenancy |
+| rds / instance_hours | instance_class, engine, deployment |
+| rds / storage | usage_type, engine, deployment |
+| ebs / storage | usage_type |
+| eks / cluster_hours | usage_type |
+| nat / gateway_hours, processed_data | usage_type |
+| alb / load_balancer_hours, lcu_hours | usage_type |
+| ecr / storage | usage_type |
+| logs / ingestion, storage | usage_type |
+| internet_egress / transfer | usage_type, to_location |
+
+usage_type은 공급자 카탈로그에서 확인한 정확한 usagetype 문자열이다. 지역 접두사를 추측해 만들지 않는다. 조회기는 DescribeServices로 서비스 필드를 확인하고 GetAttributeValues로 usage_type이 존재하는지 확인한다. 자원 목록에 필요한 사용 유형을 채우는 작업은 C4와 연결된다. 기본 EC2 프로필은 Compute Instance · preInstalledSw: NA · capacitystatus: Used이며 이에 충돌하는 속성은 거부한다.
+
+추가 필터는 operation, license_model, volume_api_name, product_family, to_location, from_location을 사용할 수 있다. API 속성 이름으로 변환한 뒤 서비스 메타데이터에 있는지 확인한다. rate_code는 상품 필터가 아니라 가격 차원 선택용이며, 선택된 구간이 전체 사용량을 설명하지 못하면 미조회로 남긴다. internet_egress는 견적 리전을 fromRegionCode로 지정한다. 정확한 과금 차원을 확정하지 못하면 다른 공식 가격으로 임의 대체하지 않는다.
+
+Hrs · hrs · Hours는 hour, GB-Mo · GB-month는 gb_month, GB는 gb, Requests는 request, LCU-Hrs는 lcu_hour로 정규화한다. 변환 계수는 1이다. 단위가 맞지 않거나 조건부 appliesTo가 있는 항목은 미조회로 남긴다. GB를 GiB로 임의 변환하지 않는다.
+
+C2에서 GCP 항목과 온프레미스의 비어 있지 않은 항목은 unsupported_resource로 남기고 AWS 성공 결과는 보존한다. 온프레미스의 빈 items는 조회할 클라우드 항목이 없어 complete이며 운영 비용 미산정 가정은 입력에 유지한다. 비용과 예산 판정은 아직 생성하지 않는다.
+
+로컬 테스트:
+
+```sh
+uv run --no-project --with-requirements skills/deploy-analyze/requirements.txt python -B -m unittest discover -s skills/deploy-analyze/tests -v
+```
+
+[pricing 워크플로](../../../.github/workflows/pricing.yml)가 변경된 스킬의 가격 조회와 기존 브리프 테스트를 함께 실행한다. 합성 API 응답 테스트와 실제 API 실조회는 구분한다.
 
 ## 공통 형식과 파일 연결
 

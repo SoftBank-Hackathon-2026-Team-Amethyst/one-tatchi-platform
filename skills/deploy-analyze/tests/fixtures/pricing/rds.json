@@ -1,0 +1,36 @@
+{
+  "product": {
+    "sku": "RDS-EXAMPLE",
+    "productFamily": "Database Instance",
+    "attributes": {
+      "regionCode": "ap-northeast-2",
+      "instanceType": "db.t4g.micro",
+      "databaseEngine": "PostgreSQL",
+      "deploymentOption": "Single-AZ"
+    }
+  },
+  "serviceCode": "AmazonRDS",
+  "terms": {
+    "OnDemand": {
+      "RDS-EXAMPLE.JRTCKXETXF": {
+        "sku": "RDS-EXAMPLE",
+        "offerTermCode": "JRTCKXETXF",
+        "effectiveDate": "2026-01-01T00:00:00Z",
+        "priceDimensions": {
+          "rds-hour": {
+            "rateCode": "rds-hour",
+            "description": "Synthetic fixture",
+            "unit": "Hrs",
+            "beginRange": "0",
+            "endRange": "Inf",
+            "pricePerUnit": {
+              "USD": "0.025"
+            },
+            "appliesTo": []
+          }
+        },
+        "termAttributes": {}
+      }
+    }
+  }
+}

@@ -1,0 +1,27 @@
+name: pricing
+
+on:
+  pull_request:
+    paths:
+      - skills/deploy-analyze/**
+      - .github/workflows/pricing.yml
+  push:
+    branches: [main]
+    paths:
+      - skills/deploy-analyze/**
+      - .github/workflows/pricing.yml
+
+permissions:
+  contents: read
+
+jobs:
+  pricing:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v10.2.0
+      - name: 가격 조회 · 브리프 회귀 테스트 (외부 API 호출 없음)
+        run: >-
+          uv run --no-project --python 3.11
+          --with-requirements skills/deploy-analyze/requirements.txt
+          python -B -m unittest discover -s skills/deploy-analyze/tests -v

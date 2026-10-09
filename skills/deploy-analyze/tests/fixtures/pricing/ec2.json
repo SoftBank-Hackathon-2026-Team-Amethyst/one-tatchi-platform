@@ -1,0 +1,38 @@
+{
+  "product": {
+    "sku": "EC2-EXAMPLE",
+    "productFamily": "Compute Instance",
+    "attributes": {
+      "regionCode": "ap-northeast-2",
+      "instanceType": "t3.medium",
+      "operatingSystem": "Linux",
+      "tenancy": "Shared",
+      "preInstalledSw": "NA",
+      "capacitystatus": "Used"
+    }
+  },
+  "serviceCode": "AmazonEC2",
+  "terms": {
+    "OnDemand": {
+      "EC2-EXAMPLE.JRTCKXETXF": {
+        "sku": "EC2-EXAMPLE",
+        "offerTermCode": "JRTCKXETXF",
+        "effectiveDate": "2026-01-01T00:00:00Z",
+        "priceDimensions": {
+          "ec2-hour": {
+            "rateCode": "ec2-hour",
+            "description": "Synthetic fixture",
+            "unit": "Hrs",
+            "beginRange": "0",
+            "endRange": "Inf",
+            "pricePerUnit": {
+              "USD": "0.052"
+            },
+            "appliesTo": []
+          }
+        },
+        "termAttributes": {}
+      }
+    }
+  }
+}
