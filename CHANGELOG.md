@@ -10,6 +10,10 @@
 
 ## Unreleased
 
+## v2.1.2
+
+- T8: 검사한 이미지의 publish job에 test environment를 지정해 yolo 브랜치에서 기존 AWS/GCP OIDC 신뢰 조건으로 인증한다. 운영 deploy job의 승인 관문은 유지한다.
+
 ## v2.1.1
 
 - T8 검증 차단 해소: checks의 Docker Hub 로그인을 QEMU 다운로드보다 먼저 실행하고 사용자명 Secret을 지원한다. 인증·QEMU 다운로드를 최대 3회 재시도하며 실패하면 검사를 중단한다.
