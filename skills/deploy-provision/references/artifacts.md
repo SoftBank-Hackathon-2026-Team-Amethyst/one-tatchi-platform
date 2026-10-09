@@ -118,7 +118,7 @@ platform 모듈을 `?ref=@@TEMPLATE_VERSION@@`로 참조하는 Terraform 루트.
 
 platform 재사용 워크플로를 **호출만** 한다. 검사 단계를 끄는 입력은 없다.
 
-- `deploy.yml`: `pull_request` → checks, `push yolo/**` → checks → test, `push main` → checks → test → prod, `workflow_dispatch` → 대상 골라 재배포. yolo 브랜치에서는 `promote-mode: auto`(AI 판단대로 실행), 그 외 `manual`(사람이 Slack 버튼).
+- `deploy.yml`: `pull_request` → checks, `push yolo/**` → checks → test, `push main` → checks → test → prod, `workflow_dispatch` → 대상 골라 재배포. yolo 브랜치에서는 `promote-mode: auto`(AI 판단대로 실행), 그 외 `manual`(사람이 Slack 버튼). **호출부 입력은 참조하는 템플릿 버전에 있는 것만 넘긴다.** 없는 입력을 넘기면 워크플로가 `startup_failure`로 시작하지 못한다(`promote-mode`는 v1.9.0부터). 각 입력이 생긴 버전은 platform `CHANGELOG.md`.
 - `infra.yml`(aws): `infra/**` PR → plan 코멘트, main → apply.
 - `template-update.yml`: 새 태그 알림 → 버전 올리는 PR.
 - 호출부의 `with:` 값만 바꾼다. 새 job을 끼워 검사를 건너뛰게 만들지 않는다.

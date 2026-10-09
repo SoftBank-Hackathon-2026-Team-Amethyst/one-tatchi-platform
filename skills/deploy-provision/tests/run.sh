@@ -67,6 +67,16 @@ fi
 grep -q 'template-ref' "$tmp/check2.log"
 mv "$app/.github/workflows/deploy.yml.bak" "$app/.github/workflows/deploy.yml"
 
+echo "== 템플릿 버전보다 새 입력(promote-mode < v1.9.0)이면 실패"
+sed -i.bak 's/template_version: v1.9.0/template_version: v1.8.0/' "$app/.deploy/config.yaml"
+sed -i.bak -E 's/(@|template-ref: |\?ref=)v1\.9\.0/\1v1.8.0/g; s/chart-version: 1\.9\.0/chart-version: 1.8.0/' "$app"/.github/workflows/*.yml "$app"/infra/envs/*/*.tf
+if bash "$check" "$app" >"$tmp/check3.log" 2>&1; then echo "promote-mode 버전 불일치를 놓쳤다" >&2; cat "$tmp/check3.log" >&2; exit 1; fi
+grep -q 'promote-mode' "$tmp/check3.log"
+sed -i.bak 's/template_version: v1.8.0/template_version: v1.9.0/' "$app/.deploy/config.yaml"
+sed -i.bak -E 's/(@|template-ref: |\?ref=)v1\.8\.0/\1v1.9.0/g; s/chart-version: 1\.8\.0/chart-version: 1.9.0/' "$app"/.github/workflows/*.yml "$app"/infra/envs/*/*.tf
+find "$app" -name '*.bak' -delete
+bash "$check" "$app" >/dev/null || { echo "되돌린 뒤 통과해야 한다" >&2; exit 1; }
+
 echo "== 자리표시자가 남으면 실패"
 echo "host: @@HOST_TEST@@" >> "$app/deploy/onprem/values.yaml"
 if bash "$check" "$app" >/dev/null 2>&1; then echo "자리표시자 잔존을 놓쳤다" >&2; exit 1; fi

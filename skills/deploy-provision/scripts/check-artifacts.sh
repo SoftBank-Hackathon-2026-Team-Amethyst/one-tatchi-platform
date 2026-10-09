@@ -44,6 +44,14 @@ if [ -n "$version" ]; then
   [ -z "$bad" ] || fail "모듈 ?ref= 버전이 $version 과 다르다:"$'\n'"$bad"
 fi
 
+# 3b. 템플릿 버전보다 새 입력을 쓰지 않는지 (호출부 입력이 없으면 워크플로가 startup_failure로 시작도 못 한다)
+if [ -n "$version" ] && [ -f .github/workflows/deploy.yml ]; then
+  minor="$(echo "$version" | cut -d. -f2)"; major="$(echo "${version#v}" | cut -d. -f1)"
+  if /usr/bin/grep -q '^\s*promote-mode:' .github/workflows/deploy.yml && [ "$major" -eq 1 ] && [ "$minor" -lt 9 ]; then
+    fail "deploy.yml: promote-mode 입력은 템플릿 v1.9.0부터다 (지금 $version). 줄을 지우거나 버전을 올린다"
+  fi
+fi
+
 # 4. 필수 파일
 for f in .github/workflows/deploy.yml .github/workflows/template-update.yml .github/CODEOWNERS .deploy/smoke.json; do
   [ -f "$f" ] || fail "$f 가 없다"

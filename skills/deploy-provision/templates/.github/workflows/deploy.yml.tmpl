@@ -46,7 +46,8 @@ jobs:
       namespace: test
       services: >-
         @@SERVICES_JSON@@
-      # yolo 브랜치는 AI 승격 판단대로 바로 실행하고, 그 외(main)는 사람이 Slack 버튼으로 결정한다
+      # yolo 브랜치는 AI 승격 판단대로 바로 실행하고, 그 외(main)는 사람이 Slack 버튼으로 결정한다.
+      # 이 입력은 템플릿 v1.9.0부터 있다. 그 이전 버전을 참조하면 워크플로가 시작도 못 하므로(startup_failure) 이 두 줄을 지운다.
       promote-mode: ${{ startsWith(github.ref, 'refs/heads/yolo/') && 'auto' || 'manual' }}
       chart-version: @@CHART_VERSION@@
       template-ref: @@TEMPLATE_VERSION@@
