@@ -3,17 +3,24 @@ import json
 import httpx
 import pytest
 
-from app.approvals import Approvals, NotWaitingError
+from app.approvals import Approvals, NotWaitingError, approval_marker
 from app.github import GitHub
 from app.rollout import NotAllowedError
 
 
 def make_approvals(
-    requests: list[httpx.Request], allowed: list[str], statuses: list[int]
+    requests: list[httpx.Request],
+    allowed: list[str],
+    statuses: list[int],
+    comment_status: int = 201,
 ) -> Approvals:
     def handler(request: httpx.Request) -> httpx.Response:
         requests.append(request)
-        return httpx.Response(statuses.pop(0) if statuses else 204)
+        if request.url.path.endswith("/deployment_protection_rule"):
+            return httpx.Response(statuses.pop(0) if statuses else 204)
+        if request.method == "GET":
+            return httpx.Response(200, json={"head_sha": "abc123"})
+        return httpx.Response(comment_status)
 
     github = GitHub(
         lambda: "token", "owner/repo", "rollout.yml", "main", httpx.MockTransport(handler)
@@ -25,7 +32,7 @@ def test_approve_reviews_protection_rule_with_requester() -> None:
     requests: list[httpx.Request] = []
     make_approvals(requests, [], []).request("approve", "123@prod", "U1", "soul")
 
-    (review,) = requests
+    review, run, comment = requests
     assert (review.method, review.url.path) == (
         "POST",
         "/repos/owner/repo/actions/runs/123/deployment_protection_rule",
@@ -34,6 +41,30 @@ def test_approve_reviews_protection_rule_with_requester() -> None:
     assert body["environment_name"] == "prod"
     assert body["state"] == "approved"
     assert "slack:soul(U1)" in body["comment"]
+    # 승인자는 API로 다시 읽을 수 없어서 배포하는 커밋에 표지를 남긴다 (deploy.yml이 읽음)
+    assert (run.method, run.url.path) == ("GET", "/repos/owner/repo/actions/runs/123")
+    assert (comment.method, comment.url.path) == (
+        "POST",
+        "/repos/owner/repo/commits/abc123/comments",
+    )
+    assert (
+        approval_marker(123, "prod", "approved", "slack:soul(U1)")
+        in json.loads(comment.content)["body"]
+    )
+
+
+def test_marker_format() -> None:
+    assert approval_marker(123, "prod", "approved", "slack:soul(U1)") == (
+        "<!-- one-tatchi-approval run=123 environment=prod state=approved by=slack:soul(U1) -->"
+    )
+
+
+def test_approval_succeeds_even_if_record_fails() -> None:
+    requests: list[httpx.Request] = []
+    make_approvals(requests, [], [], comment_status=403).request(
+        "approve", "123@prod", "U1", "soul"
+    )
+    assert len(requests) == 3
 
 
 def test_reject() -> None:
@@ -46,7 +77,8 @@ def test_retries_until_waiting() -> None:
     # 알림은 배포 job이 승인 대기에 들어가기 직전에 나간다
     requests: list[httpx.Request] = []
     make_approvals(requests, [], [422, 204]).request("approve", "123@prod", "U1", "soul")
-    assert len(requests) == 2
+    reviews = [r for r in requests if r.url.path.endswith("/deployment_protection_rule")]
+    assert len(reviews) == 2
 
 
 def test_not_waiting_after_retries() -> None:

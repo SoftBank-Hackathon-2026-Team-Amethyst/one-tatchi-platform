@@ -414,12 +414,27 @@ jobs:
           sha: ${{ env.TAG }}
       - if: always() && steps.evidence.outcome == 'failure'
         run: echo 'Grafana 근거 게시 실패 — promote-judgment artifact에서 원본을 확인하세요.' >> "$GITHUB_STEP_SUMMARY"
+      # 사람 승인을 거친 운영 배포는 승인한 사람을 requested_by로 남긴다 (T26).
+      # protection rule 승인자는 API로 읽을 수 없어서, slack-bot이 승인하면서 이 커밋에 남긴 표지를 읽는다.
+      - id: approver
+        if: always() && needs.gate.outputs.environment == 'prod'
+        name: 운영 승인자 (slack-bot 표지)
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          by="$(gh api "repos/$GITHUB_REPOSITORY/commits/$GITHUB_SHA/comments" --paginate \
+            --jq ".[] | select(.user.type == \"Bot\") | .body
+              | capture(\"one-tatchi-approval run=${GITHUB_RUN_ID} environment=prod state=approved by=(?<by>[^ ]+) -->\")
+              | .by" | tail -n 1)" || by=""
+          [ -n "$by" ] || echo "::warning::승인 표지를 찾지 못했다. 감사 로그 requested_by는 actor로 남는다"
+          echo "requested-by=$by" >> "$GITHUB_OUTPUT"
       - if: always()
         uses: ./.platform/.github/actions/audit-log
         with:
           action: deploy
           target: all@${{ inputs.target }}.${{ inputs.environment }}
           result: ${{ job.status }}
+          requested-by: ${{ steps.approver.outputs.requested-by }}
           bucket: ${{ vars.AUDIT_LOG_BUCKET }}
       # auto에서 AI가 실제로 promote · abort했으면 그 조작도 남긴다. abort는 의도한 결과라 success로 적는다.
       - if: always() && steps.judge.outputs.executed != ''

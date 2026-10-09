@@ -84,6 +84,8 @@ janto PR의 검사가 통과하면 재사용 워크플로 `pr-ready.yml`이 PR �
 
 봇은 GitHub App이라 environment의 required reviewers가 될 수 없습니다. 대신 대상 레포 `prod` environment의 **custom deployment protection rule**로 등록하고, 버튼을 누르면 그 규칙을 승인 · 거절합니다. 누른 사람은 승인 코멘트(`slack:<이름>(<ID>)`)로 남습니다.
 
+protection rule을 승인한 사람은 API로 다시 읽을 수 없습니다. 그래서 봇은 승인 · 거절한 뒤 배포하는 커밋에 표지 코멘트(`<!-- one-tatchi-approval run=<실행 ID> environment=<환경> state=<approved|rejected> by=slack:<이름>(<ID>) -->`)를 남기고, `deploy.yml`이 이 표지를 읽어 운영 배포 감사 로그의 `requested_by`에 넣습니다. 그래서 GitHub App에 Repository **Contents** 쓰기 권한도 필요합니다(PR 머지에도 필요한 권한입니다).
+
 1. GitHub App 권한: Repository **Deployments** 읽기 · 쓰기, 이벤트 **Deployment protection rule** 구독(웹후크를 켜야 고를 수 있다. 봇은 웹후크를 받지 않으니 주소는 아무 곳이어도 된다)
 2. 대상 레포 Settings → Environments → `prod` → Deployment protection rules에서 앱을 켠다. Slack만으로 승인하려면 required reviewers는 끈다(둘 다 켜면 둘 다 필요). 관리자는 긴급할 때 화면에서 우회할 수 있다
 
@@ -127,4 +129,4 @@ jobs:
 
 ## 배포
 
-`deploy/values.yaml`은 App Chart 값입니다. Secret `slack-bot-env`에 `SLACK_BOT_TOKEN`, `SLACK_APP_TOKEN`, `GITHUB_APP_CLIENT_ID`, `GITHUB_APP_PRIVATE_KEY`를 넣고, `GITHUB_REPOSITORY`는 `env`로 줍니다. 어디에 띄울지(EKS · 맥북 k3d · 로컬)는 T26에서 정합니다.
+`deploy/values.yaml`은 App Chart 값입니다. Secret `slack-bot-env`에 `SLACK_BOT_TOKEN`, `SLACK_APP_TOKEN`, `GITHUB_APP_CLIENT_ID`, `GITHUB_APP_PRIVATE_KEY`를 넣고, `GITHUB_REPOSITORY`와 `ALLOWED_USER_IDS`(비밀이 아니라서)는 `env`로 줍니다. 어디에 띄울지(EKS · 맥북 k3d · 로컬)는 T26에서 정합니다.

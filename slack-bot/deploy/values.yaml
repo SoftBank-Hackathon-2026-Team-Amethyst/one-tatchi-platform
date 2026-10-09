@@ -9,6 +9,8 @@ deployStrategy: rolling
 
 env:
   GITHUB_REPOSITORY: SoftBank-Hackathon-2026-Team-Amethyst/demo-app
+  # 버튼을 누를 수 있는 Slack 사용자 (원가연 · 김형래 · 배규태 · 배준범 · 이소울)
+  ALLOWED_USER_IDS: '["U0C4749LN6T","U0C4RRYEK1Q","U0C4R553BMK","U0C6UD5BELR","U0C4LGJTT46"]'
 
 # SLACK_BOT_TOKEN, SLACK_APP_TOKEN, GITHUB_APP_CLIENT_ID, GITHUB_APP_PRIVATE_KEY
 envFromSecrets:
