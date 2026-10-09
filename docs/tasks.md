@@ -333,7 +333,7 @@ Claude Code는 `/todo-task`, Codex는 `$todo-task`로 이 순서를 따르는 �
 - [x] platform의 `ci_identity/gcp`(Workload Identity Federation, demo-app 신뢰)
 - [x] network · cluster(GKE) · registry(Artifact Registry) · database(Cloud SQL) · secrets · observability 구현
 - [x] 출력값 이름이 aws 구현체와 같은지 확인
-- [ ] demo-app에 `infra/envs/gcp` 루트 추가, 배포 확인
+- [x] demo-app에 `infra/envs/gcp` 루트 추가, 배포 확인
 
 **완료 기준** AWS와 같은 App Chart · 같은 값 파일로 GCP 배포가 성공한다.
 
