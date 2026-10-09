@@ -12,6 +12,13 @@
 
 - `yolo-deploy`: push SHA에 맞는 Actions 실행 추적, 보호 경로 검사, 최대 3회 수정 커밋·push 및 중단 후 상태 복원 도구 추가. 기록만을 위한 추가 배포 제거 (T14)
 
+## v1.15.0
+
+- 선택형 중앙 Prometheus와 온프레미스 TLS remote-write, 서비스 HTTP·리소스 대시보드를 추가한다. 수신 비밀번호는 Kubernetes Secret에만 주입한다 (T17).
+- GCP Cloud Monitoring은 EKS 서비스 계정의 단기 OIDC 토큰을 이용한다. 서비스 계정 키 파일은 만들지 않는다. 기존 CloudWatch 전용 모듈 호출은 그대로 동작한다.
+- AI 판단의 `metrics.json`과 관찰 창을 CloudWatch Logs에 게시한다. 게시 실패는 원래 판단·배포 결과를 바꾸지 않으며 Actions artifact를 보존한다.
+- App Chart에 선택형 지표 수집·GCP PodMonitoring·FE nginxlog exporter를 추가한다. exporter는 원본 v1.11.0을 Go 1.27.2로 재빌드해 플랫폼 버전으로 배포한다.
+
 ## v1.14.0
 
 - `deploy.yml` (T8): `yolo-auto-merge: true`로 test의 모든 서비스가 해당 커밋으로 승격됐음을 확인한 뒤 GitHub App으로 main PR을 만든다. PR 검사 완료를 기다리고 `--match-head-commit`으로 검증한 head에 rebase 자동 머지를 요청한다. 일반 리뷰와 CODEOWNERS 규칙은 유지한다.

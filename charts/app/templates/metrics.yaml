@@ -1,0 +1,25 @@
+{{- if .Values.metrics.nginxLogExporter.enabled }}
+{{- if not .Values.metrics.enabled }}{{ fail "nginxLogExporter requires metrics.enabled" }}{{ end }}
+{{- if ne (int .Values.metrics.port) 4040 }}{{ fail "nginxLogExporter requires metrics.port=4040" }}{{ end }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "app.name" . }}-metrics
+data:
+  config.hcl: |
+    listen {
+      port = 4040
+      address = "0.0.0.0"
+    }
+    namespace "app" {
+      format = "$request_method $status $body_bytes_sent $request_time"
+      source {
+        syslog {
+          listen_address = "udp://127.0.0.1:5531"
+          format = "rfc3164"
+          tags = ["nginx"]
+        }
+      }
+      histogram_buckets = [.005, .01, .025, .05, .1, .25, .5, 1, 2.5, 5, 10]
+    }
+{{- end }}

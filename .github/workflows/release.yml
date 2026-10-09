@@ -23,7 +23,7 @@ jobs:
           ver="${VERSION#v}"
           owner="$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')"
           echo "${{ secrets.GITHUB_TOKEN }}" | helm registry login ghcr.io -u "${{ github.actor }}" --password-stdin
-          for c in app service-base platform-config; do
+          for c in app service-base platform-config observability grafana-wif; do
             helm package "charts/$c" --version "$ver" --app-version "$ver" -d dist
             helm push "dist/$c-$ver.tgz" "oci://ghcr.io/$owner/charts"
           done
@@ -63,10 +63,37 @@ jobs:
           cache-from: type=gha,scope=slack-bot
           cache-to: type=gha,mode=max,scope=slack-bot
 
+  nginxlog-exporter:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: docker/setup-qemu-action@v3
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - id: image
+        env:
+          VERSION: ${{ github.ref_name }}
+        run: |
+          owner="$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')"
+          echo "tags=ghcr.io/$owner/nginxlog-exporter:${VERSION#v}" >> "$GITHUB_OUTPUT"
+      - uses: docker/build-push-action@v6
+        with:
+          context: images/nginxlog-exporter
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ${{ steps.image.outputs.tags }}
+          labels: org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+          cache-from: type=gha,scope=nginxlog-exporter
+          cache-to: type=gha,mode=max,scope=nginxlog-exporter
+
   # 대상 레포에 새 버전을 알린다. 대상 레포의 template-update 워크플로가 업데이트 PR을 연다(T22).
   # 메이저 태그(v1)를 옮긴 뒤에 보내야 대상 레포가 @v1로 새 template-update를 쓴다.
   notify:
-    needs: charts
+    needs: [charts, nginxlog-exporter]
     if: vars.BOT_CLIENT_ID != ''
     runs-on: ubuntu-latest
     permissions:

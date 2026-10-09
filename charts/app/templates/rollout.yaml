@@ -27,6 +27,12 @@ spec:
     metadata:
       labels:
         {{- include "app.labels" . | nindent 8 }}
+      {{- if .Values.metrics.enabled }}
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: {{ .Values.metrics.port | quote }}
+        prometheus.io/path: {{ .Values.metrics.path | quote }}
+      {{- end }}
     spec:
       automountServiceAccountToken: false
       securityContext:
@@ -71,7 +77,31 @@ spec:
             - name: writable-{{ $i }}
               mountPath: {{ $path }}
             {{- end }}
+        {{- if .Values.metrics.nginxLogExporter.enabled }}
+        - name: metrics
+          image: {{ default (printf "ghcr.io/softbank-hackathon-2026-team-amethyst/nginxlog-exporter:%s" .Chart.AppVersion) .Values.metrics.nginxLogExporter.image | quote }}
+          args: ["-config-file", "/etc/metrics/config.hcl"]
+          ports:
+            - {name: metrics, containerPort: 4040}
+          securityContext:
+            {{- include "app.securityContext" . | nindent 12 }}
+            runAsUser: 65534
+          resources:
+            requests: {cpu: 10m, memory: 32Mi}
+            limits: {memory: 64Mi}
+          readinessProbe:
+            httpGet: {path: /metrics, port: metrics}
+          livenessProbe:
+            httpGet: {path: /metrics, port: metrics}
+          volumeMounts:
+            - {name: metrics-config, mountPath: /etc/metrics, readOnly: true}
+        {{- end }}
       volumes:
+        {{- if .Values.metrics.nginxLogExporter.enabled }}
+        - name: metrics-config
+          configMap:
+            name: {{ $name }}-metrics
+        {{- end }}
         {{- range $i, $path := .Values.writablePaths }}
         - name: writable-{{ $i }}
           emptyDir: {}

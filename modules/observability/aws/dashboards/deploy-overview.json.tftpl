@@ -1,217 +1,481 @@
 {
   "uid": "deploy-overview",
   "title": "Deploy Overview",
+  "schemaVersion": 39,
   "timezone": "browser",
   "refresh": "30s",
   "time": {
     "from": "now-1h",
     "to": "now"
   },
-  "schemaVersion": 39,
+  "tags": [
+    "one-tatchi",
+    "T17"
+  ],
   "panels": [
     {
       "id": 1,
-      "type": "timeseries",
-      "title": "ALB 요청 수 (타깃 그룹별)",
+      "type": "row",
+      "title": "실제 사용자 트래픽 · smoke / kube-probe 제외",
+      "collapsed": false,
       "gridPos": {
         "x": 0,
         "y": 0,
-        "w": 12,
-        "h": 8
-      },
-      "datasource": {
-        "type": "cloudwatch",
-        "uid": "cloudwatch"
-      },
-      "fieldConfig": {
-        "defaults": {
-          "unit": "short"
-        },
-        "overrides": []
-      },
-      "targets": [
-        {
-          "refId": "A",
-          "datasource": {
-            "type": "cloudwatch",
-            "uid": "cloudwatch"
-          },
-          "queryMode": "Metrics",
-          "metricQueryType": 0,
-          "metricEditorMode": 1,
-          "region": "default",
-          "id": "",
-          "expression": "SEARCH('{AWS/ApplicationELB,LoadBalancer,TargetGroup} MetricName=\"RequestCountPerTarget\"', 'Sum', 60)"
-        }
-      ]
+        "w": 24,
+        "h": 1
+      }
     },
     {
       "id": 2,
       "type": "timeseries",
-      "title": "ALB 5xx (타깃 그룹별)",
+      "title": "요청 / 초",
+      "description": "서비스별 완료 요청. FE와 BE의 값을 합산하지 않습니다.",
       "gridPos": {
-        "x": 12,
-        "y": 0,
-        "w": 12,
+        "x": 0,
+        "y": 1,
+        "w": 8,
         "h": 8
       },
       "datasource": {
-        "type": "cloudwatch",
-        "uid": "cloudwatch"
-      },
-      "fieldConfig": {
-        "defaults": {
-          "unit": "short"
-        },
-        "overrides": []
+        "type": "datasource",
+        "uid": "-- Mixed --"
       },
       "targets": [
         {
-          "refId": "A",
           "datasource": {
-            "type": "cloudwatch",
-            "uid": "cloudwatch"
+            "type": "prometheus",
+            "uid": "prometheus"
           },
-          "queryMode": "Metrics",
-          "metricQueryType": 0,
-          "metricEditorMode": 1,
-          "region": "default",
-          "id": "",
-          "expression": "SEARCH('{AWS/ApplicationELB,LoadBalancer,TargetGroup} MetricName=\"HTTPCode_Target_5XX_Count\"', 'Sum', 60)"
+          "expr": "sum by (target,cluster,environment,service) (rate(app_http_response_count_total{target=~\"$${target:regex}\",environment=~\"$${environment:regex}\",cluster=~\"$cluster\",service=~\"$service\"}[$__rate_interval]))",
+          "legendFormat": "{{target}} · {{service}} · {{environment}} · {{cluster}}",
+          "refId": "A"
+        },
+        {
+          "datasource": {
+            "type": "stackdriver",
+            "uid": "cloud-monitoring"
+          },
+          "queryType": "promQL",
+          "hide": ${gcp_hidden},
+          "promQLQuery": {
+            "projectName": "${gcp_project}",
+            "expr": "sum by (target,cluster,environment,service) (rate(app_http_response_count_total{target=~\"$${target:regex}\",environment=~\"$${environment:regex}\",cluster=~\"$cluster\",service=~\"$service\"}[5m]))",
+            "step": "30s"
+          },
+          "refId": "B"
         }
-      ]
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "reqps",
+          "noValue": "데이터 없음",
+          "custom": {
+            "spanNulls": false
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      }
     },
     {
       "id": 3,
       "type": "timeseries",
-      "title": "파드 CPU (%)",
+      "title": "HTTP 5xx 비율",
+      "description": "5xx / 전체 요청. 요청이 없으면 데이터 없음.",
       "gridPos": {
-        "x": 0,
-        "y": 8,
-        "w": 12,
+        "x": 8,
+        "y": 1,
+        "w": 8,
         "h": 8
       },
       "datasource": {
-        "type": "cloudwatch",
-        "uid": "cloudwatch"
-      },
-      "fieldConfig": {
-        "defaults": {
-          "unit": "percent"
-        },
-        "overrides": []
+        "type": "datasource",
+        "uid": "-- Mixed --"
       },
       "targets": [
         {
-          "refId": "A",
           "datasource": {
-            "type": "cloudwatch",
-            "uid": "cloudwatch"
+            "type": "prometheus",
+            "uid": "prometheus"
           },
-          "queryMode": "Metrics",
-          "metricQueryType": 0,
-          "metricEditorMode": 1,
-          "region": "default",
-          "id": "",
-          "expression": "SEARCH('{ContainerInsights,ClusterName,Namespace,PodName} MetricName=\"pod_cpu_utilization\" ClusterName=\"${cluster_name}\"', 'Average', 60)"
+          "expr": "100 * (sum by (target,cluster,environment,service) (rate(app_http_response_count_total{target=~\"$${target:regex}\",environment=~\"$${environment:regex}\",cluster=~\"$cluster\",service=~\"$service\",status=~\"5..\"}[$__rate_interval])) or (sum by (target,cluster,environment,service) (rate(app_http_response_count_total{target=~\"$${target:regex}\",environment=~\"$${environment:regex}\",cluster=~\"$cluster\",service=~\"$service\"}[$__rate_interval])) * 0)) / (sum by (target,cluster,environment,service) (rate(app_http_response_count_total{target=~\"$${target:regex}\",environment=~\"$${environment:regex}\",cluster=~\"$cluster\",service=~\"$service\"}[$__rate_interval])) > 0)",
+          "legendFormat": "{{target}} · {{service}} · {{environment}} · {{cluster}}",
+          "refId": "A"
+        },
+        {
+          "datasource": {
+            "type": "stackdriver",
+            "uid": "cloud-monitoring"
+          },
+          "queryType": "promQL",
+          "hide": ${gcp_hidden},
+          "promQLQuery": {
+            "projectName": "${gcp_project}",
+            "expr": "100 * (sum by (target,cluster,environment,service) (rate(app_http_response_count_total{target=~\"$${target:regex}\",environment=~\"$${environment:regex}\",cluster=~\"$cluster\",service=~\"$service\",status=~\"5..\"}[5m])) or (sum by (target,cluster,environment,service) (rate(app_http_response_count_total{target=~\"$${target:regex}\",environment=~\"$${environment:regex}\",cluster=~\"$cluster\",service=~\"$service\"}[5m])) * 0)) / (sum by (target,cluster,environment,service) (rate(app_http_response_count_total{target=~\"$${target:regex}\",environment=~\"$${environment:regex}\",cluster=~\"$cluster\",service=~\"$service\"}[5m])) > 0)",
+            "step": "30s"
+          },
+          "refId": "B"
         }
-      ]
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "noValue": "데이터 없음",
+          "custom": {
+            "spanNulls": false
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      }
     },
     {
       "id": 4,
       "type": "timeseries",
-      "title": "파드 메모리 (%)",
+      "title": "응답시간 p95",
+      "description": "실제 요청 histogram의 추정 p95. AI smoke의 nearest-rank와 구분합니다.",
       "gridPos": {
-        "x": 12,
-        "y": 8,
-        "w": 12,
+        "x": 16,
+        "y": 1,
+        "w": 8,
         "h": 8
       },
       "datasource": {
-        "type": "cloudwatch",
-        "uid": "cloudwatch"
-      },
-      "fieldConfig": {
-        "defaults": {
-          "unit": "percent"
-        },
-        "overrides": []
+        "type": "datasource",
+        "uid": "-- Mixed --"
       },
       "targets": [
         {
-          "refId": "A",
           "datasource": {
-            "type": "cloudwatch",
-            "uid": "cloudwatch"
+            "type": "prometheus",
+            "uid": "prometheus"
           },
-          "queryMode": "Metrics",
-          "metricQueryType": 0,
-          "metricEditorMode": 1,
-          "region": "default",
-          "id": "",
-          "expression": "SEARCH('{ContainerInsights,ClusterName,Namespace,PodName} MetricName=\"pod_memory_utilization\" ClusterName=\"${cluster_name}\"', 'Average', 60)"
+          "expr": "histogram_quantile(0.95, sum by (le,target,cluster,environment,service) (rate(app_http_response_time_seconds_hist_bucket{target=~\"$${target:regex}\",environment=~\"$${environment:regex}\",cluster=~\"$cluster\",service=~\"$service\"}[$__rate_interval]))) * 1000",
+          "legendFormat": "{{target}} · {{service}} · {{environment}} · {{cluster}}",
+          "refId": "A"
+        },
+        {
+          "datasource": {
+            "type": "stackdriver",
+            "uid": "cloud-monitoring"
+          },
+          "queryType": "promQL",
+          "hide": ${gcp_hidden},
+          "promQLQuery": {
+            "projectName": "${gcp_project}",
+            "expr": "histogram_quantile(0.95, sum by (le,target,cluster,environment,service) (rate(app_http_response_time_seconds_hist_bucket{target=~\"$${target:regex}\",environment=~\"$${environment:regex}\",cluster=~\"$cluster\",service=~\"$service\"}[5m]))) * 1000",
+            "step": "30s"
+          },
+          "refId": "B"
         }
-      ]
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ms",
+          "noValue": "데이터 없음",
+          "custom": {
+            "spanNulls": false
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      }
     },
     {
       "id": 5,
-      "type": "timeseries",
-      "title": "실행 중 파드 수 (서비스별)",
+      "type": "row",
+      "title": "AWS · 온프레미스 리소스",
+      "collapsed": false,
       "gridPos": {
         "x": 0,
-        "y": 16,
-        "w": 12,
-        "h": 8
-      },
-      "datasource": {
-        "type": "cloudwatch",
-        "uid": "cloudwatch"
-      },
-      "fieldConfig": {
-        "defaults": {
-          "unit": "short"
-        },
-        "overrides": []
-      },
-      "targets": [
-        {
-          "refId": "A",
-          "datasource": {
-            "type": "cloudwatch",
-            "uid": "cloudwatch"
-          },
-          "queryMode": "Metrics",
-          "metricQueryType": 0,
-          "metricEditorMode": 1,
-          "region": "default",
-          "id": "",
-          "expression": "SEARCH('{ContainerInsights,ClusterName,Namespace,Service} MetricName=\"service_number_of_running_pods\" ClusterName=\"${cluster_name}\"', 'Average', 60)"
-        }
-      ]
+        "y": 9,
+        "w": 24,
+        "h": 1
+      }
     },
     {
       "id": 6,
       "type": "timeseries",
-      "title": "컨테이너 재시작",
+      "title": "CPU 사용량",
+      "description": "",
       "gridPos": {
-        "x": 12,
-        "y": 16,
+        "x": 0,
+        "y": 10,
+        "w": 8,
+        "h": 8
+      },
+      "datasource": {
+        "type": "datasource",
+        "uid": "-- Mixed --"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "sum by(target,cluster,namespace,service) (rate(container_cpu_usage_seconds_total{target=~\"$${target:regex}\",cluster=~\"$cluster\",namespace=~\"$${environment:regex}\"}[5m]) * on(target,cluster,namespace,pod) group_left(service) label_replace(kube_pod_labels{target=~\"$${target:regex}\",cluster=~\"$cluster\",namespace=~\"$${environment:regex}\",label_app_kubernetes_io_name=~\"$service\"}, \"service\", \"$1\", \"label_app_kubernetes_io_name\", \"(.*)\"))",
+          "legendFormat": "{{target}} · {{service}} · {{namespace}} · {{cluster}}",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "cores",
+          "noValue": "데이터 없음",
+          "custom": {
+            "spanNulls": false
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      }
+    },
+    {
+      "id": 7,
+      "type": "timeseries",
+      "title": "메모리 사용량",
+      "description": "",
+      "gridPos": {
+        "x": 8,
+        "y": 10,
+        "w": 8,
+        "h": 8
+      },
+      "datasource": {
+        "type": "datasource",
+        "uid": "-- Mixed --"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "sum by(target,cluster,namespace,service) (container_memory_working_set_bytes{target=~\"$${target:regex}\",cluster=~\"$cluster\",namespace=~\"$${environment:regex}\"} * on(target,cluster,namespace,pod) group_left(service) label_replace(kube_pod_labels{target=~\"$${target:regex}\",cluster=~\"$cluster\",namespace=~\"$${environment:regex}\",label_app_kubernetes_io_name=~\"$service\"}, \"service\", \"$1\", \"label_app_kubernetes_io_name\", \"(.*)\"))",
+          "legendFormat": "{{target}} · {{service}} · {{namespace}} · {{cluster}}",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "bytes",
+          "noValue": "데이터 없음",
+          "custom": {
+            "spanNulls": false
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      }
+    },
+    {
+      "id": 8,
+      "type": "timeseries",
+      "title": "컨테이너 재시작 · 최근 5분",
+      "description": "",
+      "gridPos": {
+        "x": 16,
+        "y": 10,
+        "w": 8,
+        "h": 8
+      },
+      "datasource": {
+        "type": "datasource",
+        "uid": "-- Mixed --"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "sum by(target,cluster,namespace,service) (increase(kube_pod_container_status_restarts_total{target=~\"$${target:regex}\",cluster=~\"$cluster\",namespace=~\"$${environment:regex}\"}[5m]) * on(target,cluster,namespace,pod) group_left(service) label_replace(kube_pod_labels{target=~\"$${target:regex}\",cluster=~\"$cluster\",namespace=~\"$${environment:regex}\",label_app_kubernetes_io_name=~\"$service\"}, \"service\", \"$1\", \"label_app_kubernetes_io_name\", \"(.*)\"))",
+          "legendFormat": "{{target}} · {{service}} · {{namespace}} · {{cluster}}",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "noValue": "데이터 없음",
+          "custom": {
+            "spanNulls": false
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      }
+    },
+    {
+      "id": 9,
+      "type": "timeseries",
+      "title": "수집 연결 상태",
+      "description": "1=수집 성공, 0=수집 실패. 원격 수집기가 끊기면 데이터가 비게 됩니다.",
+      "gridPos": {
+        "x": 0,
+        "y": 18,
         "w": 12,
         "h": 8
       },
       "datasource": {
-        "type": "cloudwatch",
-        "uid": "cloudwatch"
-      },
-      "fieldConfig": {
-        "defaults": {
-          "unit": "short"
-        },
-        "overrides": []
+        "type": "datasource",
+        "uid": "-- Mixed --"
       },
       "targets": [
         {
-          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "up{target=~\"$${target:regex}\",environment=~\"$${environment:regex}\",cluster=~\"$cluster\",service=~\"$service\",job=\"application\"}",
+          "legendFormat": "{{target}} · {{service}} · {{environment}} · {{cluster}}",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "noValue": "데이터 없음",
+          "custom": {
+            "spanNulls": false
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      }
+    },
+    {
+      "id": 10,
+      "type": "timeseries",
+      "title": "Ready 파드",
+      "description": "",
+      "gridPos": {
+        "x": 12,
+        "y": 18,
+        "w": 12,
+        "h": 8
+      },
+      "datasource": {
+        "type": "datasource",
+        "uid": "-- Mixed --"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "sum by(target,cluster,namespace,service) (kube_pod_status_ready{target=~\"$${target:regex}\",cluster=~\"$cluster\",namespace=~\"$${environment:regex}\",condition=\"true\"} * on(target,cluster,namespace,pod) group_left(service) label_replace(kube_pod_labels{target=~\"$${target:regex}\",cluster=~\"$cluster\",namespace=~\"$${environment:regex}\",label_app_kubernetes_io_name=~\"$service\"}, \"service\", \"$1\", \"label_app_kubernetes_io_name\", \"(.*)\"))",
+          "legendFormat": "{{target}} · {{service}} · {{namespace}} · {{cluster}}",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "noValue": "데이터 없음",
+          "custom": {
+            "spanNulls": false
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      }
+    },
+    {
+      "id": 11,
+      "type": "row",
+      "title": "벤더 원본 지표 · CloudWatch / Cloud Monitoring",
+      "collapsed": false,
+      "gridPos": {
+        "x": 0,
+        "y": 26,
+        "w": 24,
+        "h": 1
+      }
+    },
+    {
+      "id": 12,
+      "type": "timeseries",
+      "title": "AWS CPU · Container Insights",
+      "description": "AWS 원본 클러스터 지표입니다. 위의 Prometheus 서비스 지표와 별도로 확인합니다.",
+      "gridPos": {
+        "x": 0,
+        "y": 27,
+        "w": 12,
+        "h": 8
+      },
+      "datasource": {
+        "type": "datasource",
+        "uid": "-- Mixed --"
+      },
+      "targets": [
+        {
           "datasource": {
             "type": "cloudwatch",
             "uid": "cloudwatch"
@@ -220,10 +484,318 @@
           "metricQueryType": 0,
           "metricEditorMode": 1,
           "region": "default",
-          "id": "",
-          "expression": "SEARCH('{ContainerInsights,ClusterName,Namespace,PodName} MetricName=\"pod_number_of_container_restarts\" ClusterName=\"${cluster_name}\"', 'Sum', 60)"
+          "expression": "SEARCH('{ContainerInsights,ClusterName,Namespace,PodName} MetricName=\"pod_cpu_utilization\" ClusterName=\"${cluster_name}\"', 'Average', 60)",
+          "refId": "A"
         }
-      ]
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "noValue": "데이터 없음",
+          "custom": {
+            "spanNulls": false
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      }
+    },
+    {
+      "id": 13,
+      "type": "timeseries",
+      "title": "AWS 메모리 · Container Insights",
+      "description": "AWS 원본 클러스터 지표입니다. 위의 Prometheus 서비스 지표와 별도로 확인합니다.",
+      "gridPos": {
+        "x": 12,
+        "y": 27,
+        "w": 12,
+        "h": 8
+      },
+      "datasource": {
+        "type": "datasource",
+        "uid": "-- Mixed --"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "cloudwatch",
+            "uid": "cloudwatch"
+          },
+          "queryMode": "Metrics",
+          "metricQueryType": 0,
+          "metricEditorMode": 1,
+          "region": "default",
+          "expression": "SEARCH('{ContainerInsights,ClusterName,Namespace,PodName} MetricName=\"pod_memory_utilization\" ClusterName=\"${cluster_name}\"', 'Average', 60)",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "noValue": "데이터 없음",
+          "custom": {
+            "spanNulls": false
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      }
+    },
+    {
+      "id": 14,
+      "type": "timeseries",
+      "title": "GCP 컨테이너 CPU",
+      "description": "",
+      "gridPos": {
+        "x": 0,
+        "y": 35,
+        "w": 12,
+        "h": 8
+      },
+      "datasource": {
+        "type": "datasource",
+        "uid": "-- Mixed --"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "stackdriver",
+            "uid": "cloud-monitoring"
+          },
+          "queryType": "promQL",
+          "hide": ${gcp_hidden},
+          "promQLQuery": {
+            "projectName": "${gcp_project}",
+            "expr": "sum by(cluster_name,namespace_name,pod_name) (rate({\"kubernetes.io/container/cpu/core_usage_time\",monitored_resource=\"k8s_container\",namespace_name=~\"$${environment:regex}\",cluster_name=~\"$cluster\",container_name=\"app\"}[5m]))",
+            "step": "30s"
+          },
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "cores",
+          "noValue": "데이터 없음",
+          "custom": {
+            "spanNulls": false
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      }
+    },
+    {
+      "id": 15,
+      "type": "timeseries",
+      "title": "GCP 컨테이너 메모리",
+      "description": "",
+      "gridPos": {
+        "x": 12,
+        "y": 35,
+        "w": 12,
+        "h": 8
+      },
+      "datasource": {
+        "type": "datasource",
+        "uid": "-- Mixed --"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "stackdriver",
+            "uid": "cloud-monitoring"
+          },
+          "queryType": "promQL",
+          "hide": ${gcp_hidden},
+          "promQLQuery": {
+            "projectName": "${gcp_project}",
+            "expr": "sum by(cluster_name,namespace_name,pod_name) ({\"kubernetes.io/container/memory/used_bytes\",monitored_resource=\"k8s_container\",namespace_name=~\"$${environment:regex}\",cluster_name=~\"$cluster\",container_name=\"app\"})",
+            "step": "30s"
+          },
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "bytes",
+          "noValue": "데이터 없음",
+          "custom": {
+            "spanNulls": false
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      }
+    },
+    {
+      "id": 16,
+      "type": "row",
+      "title": "AI 배포 검사 · 실행별 원본 근거",
+      "collapsed": false,
+      "gridPos": {
+        "x": 0,
+        "y": 43,
+        "w": 24,
+        "h": 1
+      }
+    },
+    {
+      "id": 17,
+      "type": "table",
+      "title": "AI에 전달한 smoke 결과와 판단",
+      "description": "관찰 창별 원본값입니다. smoke 실패는 기대 응답 불일치(연결 실패 포함), p95는 nearest-rank입니다. 판단 결과가 실제 승격을 뜻하지는 않습니다. 실행 링크에서 실행 결과를 확인하세요.",
+      "gridPos": {
+        "x": 0,
+        "y": 44,
+        "w": 24,
+        "h": 8
+      },
+      "datasource": {
+        "type": "datasource",
+        "uid": "-- Mixed --"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "cloudwatch",
+            "uid": "cloudwatch"
+          },
+          "queryMode": "Logs",
+          "region": "default",
+          "logGroupNames": [
+            "${evidence_log_group}"
+          ],
+          "expression": "fields @timestamp, target, environment, service, run_id, run_attempt, sha, observation.started_at, observation.ended_at, metrics.requests, metrics.failed, metrics.error_rate, metrics.p95_ms, metrics.pods.ready, metrics.pods.restarts, metrics.thresholds.max_error_rate, metrics.thresholds.max_p95_ms, decision, reason, run_url, event_id | filter target like /^$${target:regex}$/ and environment like /^$${environment:regex}$/ and service like /$service/ and cluster like /$cluster/ and run_id like /$run/ | sort @timestamp desc | dedup event_id | limit 100",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "noValue": "데이터 없음",
+          "custom": {
+            "spanNulls": false
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "run_url"
+            },
+            "properties": [
+              {
+                "id": "links",
+                "value": [
+                  {
+                    "title": "Actions 실행",
+                    "url": "$${__value.raw}",
+                    "targetBlank": true
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "showHeader": true,
+        "cellHeight": "sm",
+        "footer": {
+          "show": false
+        }
+      }
     }
-  ]
+  ],
+  "templating": {
+    "list": [
+      {
+        "name": "target",
+        "label": "배포 대상",
+        "type": "custom",
+        "query": "aws,onprem,gcp",
+        "multi": true,
+        "includeAll": true,
+        "allValue": ".*",
+        "current": {
+          "text": "All",
+          "value": "$__all"
+        },
+        "options": []
+      },
+      {
+        "name": "environment",
+        "label": "환경",
+        "type": "custom",
+        "query": "test,prod",
+        "multi": true,
+        "includeAll": true,
+        "allValue": ".*",
+        "current": {
+          "text": "All",
+          "value": "$__all"
+        },
+        "options": []
+      },
+      {
+        "name": "service",
+        "label": "서비스",
+        "type": "textbox",
+        "query": "demo-app-.*",
+        "current": {
+          "value": "demo-app-.*"
+        }
+      },
+      {
+        "name": "cluster",
+        "label": "클러스터",
+        "type": "textbox",
+        "query": ".*",
+        "current": {
+          "value": ".*"
+        }
+      },
+      {
+        "name": "run",
+        "label": "Actions 실행 ID",
+        "type": "textbox",
+        "query": ".*",
+        "current": {
+          "value": ".*"
+        }
+      }
+    ]
+  }
 }

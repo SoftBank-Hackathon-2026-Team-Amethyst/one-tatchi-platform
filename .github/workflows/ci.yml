@@ -28,6 +28,7 @@ jobs:
             echo "::group::$d"
             terraform -chdir="$d" init -backend=false -input=false >/dev/null
             terraform -chdir="$d" validate
+            case "$d" in modules/observability/*/) [ ! -d "$d/tests" ] || terraform -chdir="$d" test ;; esac
             echo "::endgroup::"
           done
 
@@ -40,6 +41,27 @@ jobs:
           helm lint charts/app --set image.repository=r --set image.tag=t
           helm lint charts/service-base --set namespace=x --set secret.secretName=x-env --set secret.remoteKey=x
           helm lint charts/platform-config
+          helm lint charts/observability --set cluster=ci
+          helm lint charts/grafana-wif
+          helm template metrics charts/observability --set cluster=ci --set receiver.enabled=true --set receiver.host=metrics.example.com --set receiver.secretName=metrics-auth > /tmp/metrics.yaml
+      - uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          scan-type: config
+          scan-ref: /tmp/metrics.yaml
+          severity: HIGH,CRITICAL
+          exit-code: "1"
+
+  nginxlog-exporter:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - run: docker build -t nginxlog-exporter:ci images/nginxlog-exporter
+      - uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          image-ref: nginxlog-exporter:ci
+          scanners: vuln
+          severity: HIGH,CRITICAL
+          exit-code: "1"
 
   scripts:
     runs-on: ubuntu-latest

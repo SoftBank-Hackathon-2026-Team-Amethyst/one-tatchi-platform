@@ -52,4 +52,5 @@ echo "== yolo 자동 수정 루프 (T14)"
 python3 -B -m unittest discover -s "$(dirname "$scripts")/skills/yolo-deploy/tests"
 
 echo "통과"
+python3 -B -m unittest discover -s "$(dirname "$scripts")/.github/actions/publish-metrics/tests"
 bash "$(dirname "$scripts")/.github/actions/image-push/tests/run.sh"

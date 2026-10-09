@@ -1,0 +1,6 @@
+apiVersion: v2
+name: observability
+description: Bounded Prometheus collection and authenticated remote write for Deploy Overview
+type: application
+version: 0.1.0
+appVersion: "3.13.4"

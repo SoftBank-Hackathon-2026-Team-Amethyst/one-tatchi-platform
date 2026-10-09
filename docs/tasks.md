@@ -395,7 +395,7 @@ Claude Code는 `/todo-task`, Codex는 `$todo-task`로 이 순서를 따르는 �
 **할 일**
 - [ ] 중앙 Grafana에 CloudWatch, Prometheus(온프레미스), Cloud Monitoring 연결
 - [ ] 대시보드: 서비스별 요청 · 에러율 · 응답시간 · 리소스
-- [ ] AI 판단 job과 같은 쿼리 사용
+- [ ] AI 판단 job의 원본 metrics.json · 관찰 창 · 실행 정보를 그대로 표시하고 실제 사용자 트래픽과 구분
 
 **완료 기준** 한 대시보드에서 AWS와 온프레미스 지표가 함께 보인다.
 

@@ -323,6 +323,7 @@ jobs:
 
             extra=()
             if [ -f "deploy/$TARGET/values.yaml" ]; then extra+=(-f "deploy/$TARGET/values.yaml"); fi
+            if [ "$TARGET" = gcp ]; then extra+=(--set metrics.gcpManaged=true); fi
             migration="$(jq -r '.migration // ""' <<<"$svc")"
             if [ -n "$migration" ]; then extra+=(--set-file migration.sql="$migration"); fi
             if [ "$TARGET" = aws ] && [ -n "$INGRESS_GROUP" ]; then extra+=(--set ingress.group="$INGRESS_GROUP"); fi
@@ -399,6 +400,20 @@ jobs:
         with:
           role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
           aws-region: ${{ vars.AWS_REGION }}
+      - id: evidence
+        name: AI 판단 근거를 Grafana에 게시
+        if: always() && steps.judge.outcome != 'skipped' && vars.OBSERVABILITY_LOG_GROUP != ''
+        continue-on-error: true
+        uses: ./.platform/.github/actions/publish-metrics
+        with:
+          report-dir: ${{ runner.temp }}/promote-judge
+          log-group: ${{ vars.OBSERVABILITY_LOG_GROUP }}
+          target: ${{ inputs.target }}
+          environment: ${{ inputs.environment }}
+          cluster: ${{ inputs.cluster }}
+          sha: ${{ env.TAG }}
+      - if: always() && steps.evidence.outcome == 'failure'
+        run: echo 'Grafana 근거 게시 실패 — promote-judgment artifact에서 원본을 확인하세요.' >> "$GITHUB_STEP_SUMMARY"
       - if: always()
         uses: ./.platform/.github/actions/audit-log
         with:

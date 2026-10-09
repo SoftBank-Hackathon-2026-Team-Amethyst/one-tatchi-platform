@@ -58,6 +58,22 @@ resource "helm_release" "grafana" {
 
   values = [yamlencode({
     serviceAccount = { create = true, name = "grafana" }
+    env = var.gcp_monitoring == null ? {} : {
+      GOOGLE_APPLICATION_CREDENTIALS = "/etc/gcp-wif/credentials.json"
+    }
+    extraConfigmapMounts = var.gcp_monitoring == null ? [] : [{
+      name = "gcp-wif", configMap = "grafana-gcp-wif", mountPath = "/etc/gcp-wif", readOnly = true
+    }]
+    extraVolumeMounts = var.gcp_monitoring == null ? [] : [{
+      name = "gcp-token", mountPath = "/var/run/gcp", readOnly = true
+    }]
+    extraVolumes = var.gcp_monitoring == null ? [] : [{
+      name = "gcp-token"
+      projected = { sources = [{ serviceAccountToken = {
+        audience          = "https://iam.googleapis.com/${var.gcp_monitoring.workload_provider}"
+        expirationSeconds = 3600, path = "token"
+      } }] }
+    }]
 
     "grafana.ini" = {
       server = {
@@ -86,13 +102,20 @@ resource "helm_release" "grafana" {
     datasources = {
       "datasources.yaml" = {
         apiVersion = 1
-        datasources = [{
+        datasources = concat([{
           name      = "CloudWatch"
           type      = "cloudwatch"
           uid       = "cloudwatch"
           isDefault = true
           jsonData  = { authType = "default", defaultRegion = var.region }
-        }]
+          }], var.central_metrics.enabled ? [{
+          name     = "Prometheus", type = "prometheus", uid = "prometheus", access = "proxy"
+          url      = "http://deploy-metrics.monitoring.svc:9090"
+          jsonData = { httpMethod = "POST", timeInterval = "15s" }
+          }] : [], var.gcp_monitoring == null ? [] : [{
+          name     = "Cloud Monitoring", type = "stackdriver", uid = "cloud-monitoring", access = "proxy"
+          jsonData = { authenticationType = "gce", defaultProject = var.gcp_monitoring.project_id }
+        }])
       }
     }
 
@@ -112,13 +135,11 @@ resource "helm_release" "grafana" {
     dashboards = {
       default = {
         deploy-overview = {
-          json = templatefile("${path.module}/dashboards/deploy-overview.json.tftpl", {
-            cluster_name = var.cluster_name
-          })
+          json = local.dashboard_json
         }
       }
     }
   })]
 
-  depends_on = [aws_eks_pod_identity_association.grafana]
+  depends_on = [aws_eks_pod_identity_association.grafana, helm_release.gcp_credentials]
 }

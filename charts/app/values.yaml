@@ -38,6 +38,16 @@ service:
   port: 80
   annotations: {}
 
+# Optional internal-only HTTP metrics. The collector discovers pods, never Ingress.
+metrics:
+  enabled: false
+  gcpManaged: false
+  port: 8000
+  path: /metrics
+  nginxLogExporter:
+    enabled: false
+    image: "" # 기본값: 플랫폼과 같은 버전의 GHCR nginxlog-exporter
+
 ingress:
   enabled: false
   className: alb

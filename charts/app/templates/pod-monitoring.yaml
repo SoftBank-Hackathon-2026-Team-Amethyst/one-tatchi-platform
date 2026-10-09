@@ -1,0 +1,19 @@
+{{- if and .Values.metrics.enabled .Values.metrics.gcpManaged }}
+apiVersion: monitoring.googleapis.com/v1
+kind: PodMonitoring
+metadata:
+  name: {{ include "app.name" . }}
+spec:
+  selector:
+    matchLabels:
+      {{- include "app.selector" . | nindent 6 }}
+  endpoints:
+    - port: {{ if .Values.metrics.nginxLogExporter.enabled }}metrics{{ else }}http{{ end }}
+      path: {{ .Values.metrics.path }}
+      interval: 15s
+      metricRelabeling:
+        - {action: replace, targetLabel: service, replacement: {{ include "app.name" . | quote }}}
+        - {action: replace, targetLabel: environment, replacement: {{ .Release.Namespace | quote }}}
+        - {action: replace, targetLabel: target, replacement: gcp}
+        - {action: keep, sourceLabels: [__name__], regex: 'app_http_.*|app_parse_errors_total'}
+{{- end }}
