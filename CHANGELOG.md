@@ -10,6 +10,10 @@
 
 ## Unreleased
 
+## v2.1.1
+
+- T8 검증 차단 해소: checks의 Docker Hub 로그인을 QEMU 다운로드보다 먼저 실행하고 사용자명 Secret을 지원한다. 인증·QEMU 다운로드를 최대 3회 재시도하며 실패하면 검사를 중단한다.
+
 ## v2.1.0
 
 - 이미지 빌드 전에 Docker Hub에 로그인해 비로그인 pull 한도(`toomanyrequests`)를 피한다. `vars.DOCKERHUB_USERNAME`과 `secrets.DOCKERHUB_TOKEN`(읽기 전용)이 있을 때만 로그인하고, 없으면 건너뛴다. 재사용 `checks.yml`은 선택 시크릿 `DOCKERHUB_TOKEN`을 받으므로 호출부에서 `secrets: inherit` 또는 명시적으로 넘긴다.
