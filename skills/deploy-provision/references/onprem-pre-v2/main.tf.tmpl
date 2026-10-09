@@ -1,28 +1,27 @@
 # 온프레미스(self-hosted runner가 있는 기기, k3d) 루트. 플랫폼 모듈을 태그로 참조한다.
 # state는 이 기기에만 둔다 (로컬 backend, .gitignore). 기기 밖으로 나가지 않는다.
 terraform {
-  required_version = ">= 1.11"
+  required_version = ">= 1.6"
 }
 
 module "cluster" {
-  source   = "git::https://github.com/SoftBank-Hackathon-2026-Team-Amethyst/one-tatchi-platform.git//modules/cluster/onprem?ref=@@TEMPLATE_VERSION@@"
-  name     = var.name
-  api_port = var.api_port
+  source = "git::https://github.com/SoftBank-Hackathon-2026-Team-Amethyst/one-tatchi-platform.git//modules/cluster/onprem?ref=@@TEMPLATE_VERSION@@"
+  name   = var.name
 }
 
 provider "kubernetes" {
-  host                   = var.onprem_auth.endpoint
-  cluster_ca_certificate = base64decode(var.onprem_auth.ca_certificate)
-  client_certificate     = base64decode(var.onprem_auth.client_certificate)
-  client_key             = base64decode(var.onprem_auth.client_key)
+  host                   = module.cluster.endpoint
+  cluster_ca_certificate = base64decode(module.cluster.ca_certificate)
+  client_certificate     = base64decode(module.cluster.client_certificate)
+  client_key             = base64decode(module.cluster.client_key)
 }
 
 provider "helm" {
   kubernetes = {
-    host                   = var.onprem_auth.endpoint
-    cluster_ca_certificate = base64decode(var.onprem_auth.ca_certificate)
-    client_certificate     = base64decode(var.onprem_auth.client_certificate)
-    client_key             = base64decode(var.onprem_auth.client_key)
+    host                   = module.cluster.endpoint
+    cluster_ca_certificate = base64decode(module.cluster.ca_certificate)
+    client_certificate     = base64decode(module.cluster.client_certificate)
+    client_key             = base64decode(module.cluster.client_key)
   }
 }
 
@@ -49,7 +48,6 @@ module "database" {
   name          = "${var.service}-db-${each.key}"
   database_name = var.database_name
   namespace     = module.cluster_addons.secret_namespace
-  password      = var.onprem_db_passwords[each.key]
 }
 
 # 환경별 네임스페이스와 DB 접속 Secret(cloud-secrets → <service>-db). 앱은 deploy.yml이 이 네임스페이스에 올린다.

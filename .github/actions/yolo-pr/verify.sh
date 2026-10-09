@@ -14,9 +14,13 @@ while :; do
       pending=1; continue
     fi
     replicas="$(kubectl get rs -n "$NAMESPACE" -l "rollouts-pod-template-hash=$hash" -o json)"
-    if ! jq -e --arg name "$name" --arg tag "$TAG" '
+    expected=""
+    if [ -n "${IMAGES:-}" ]; then
+      expected="$(jq -er --arg name "$name" '.[$name] | .repository + "@" + .digest' <<<"$IMAGES")"
+    fi
+    if ! jq -e --arg name "$name" --arg tag "$TAG" --arg expected "$expected" '
       any(.items[]; any(.metadata.ownerReferences[]?; .kind == "Rollout" and .name == $name) and
-        (.spec.template.spec.containers[0].image | endswith(":" + $tag)))
+        (.spec.template.spec.containers[0].image | if $expected != "" then . == $expected else endswith(":" + $tag) end))
     ' <<<"$replicas" >/dev/null; then pending=1; fi
   done
   [ "$pending" = 0 ] && break

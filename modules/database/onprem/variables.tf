@@ -27,3 +27,10 @@ variable "namespace" {
   description = "DB와 접속 정보 Secret을 둘 네임스페이스 (cluster_addons 출력값 secret_namespace)"
   type        = string
 }
+
+variable "password" {
+  description = "onpremctl이 기존 Secret에서 읽거나 신규 DB에 생성하는 값. 변경/회전은 별도 DB 작업이다"
+  type        = string
+  sensitive   = true
+  ephemeral   = true
+}

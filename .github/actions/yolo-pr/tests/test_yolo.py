@@ -144,6 +144,23 @@ class ShellTest(unittest.TestCase):
                 self.assertEqual(result.returncode, expected, result.stderr)
                 self.assertEqual(output.strip(), "promoted=true" if expected == 0 else "")
 
+    def test_digest_requires_exact_repository_and_promoted_stable(self):
+        base = dict(SERVICES='[{"name":"app"}]', NAMESPACE="test", TAG="abc", WAIT_SECONDS="0",
+                    IMAGES=json.dumps({"app": {"repository": "repo", "digest": "sha256:" + "a" * 64}}))
+        desired = "repo@sha256:" + "a" * 64
+        for image, phase, owner, expected in [(desired, "Healthy", "app", 0),
+                ("repo:abc", "Healthy", "app", 1), (desired, "Paused", "app", 1),
+                ("other@sha256:" + "a" * 64, "Healthy", "app", 1),
+                ("repo@sha256:" + "b" * 64, "Healthy", "app", 1), (desired, "Healthy", "other", 1)]:
+            with self.subTest(image=image, phase=phase, owner=owner):
+                rollout = {"status": {"phase": phase, "stableRS": "hash", "currentPodHash": "hash"}}
+                replicas = {"items": [{"metadata": {"ownerReferences": [{"kind": "Rollout", "name": owner}]},
+                    "spec": {"template": {"spec": {"containers": [{"image": image}]}}}}]}
+                fake = "if [ \"$2\" = rollout ]; then printf '%s' '" + json.dumps(rollout) + "'; "
+                fake += "else printf '%s' '" + json.dumps(replicas) + "'; fi\n"
+                result, _ = self.shell("verify.sh", base, "kubectl", fake)
+                self.assertEqual(result.returncode, expected, result.stderr)
+
 
 if __name__ == "__main__":
     unittest.main()

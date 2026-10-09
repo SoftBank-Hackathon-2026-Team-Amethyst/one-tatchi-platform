@@ -3,6 +3,7 @@
 image:
   repository: ""
   tag: ""
+  digest: "" # 새 배포는 검사한 멀티 아키텍처 index digest로 고정
 
 replicas: 2
 containerPort: 8000

@@ -1,10 +1,5 @@
 # 관리형 DB 대신 클러스터 안에 Postgres 하나를 띄운다. 데이터는 k3s local-path 볼륨에 남는다.
-# 비밀번호는 로컬 state에 남는다. state는 이 맥북 밖으로 나가지 않는다.
-resource "random_password" "this" {
-  length  = 32
-  special = false
-}
-
+# 비밀번호는 ephemeral 입력 → write-only Secret으로 전달하며 state에 저장하지 않는다.
 # 클라우드 구현과 같은 username/password 모양. service-base가 이 Secret을 cloud-secrets로 가져간다.
 resource "kubernetes_secret_v1" "credentials" {
   metadata {
@@ -12,10 +7,11 @@ resource "kubernetes_secret_v1" "credentials" {
     namespace = var.namespace
   }
 
-  data = {
+  data_wo = {
     username = var.username
-    password = random_password.this.result
+    password = var.password
   }
+  data_wo_revision = 1
 }
 
 resource "kubernetes_service_v1" "this" {

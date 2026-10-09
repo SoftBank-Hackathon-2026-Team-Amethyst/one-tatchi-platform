@@ -1,0 +1,92 @@
+name: onprem-verify
+on:
+  workflow_call:
+    inputs:
+      profile:
+        type: string
+        required: true
+      test-url:
+        type: string
+        required: true
+      prod-url:
+        type: string
+        required: true
+      test-marker:
+        type: string
+        required: true
+      prod-marker:
+        type: string
+        required: true
+      template-ref:
+        type: string
+        required: true
+
+permissions:
+  contents: read
+
+jobs:
+  device:
+    if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    outputs:
+      runner: ${{ steps.device.outputs.runner }}
+    steps:
+      - id: device
+        env:
+          PROFILE: ${{ inputs.profile }}
+        run: |
+          python3 - <<'PY'
+          import json, os, re
+          profile = os.environ['PROFILE']
+          if not re.fullmatch(r'[a-z0-9][a-z0-9-]*', profile):
+              raise SystemExit('invalid device profile')
+          label = 'onprem' if profile == 'default' else 'onprem-' + profile
+          with open(os.environ['GITHUB_OUTPUT'], 'a') as output:
+              output.write('runner=' + json.dumps(['self-hosted', label]) + '\n')
+          PY
+  external:
+    needs: device
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          repository: SoftBank-Hackathon-2026-Team-Amethyst/one-tatchi-platform
+          ref: ${{ inputs.template-ref }}
+      - name: 35분 외부 HTTP·DB 내용 확인 (5초 간격)
+        env:
+          TEST_URL: ${{ inputs.test-url }}
+          PROD_URL: ${{ inputs.prod-url }}
+          TEST_MARKER: ${{ inputs.test-marker }}
+          PROD_MARKER: ${{ inputs.prod-marker }}
+        run: |
+          python3 scripts/onprem/probe.py --test-url "$TEST_URL" --prod-url "$PROD_URL" \
+            --test-marker "$TEST_MARKER" --prod-marker "$PROD_MARKER" --minutes 35
+      - if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: onprem-external-${{ inputs.profile }}-${{ github.run_attempt }}
+          path: probe.jsonl
+  diagnostic:
+    needs: device
+    runs-on: ${{ fromJSON(needs.device.outputs.runner) }}
+    timeout-minutes: 40
+    steps:
+      - name: 잠금 중 runner·클러스터 진단 (1분 간격)
+        env:
+          PROFILE: ${{ inputs.profile }}
+        shell: bash
+        run: |
+          root="$HOME/Library/Application Support/one-tatchi/onprem/$PROFILE"
+          evidence="$RUNNER_TEMP/t27-diagnostic-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT"
+          mkdir -p "$evidence"
+          for n in $(seq 0 35); do
+            python3 "$root/bin/onpremctl.py" --config "$root/config.json" status > "$evidence/$n.json"
+            [ "$n" = 35 ] || sleep 60
+          done
+          python3 "$root/bin/compare.py" "$evidence/"*.json
+      - if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: onprem-diagnostic-${{ inputs.profile }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/t27-diagnostic-${{ github.run_id }}-${{ github.run_attempt }}/*.json

@@ -20,3 +20,7 @@ charts/*/charts/
 # org 스택: 팀원 이메일
 org/*.auto.tfvars
 !org/*.auto.tfvars.example
+
+# Python validation cache
+__pycache__/
+*.pyc

@@ -67,8 +67,9 @@ runs:
           gcp)
             gcloud container clusters get-credentials "$CLUSTER" --region "$REGION" --project "$GCP_PROJECT" ;;
           onprem)
-            # 클러스터는 runner와 같은 맥북에 있다. runner 계정의 kube context를 복사해 쓴다.
-            KUBECONFIG="$HOME/.kube/config" kubectl config view --raw --minify --context "$CLUSTER" > "$KUBECONFIG" ;;
+            [[ "$CLUSTER" == k3d-* ]] || { echo "::error::onprem requires k3d context"; exit 1; }
+            [[ -n "${ONPREM_CLUSTER:-}" && "$CLUSTER" == "k3d-$ONPREM_CLUSTER" ]] || { echo "::error::selected cluster differs from installed runner profile"; exit 1; }
+            python3 "${{ github.action_path }}/../../../scripts/onprem/kube_auth.py" "${CLUSTER#k3d-}" --config "$KUBECONFIG" ;;
           *)
             echo "::error::지원하지 않는 배포 대상: $TARGET (aws | gcp | onprem)"; exit 1 ;;
         esac

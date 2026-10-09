@@ -5,6 +5,10 @@ name: checks
 on:
   workflow_call:
     inputs:
+      template-ref:
+        description: 공통 이미지 검사 도구의 고정 플랫폼 태그
+        type: string
+        default: v2
       python-dirs:
         description: 'Python(uv) 프로젝트 경로 JSON 배열. 예: ["be"]'
         type: string
@@ -134,27 +138,30 @@ jobs:
         dir: ${{ fromJSON(inputs.image-dirs) }}
     steps:
       - uses: actions/checkout@v7
-      - name: 이미지 빌드
-        run: docker build -t scan-target:${{ github.sha }} "${{ matrix.dir }}"
-      - name: 이미지 취약점 리포트 (Trivy, 전체 심각도)
-        uses: aquasecurity/trivy-action@v0.36.0
+      - uses: actions/checkout@v7
         with:
-          scan-type: image
-          image-ref: scan-target:${{ github.sha }}
-          scanners: vuln
-          format: table
-          exit-code: "0"
-          trivyignores: .trivyignore
-      - name: 이미지 취약점 검사 (Trivy, HIGH 이상 차단)
-        uses: aquasecurity/trivy-action@v0.36.0
+          repository: SoftBank-Hackathon-2026-Team-Amethyst/one-tatchi-platform
+          ref: ${{ inputs.template-ref }}
+          path: .platform
+          sparse-checkout: .github/actions/image-push
+      - uses: docker/setup-qemu-action@v3
+      - uses: docker/setup-buildx-action@v3
+      - uses: aquasecurity/setup-trivy@v0.3.1
         with:
-          scan-type: image
-          image-ref: scan-target:${{ github.sha }}
-          scanners: vuln
-          severity: HIGH,CRITICAL
-          ignore-unfixed: true
-          exit-code: "1"
-          trivyignores: .trivyignore
+          version: v0.75.0
+          cache: true
+      - id: build
+        name: 한 번 빌드 · amd64/arm64 각각 검사
+        env:
+          CONTEXT: ${{ matrix.dir }}
+        run: bash .platform/.github/actions/image-push/build.sh
+      - uses: actions/upload-artifact@v7
+        with:
+          name: checked-image-${{ github.run_id }}-${{ steps.build.outputs.key }}
+          path: ${{ steps.build.outputs.bundle }}
+          if-no-files-found: error
+          retention-days: 7
+          overwrite: true
 
   secret-scan:
     runs-on: ubuntu-latest
