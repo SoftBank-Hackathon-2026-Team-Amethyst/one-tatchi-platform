@@ -13,6 +13,12 @@ inputs:
   tag:
     description: 이미지 태그 (커밋 SHA). 태그는 덮어쓰지 않는다
     required: true
+  project:
+    description: GCP 프로젝트 ID
+    default: ""
+  region:
+    description: GCP 리전
+    default: ""
 outputs:
   repository:
     description: 이미지 저장소 주소 (태그 제외)
@@ -31,6 +37,8 @@ runs:
         CONTEXT: ${{ inputs.path }}
         TAG: ${{ inputs.tag }}
         ECR_REGISTRY: ${{ steps.ecr.outputs.registry }}
+        GCP_PROJECT: ${{ inputs.project }}
+        GCP_REGION: ${{ inputs.region }}
         GH_TOKEN: ${{ github.token }}
         OWNER: ${{ github.repository_owner }}
         SOURCE: ${{ github.server_url }}/${{ github.repository }}

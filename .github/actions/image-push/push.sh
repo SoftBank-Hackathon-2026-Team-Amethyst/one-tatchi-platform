@@ -13,6 +13,11 @@ case "$target" in
   aws)
     repo="$ECR_REGISTRY/$name"
     exists() { aws ecr describe-images --repository-name "$name" --image-ids imageTag="$tag" >/dev/null 2>&1; } ;;
+  gcp)
+    : "${GCP_REGION:?GCP_REGION is required}" "${GCP_PROJECT:?GCP_PROJECT is required}"
+    repo="$GCP_REGION-docker.pkg.dev/$GCP_PROJECT/$name/$name"
+    gcloud auth configure-docker "$GCP_REGION-docker.pkg.dev" --quiet >&2
+    exists() { gcloud artifacts docker images describe "$repo:$tag" --project "$GCP_PROJECT" >/dev/null 2>&1; } ;;
   onprem)
     repo="ghcr.io/$(echo "$OWNER" | tr '[:upper:]' '[:lower:]')/$name"
     # docker login은 macOS에서 키체인에 저장하려다 launchd 서비스(runner)에서 실패한다.
@@ -22,7 +27,7 @@ case "$target" in
       > "$DOCKER_CONFIG/config.json"
     exists() { docker manifest inspect "$repo:$tag" >/dev/null 2>&1; } ;;
   *)
-    echo "::error::지원하지 않는 배포 대상: $target (aws | onprem)" >&2; exit 1 ;;
+    echo "::error::지원하지 않는 배포 대상: $target (aws | gcp | onprem)" >&2; exit 1 ;;
 esac
 
 if exists; then

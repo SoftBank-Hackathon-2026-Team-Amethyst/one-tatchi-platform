@@ -36,10 +36,12 @@ writablePaths:
 
 service:
   port: 80
+  annotations: {}
 
 ingress:
   enabled: false
   className: alb
+  annotations: {}
   # 같은 group끼리 ALB 하나를 공유한다 (platform 스택 출력값 ingress_group)
   group: ""
   # 숫자가 작을수록 먼저 매칭된다. 좁은 경로일수록 작게.

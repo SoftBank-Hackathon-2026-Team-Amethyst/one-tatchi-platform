@@ -11,7 +11,7 @@ on:
   workflow_call:
     inputs:
       target:
-        description: "배포 대상: aws | onprem (gcp는 T4)"
+        description: "배포 대상: aws | gcp | onprem"
         type: string
         default: aws
       environment:
@@ -171,7 +171,10 @@ jobs:
           target: ${{ inputs.target }}
           cluster: ${{ inputs.cluster }}
           role-arn: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
-          region: ${{ vars.AWS_REGION }}
+          region: ${{ inputs.target == 'gcp' && vars.GCP_REGION || vars.AWS_REGION }}
+          project: ${{ vars.GCP_PROJECT }}
+          workload-identity-provider: ${{ vars.GCP_WIF_PROVIDER }}
+          service-account: ${{ vars.GCP_DEPLOY_IDENTITY }}
       # 운영에는 test에서 승격(stable)된 같은 이미지만 올린다 (설계 6.2, 리뷰 지점 3).
       # test의 각 Rollout에서 stable ReplicaSet의 이미지 태그가 이 커밋과 같아질 때까지 기다린다.
       - if: inputs.environment == 'prod' && inputs.require-test-promotion == 'true'
@@ -218,6 +221,8 @@ jobs:
         name: 서비스 배포 (이미지 → helm upgrade → green 대기 → 주소)
         env:
           ECR_REGISTRY: ${{ steps.ecr.outputs.registry }}
+          GCP_PROJECT: ${{ vars.GCP_PROJECT }}
+          GCP_REGION: ${{ vars.GCP_REGION }}
           GH_TOKEN: ${{ github.token }}
           OWNER: ${{ github.repository_owner }}
           SOURCE: ${{ github.server_url }}/${{ github.repository }}
@@ -262,6 +267,18 @@ jobs:
                 fi
                 if [ -n "$host" ] && [ -n "$HOST" ]; then active="https://$HOST/"; preview="https://$HOST:8080/"
                 elif [ -n "$host" ]; then active="http://$host/"; preview="http://$host:8080/"; fi ;;
+              gcp)
+                if kubectl get ingress "$release" -n "$NAMESPACE" >/dev/null 2>&1; then
+                  for _ in $(seq 1 120); do
+                    host="$(kubectl get ingress "$release" -n "$NAMESPACE" -o jsonpath='{.status.loadBalancer.ingress[0].ip}')"
+                    [ -n "$host" ] && break
+                    sleep 5
+                  done
+                  [ -n "$host" ] || { echo "::error::GKE Ingress address missing: $release"; return 1; }
+                  active="http://$host/"
+                  preview_host="$(kubectl get ingress "$release-preview" -n "$NAMESPACE" -o jsonpath='{.status.loadBalancer.ingress[0].ip}' 2>/dev/null || true)"
+                  if [ -n "$preview_host" ]; then preview="http://$preview_host/"; fi
+                fi ;;
               onprem)
                 # Cloudflare Tunnel이 FE Service로 바로 연결한다. 환경별 터널(cloudflared-<네임스페이스>)이 있으면 그것을 쓴다.
                 # 터널의 연결 대상과 같은 서비스에만 주소를 붙인다. green은 터널에 열지 않는다.
@@ -293,8 +310,8 @@ jobs:
             if [ -f "deploy/$TARGET/values.yaml" ]; then extra+=(-f "deploy/$TARGET/values.yaml"); fi
             migration="$(jq -r '.migration // ""' <<<"$svc")"
             if [ -n "$migration" ]; then extra+=(--set-file migration.sql="$migration"); fi
-            if [ -n "$INGRESS_GROUP" ]; then extra+=(--set ingress.group="$INGRESS_GROUP"); fi
-            if [ -n "$HOST" ]; then extra+=(--set ingress.host="$HOST"); fi
+            if [ "$TARGET" = aws ] && [ -n "$INGRESS_GROUP" ]; then extra+=(--set ingress.group="$INGRESS_GROUP"); fi
+            if [ "$TARGET" = aws ] && [ -n "$HOST" ]; then extra+=(--set ingress.host="$HOST"); fi
             # Helm 4 기본 server-side apply는 Argo Rollouts가 바꾼 Service selector와 충돌해 두 번째 배포부터 실패한다.
             helm upgrade --install "$release" "$CHART" \
               --version "$CHART_VERSION" \

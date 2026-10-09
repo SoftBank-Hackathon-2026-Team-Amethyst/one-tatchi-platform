@@ -22,7 +22,7 @@ on:
         type: string
         default: ""
       target:
-        description: "배포 대상: aws | onprem"
+        description: "배포 대상: aws | gcp | onprem"
         type: string
         default: aws
       environment:
@@ -81,7 +81,10 @@ jobs:
           target: ${{ inputs.target }}
           cluster: ${{ inputs.cluster }}
           role-arn: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
-          region: ${{ vars.AWS_REGION }}
+          region: ${{ inputs.target == 'gcp' && vars.GCP_REGION || vars.AWS_REGION }}
+          project: ${{ vars.GCP_PROJECT }}
+          workload-identity-provider: ${{ vars.GCP_WIF_PROVIDER }}
+          service-account: ${{ vars.GCP_DEPLOY_IDENTITY }}
       - name: ${{ inputs.action }}
         run: |
           for ro in $RELEASES; do
