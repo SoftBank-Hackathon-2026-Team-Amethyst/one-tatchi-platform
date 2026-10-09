@@ -34,3 +34,9 @@ variable "deploy_environments" {
 variable "state_bucket" {
   type = string
 }
+
+variable "enable_grafana_wif" {
+  description = "T17 Grafana용 pool/provider를 CI가 관리하도록 한다. 프로젝트 관리자가 bootstrap에서 명시적으로 활성화한다"
+  type        = bool
+  default     = false
+}

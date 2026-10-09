@@ -5,12 +5,12 @@ locals {
     [for env in var.deploy_environments : "${var.oidc_subject_prefix}:environment:${env}"]
   )
   deploy_condition = "assertion.sub in ${jsonencode(local.deploy_subjects)}"
-  deploy_roles = toset([
+  deploy_roles = toset(concat([
     "roles/compute.networkAdmin", "roles/container.admin", "roles/cloudsql.admin",
     "roles/secretmanager.admin", "roles/artifactregistry.admin", "roles/monitoring.editor",
     "roles/iam.serviceAccountAdmin", "roles/iam.serviceAccountUser", "roles/resourcemanager.projectIamAdmin",
     "roles/servicenetworking.networksAdmin",
-  ])
+  ], var.enable_grafana_wif ? ["roles/iam.workloadIdentityPoolAdmin"] : []))
 }
 
 resource "google_iam_workload_identity_pool" "github" {
