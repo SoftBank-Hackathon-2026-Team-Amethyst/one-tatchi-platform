@@ -14,6 +14,12 @@
 
 이 레포는 **기본 템플릿과 에이전트 스킬**을 담는다. 배포 대상 앱은 [`demo-app`](https://github.com/SoftBank-Hackathon-2026-Team-Amethyst/demo-app)에 있다.
 
+## 아키텍처
+
+![원터치 배포 시스템 아키텍처](docs/assets/architecture.png)
+
+원본은 [`docs/assets/architecture.drawio`](docs/assets/architecture.drawio) (draw.io로 연다).
+
 ## 구성
 
 | 구성 | 설명 |
