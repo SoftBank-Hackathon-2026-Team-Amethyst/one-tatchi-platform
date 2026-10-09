@@ -40,4 +40,5 @@ module "ci_identity" {
   repository_owner_id = var.repository_owner_id
   oidc_subject_prefix = var.oidc_subject_prefix
   state_bucket        = google_storage_bucket.state.name
+  enable_grafana_wif  = var.enable_grafana_wif
 }

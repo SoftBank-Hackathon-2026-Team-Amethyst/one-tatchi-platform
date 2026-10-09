@@ -14,7 +14,7 @@ AWS 자원 변경은 앱의 infra 파이프라인으로 수행한다. 기존 팀
 
 ## GCP 읽기 전용 인증
 
-`observability/gcp.grafana_eks_oidc_issuer`에 중앙 EKS의 OIDC issuer를 넣는다. 최초 pool/provider 생성에는 적용 주체의 Workload Identity Pool 관리 권한이 필요하다. 현재 T4 CI 기본 권한에는 이 권한이 없으므로 GCP 관리자가 승인한 bootstrap 변경으로 먼저 준비해야 한다. 앱 파이프라인이 임의로 자신의 IAM 권한을 높이지 않는다.
+`observability/gcp.grafana_eks_oidc_issuer`에 중앙 EKS의 OIDC issuer를 넣는다. 최초 pool/provider 생성에는 적용 주체의 Workload Identity Pool 관리 권한이 필요하다. 현재 T4 CI 기본 권한에는 이 권한이 없으므로 GCP 관리자가 [bootstrap의 `enable_grafana_wif=true` 절차](../bootstrap/gcp/README.md#t17-중앙-grafana-최초-연결-권한)로 먼저 준비해야 한다. 기본값은 false이며 앱 파이프라인이 임의로 자신의 IAM 권한을 높이지 않는다.
 
 GCP 모듈의 `grafana_workload_provider`, `grafana_service_account` 출력을 AWS 모듈의 `gcp_monitoring`에 `project_id`와 함께 전달한다. 이 값들은 비밀값이 아니다. AWS Grafana에는 external-account 설정 ConfigMap과 만료 1시간의 projected token만 연결된다. 신뢰 대상은 지정한 EKS issuer의 `system:serviceaccount:monitoring:grafana`로 한정된다. 서비스 계정에는 `roles/monitoring.viewer`만 부여한다.
 
