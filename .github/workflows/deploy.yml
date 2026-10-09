@@ -60,8 +60,12 @@ on:
         description: 공통 액션을 가져올 이 레포의 ref
         type: string
         default: v1
+      yolo-auto-merge:
+        description: test 승격 후 yolo 브랜치의 main PR 생성 · PR 검사 대기 · rebase 자동 머지 요청 (v1.14.0부터)
+        type: boolean
+        default: false
       promote-mode:
-        description: "AI 승격 판단 결과를 실행할지: auto (yolo) | manual (janto, 사람이 버튼으로 실행)"
+        description: "auto | manual | branch (yolo push와 yolo PR의 main 반영은 auto, 나머지는 manual)"
         type: string
         default: manual
       promote-window-seconds:
@@ -83,6 +87,9 @@ on:
         type: string
         default: "600"
     secrets:
+      BOT_PRIVATE_KEY:
+        description: yolo PR 생성용 GitHub App 키 (vars.BOT_CLIENT_ID와 함께)
+        required: false
       SLACK_BOT_TOKEN:
         required: false
       ANTHROPIC_API_KEY:
@@ -96,6 +103,7 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       environment: ${{ steps.gate.outputs.environment }}
+      mode: ${{ steps.mode.outputs.mode }}
     steps:
       - if: inputs.environment == 'prod'
         uses: actions/checkout@v7
@@ -121,13 +129,18 @@ jobs:
           echo "### 운영 관문: compliance=$compliance → environment \`$environment\`" >> "$GITHUB_STEP_SUMMARY"
       # 사람 승인이 필요하면 Slack에 승인 · 거절 버튼을 올린다 (T26). 봇(one-tatchi-bot)이 prod environment의
       # 승인 규칙(custom deployment protection rule)으로 등록돼 있어 버튼만으로 승인된다.
-      - if: steps.gate.outputs.environment == 'prod'
-        uses: actions/checkout@v7
+      - uses: actions/checkout@v7
         with:
           repository: SoftBank-Hackathon-2026-Team-Amethyst/one-tatchi-platform
           ref: ${{ inputs.template-ref }}
           path: .platform
           sparse-checkout: .github/actions
+      - id: mode
+        name: 배포 경로에 따른 승격 모드
+        env:
+          GH_TOKEN: ${{ github.token }}
+          MODE: ${{ inputs.promote-mode }}
+        run: bash .platform/.github/actions/yolo-pr/mode.sh
       - if: steps.gate.outputs.environment == 'prod'
         uses: ./.platform/.github/actions/slack-notify
         with:
@@ -144,6 +157,8 @@ jobs:
   # environment 승인은 job마다 걸리므로, 서비스마다 job을 나누면 prod 승인을 서비스 수만큼 받아야 한다.
   deploy:
     needs: gate
+    outputs:
+      promoted: ${{ steps.yolo.outputs.promoted }}
     # onprem은 맥북의 self-hosted runner(바깥 방향 연결)에서 돈다. push 이벤트로만 호출한다.
     runs-on: ${{ inputs.target == 'onprem' && fromJSON('["self-hosted","onprem"]') || 'ubuntu-latest' }}
     # environment를 지정하면 GitHub Deployments에 배포 기록이 남는다. prod는 승인을 기다리고, prod-auto는 바로 반영한다.
@@ -347,9 +362,30 @@ jobs:
           namespace: ${{ inputs.namespace }}
           target: ${{ inputs.target }}
           environment: ${{ inputs.environment }}
-          mode: ${{ inputs.promote-mode }}
+          mode: ${{ needs.gate.outputs.mode }}
           window-seconds: ${{ inputs.promote-window-seconds }}
           anthropic-api-key: ${{ secrets.ANTHROPIC_API_KEY }}
+      - id: yolo
+        name: yolo PR 전에 실제 test 승격 확인
+        if: inputs.yolo-auto-merge && inputs.environment == 'test' && needs.gate.outputs.mode == 'auto' && github.event_name == 'push' && startsWith(github.ref, 'refs/heads/yolo/')
+        env:
+          REPORT: ${{ runner.temp }}/yolo-promotion.json
+          ACTOR: ${{ github.actor }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          bash .platform/.github/actions/yolo-pr/verify.sh
+          infra=false; [ ! -f .github/workflows/infra.yml ] || infra=true
+          jq -n --argjson infra_workflow "$infra" --arg sha "$TAG" --arg target "$TARGET" --arg actor "$ACTOR" --arg run_url "$RUN_URL" \
+            --arg compliance "$(yq -r '.compliance' .deploy/config.yaml)" \
+            --arg template_version "$(yq -r '.template_version' .deploy/config.yaml)" \
+            '{sha:$sha,target:$target,actor:$actor,run_url:$run_url,compliance:$compliance,
+              template_version:$template_version,environment:"test",promoted:true,infra_workflow:$infra_workflow}' > "$REPORT"
+      - if: steps.yolo.outputs.promoted == 'true'
+        uses: actions/upload-artifact@v7
+        with:
+          name: yolo-promotion
+          path: ${{ runner.temp }}/yolo-promotion.json
+          if-no-files-found: error
       # 판단 근거(지표 · 규칙 판정 · AI 답)는 T10 yolo 배포 리포트가 읽는다.
       - if: always() && steps.judge.outcome != 'skipped'
         uses: actions/upload-artifact@v7
@@ -384,7 +420,7 @@ jobs:
         name: 알림 내용 (AI 판단 · 버튼)
         env:
           STATUS: ${{ job.status }}
-          MODE: ${{ inputs.promote-mode }}
+          MODE: ${{ needs.gate.outputs.mode }}
           URLS: ${{ steps.deploy.outputs.slack }}
           DECISION: ${{ steps.judge.outputs.decision }}
           REASON: ${{ steps.judge.outputs.reason }}
@@ -418,3 +454,34 @@ jobs:
           result: ${{ job.status }}
           details: ${{ steps.notify.outputs.details }}
           buttons: ${{ steps.notify.outputs.buttons }}
+
+  yolo-pr:
+    needs: [gate, deploy]
+    if: inputs.yolo-auto-merge && needs.deploy.outputs.promoted == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    concurrency:
+      group: yolo-pr-${{ github.ref }}
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          repository: SoftBank-Hackathon-2026-Team-Amethyst/one-tatchi-platform
+          ref: ${{ inputs.template-ref }}
+          path: .platform
+          sparse-checkout: .github/actions/yolo-pr
+          persist-credentials: false
+      - uses: actions/download-artifact@v8
+        with:
+          name: yolo-promotion
+          path: ${{ runner.temp }}/yolo-promotion
+      - uses: actions/create-github-app-token@v3
+        id: app
+        with:
+          client-id: ${{ vars.BOT_CLIENT_ID }}
+          private-key: ${{ secrets.BOT_PRIVATE_KEY }}
+      - name: yolo PR 생성 · 검사 확인 · 자동 머지
+        env:
+          GH_TOKEN: ${{ steps.app.outputs.token }}
+          REPORT: ${{ runner.temp }}/yolo-promotion/yolo-promotion.json
+        run: python3 .platform/.github/actions/yolo-pr/pr.py

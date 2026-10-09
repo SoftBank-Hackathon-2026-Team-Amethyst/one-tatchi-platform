@@ -1,6 +1,6 @@
 # 코드베이스 분석기
 
-대상 레포가 무엇으로 만들어졌고 어떻게 실행되는지 알아낸다. 다른 분석기와 `config.yaml`의 `services`, 그리고 `deploy-provision`의 Dockerfile · 값 파일 · 검사 입력이 이 결과에 의존한다.
+대상 레포가 무엇으로 만들어졌고 어떻게 실행되는지 알아낸다. 다른 분석기와 `plan.yaml`의 `services`, 그리고 `deploy-provision`의 Dockerfile · 값 파일 · 검사 입력이 이 결과에 의존한다.
 
 ## 조사할 것
 
