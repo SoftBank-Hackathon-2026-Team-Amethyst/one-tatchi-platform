@@ -12,7 +12,7 @@ AWS 인증과 S3 state를 고정한 기존 경로로는 GCP 인프라를 반영�
 - 숫자 조직 ID · 레포 ID와 허용한 platform 재사용 워크플로의 main · 버전 태그만 신뢰한다. 이름만 같은 외부 레포는 허용하지 않는다.
 - plan과 deploy는 같은 pool의 별도 provider와 서비스 계정을 사용한다. provider가 설정한 access 속성으로 계정 간 교차 위임을 막는다.
 - deploy는 main 또는 test/prod/prod-auto/destroy environment로 제한한다. 기존 운영 승인 관문은 유지한다.
-- plan은 viewer와 해당 state 버킷의 읽기, `.tflock` 객체 쓰기만 가진다. Secret Manager 값 읽기 권한은 부여하지 않는다.
+- plan은 viewer와 해당 state 버킷의 읽기, `.tflock` 객체 쓰기만 가진다. 프로젝트 전체 시크릿 읽기는 부여하지 않는다. DB write-only 처리에 필요한 해당 자격증명 하나의 ephemeral 읽기는 ADR 0008에서 제한적으로 추가한다.
 - deploy에는 compute/container/cloudsql/secretmanager/artifactregistry/monitoring/servicenetworking과 서비스 계정 · 프로젝트 IAM 관리 역할을 부여한다. 프로젝트 전체 Owner/Editor는 부여하지 않는다.
 
 ## 영향
