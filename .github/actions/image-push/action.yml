@@ -34,31 +34,4 @@ runs:
         GH_TOKEN: ${{ github.token }}
         OWNER: ${{ github.repository_owner }}
         SOURCE: ${{ github.server_url }}/${{ github.repository }}
-      run: |
-        # 로그인 정보는 job 전용 위치에 둔다 (self-hosted runner의 키체인 · 기본 설정을 쓰지 않는다).
-        export DOCKER_CONFIG="$RUNNER_TEMP/docker"
-        mkdir -p "$DOCKER_CONFIG"
-        case "$TARGET" in
-          aws)
-            repo="$ECR_REGISTRY/$NAME"
-            exists() { aws ecr describe-images --repository-name "$NAME" --image-ids imageTag="$TAG" >/dev/null 2>&1; } ;;
-          onprem)
-            repo="ghcr.io/$(echo "$OWNER" | tr '[:upper:]' '[:lower:]')/$NAME"
-            # docker login은 macOS에서 키체인에 저장하려다 launchd 서비스(runner)에서 실패한다.
-            # 설정 파일에 auths가 있으면 Docker CLI가 기본 키체인 저장소를 고르지 않으므로 직접 적는다.
-            # RUNNER_TEMP는 job이 끝나면 지워진다.
-            printf '{"auths":{"ghcr.io":{"auth":"%s"}}}' "$(printf '%s:%s' "$GITHUB_ACTOR" "$GH_TOKEN" | base64 | tr -d '\n')" \
-              > "$DOCKER_CONFIG/config.json"
-            exists() { docker manifest inspect "$repo:$TAG" >/dev/null 2>&1; } ;;
-          *)
-            echo "::error::지원하지 않는 배포 대상: $TARGET (aws | onprem)"; exit 1 ;;
-        esac
-        echo "repository=$repo" >> "$GITHUB_OUTPUT"
-        # 태그 덮어쓰기 금지라 재실행 시 이미 있으면 건너뛴다. test에서 만든 이미지를 prod가 그대로 쓴다.
-        if exists; then
-          echo "image $repo:$TAG already exists"
-        else
-          # 이미지는 runner의 아키텍처로 빌드된다 (EKS ubuntu runner amd64, 맥북 runner arm64).
-          docker build --label "org.opencontainers.image.source=$SOURCE" -t "$repo:$TAG" "$CONTEXT"
-          docker push "$repo:$TAG"
-        fi
+      run: echo "repository=$("$GITHUB_ACTION_PATH/push.sh" "$TARGET" "$NAME" "$CONTEXT" "$TAG")" >> "$GITHUB_OUTPUT"
