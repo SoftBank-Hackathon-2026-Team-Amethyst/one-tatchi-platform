@@ -212,10 +212,10 @@ Claude Code는 `/todo-task`, Codex는 `$todo-task`로 이 순서를 따르는 �
 **목표** 분석 보고서에 구성별 월 비용이 나온다.
 
 **할 일**
-- [ ] 가격 조회 스크립트(예: `skills/deploy-analyze/scripts/price.py`): AWS Pricing API · GCP Cloud Billing Catalog API로 리전별 단가 조회 → JSON
-- [ ] 계산 규칙: 추천 구성(트래픽 분석기 결과)을 템플릿 자원 목록으로 바꿔 `단가 × 730시간`, 고정비와 변동비 구분
-- [ ] `references/analyzers/budget.md` 수정: "알고 있는 가격으로 추정" 대신 조회 도구 사용, 단일 배포 대상별(aws / gcp / onprem) 비교 표, 예산 초과 시 절감안
-- [ ] 분석 보고서 요약에 월 예상 비용 연결 (janto 리뷰 지점 1에서 표시)
+- [x] 가격 조회 스크립트(예: `skills/deploy-analyze/scripts/price.py`): AWS Pricing API · GCP Cloud Billing Catalog API로 리전별 단가 조회 → JSON
+- [x] 계산 규칙: 추천 구성(트래픽 분석기 결과)을 템플릿 자원 목록으로 바꿔 `단가 × 730시간`, 고정비와 변동비 구분
+- [x] `references/analyzers/budget.md` 수정: "알고 있는 가격으로 추정" 대신 조회 도구 사용, 단일 배포 대상별(aws / gcp / onprem) 비교 표, 예산 초과 시 절감안
+- [x] 분석 보고서 요약에 월 예상 비용 연결 (janto 리뷰 지점 1에서 표시)
 
 **완료 기준** demo-app 분석 보고서에 API로 조회한 단가 기반 비용 표(조회 시각 포함)가 나오고, 예산을 넘으면 경고와 절감안이 뜬다.
 
