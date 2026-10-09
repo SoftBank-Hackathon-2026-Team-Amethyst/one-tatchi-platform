@@ -488,7 +488,7 @@ Claude Code는 `/todo-task`, Codex는 `$todo-task`로 이 순서를 따르는 �
 
 **할 일**
 - [x] `.deploy/config.yaml` 스키마(`compliance: regulated | none`, `template_version`)
-- [ ] 재사용 워크플로가 config를 읽어 승인 environment 분기
+- [x] 재사용 워크플로가 config를 읽어 승인 environment 분기
 - [x] demo-app에서 config 보호: CODEOWNERS, AI 커밋이 바꾸면 검사 실패
 - [x] 값을 바꾸는 PR은 사람 리뷰 필수
 
