@@ -10,6 +10,8 @@
 
 ## Unreleased
 
+- `promote-judge` 액션: Paused green에 smoke 요청 → 지표 · 규칙 판정 → Claude 판단 → promote · abort(auto) 또는 기록(manual). 아직 deploy.yml에서 호출하지 않음 (T7)
+
 ## v1.6.1
 
 - `deploy.yml`: aws 대상에서 Ingress가 없는 서비스(FE가 프록시하는 BE 등)의 "주소" 단계가 실패하던 문제. 새 ALB는 주소가 붙을 때까지 최대 150초 기다린다
