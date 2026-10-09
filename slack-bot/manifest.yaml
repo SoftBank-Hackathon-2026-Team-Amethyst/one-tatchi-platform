@@ -8,7 +8,7 @@ features:
     always_online: true
   slash_commands:
     - command: /rollout
-      description: Blue-Green 승격, 취소, 되돌리기 (예: promote all@aws.test)
+      description: "Blue-Green 승격, 취소, 되돌리기 (예: promote all@aws.test)"
       usage_hint: "promote|abort|undo <서비스|all>@<대상>.<환경>"
       should_escape: false
 oauth_config:
