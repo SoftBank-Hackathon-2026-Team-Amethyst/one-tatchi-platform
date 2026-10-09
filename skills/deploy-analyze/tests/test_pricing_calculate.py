@@ -45,6 +45,18 @@ TIERS=[{'from':'0','to':'10','unit_price':'1'},{'from':'10','to':None,'unit_pric
 
 
 class CalculationTests(unittest.TestCase):
+    def test_direct_latest_price_nullable_date_requires_v3_and_money_proof(self):
+        data,prices=read('gcp-input.json'),read('gcp-prices-complete.json')
+        record=prices['candidates'][0]['items'][0]['price'];prices['schema_version']='3'
+        record.update(effective_at=None,source_unit='h',source_usage_per_unit='1',tiers=[{'from':'0','to':None,'unit_price':'0.02802642'}])
+        record['provider_details']={'api':'v2beta','usage_unit':'h','unit_quantity':'1','aggregation':{'aggregationLevel':'ACCOUNT','aggregationInterval':'MONTHLY','aggregationCount':1},'effective_time':None,'tiers':[{'from':'0','units':'0','nanos':28026420}]}
+        result=calculate(data,prices);self.assertEqual(result['schema_version'],'3')
+        self.assertEqual(candidate(result)['summary']['known_total_usd'],amount('122.7557196'))
+        prices['schema_version']='2'
+        with self.assertRaises(InputError):calculate(data,prices)
+        prices['schema_version']='3';record['provider_details']['tiers'][0]['nanos']+=1
+        with self.assertRaises(InputError):calculate(data,prices)
+
     def test_complete_example_and_fx(self):
         data,prices=read('input.json'),read('prices-complete.json')
         result=calculate(data,prices);out=candidate(result)

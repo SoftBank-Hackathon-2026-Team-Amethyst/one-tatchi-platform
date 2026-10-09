@@ -49,14 +49,14 @@ def write_result(path, result):
     write_text(path, json.dumps(result, ensure_ascii=False, indent=2, allow_nan=False) + "\n")
 
 
-def lookup(data, provider=None, gcp_provider=None):
+def lookup(data, provider=None, gcp_provider=None, gcp_account=None, gcp_quota_project=None):
     from pricing_aws import AWSPrices
     from pricing_gcp import GCPPrices
     from pricing_errors import LookupError
 
     provider = provider or AWSPrices()
-    gcp_provider = gcp_provider or GCPPrices()
-    result = {"schema_version": "2", "input_id": data["input_id"], "input_sha256": input_hash(data),
+    gcp_provider = gcp_provider or GCPPrices(account=gcp_account, quota_project=gcp_quota_project)
+    result = {"schema_version": "3", "input_id": data["input_id"], "input_sha256": input_hash(data),
               "queried_at": timestamp(), "status": "complete", "candidates": [], "issues": []}
     for candidate in data["candidates"]:
         output = {key: candidate[key] for key in ("candidate_id", "target", "region")}
@@ -89,6 +89,8 @@ def main(argv=None):
         query = commands.add_parser("lookup")
         query.add_argument("--input", required=True)
         query.add_argument("--output", required=True)
+        query.add_argument("--gcp-account")
+        query.add_argument("--gcp-quota-project")
         mapping = commands.add_parser("map")
         mapping.add_argument("--inventory", required=True)
         mapping.add_argument("--output", required=True)
@@ -185,7 +187,9 @@ def main(argv=None):
                     output_path(args.assessment, args.output)
                 result = calculate(data, load_document(args.prices), load_document(args.assessment) if args.assessment else None)
             else:
-                result = lookup(data)
+                if any(value is not None and not value.strip() for value in (args.gcp_account, args.gcp_quota_project)):
+                    raise InputError("lookup: authentication selectors must not be empty")
+                result = lookup(data, gcp_account=args.gcp_account, gcp_quota_project=args.gcp_quota_project)
             write_result(path, result)
             code = 3 if result["status"] == "partial" else 0
             response = dict(status=result["status"], output=str(path), issues=result["issues"])

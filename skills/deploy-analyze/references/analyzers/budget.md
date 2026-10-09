@@ -15,6 +15,7 @@
 아래 `<skill-dir>`은 deploy-analyze 설치 디렉터리, `<app-root>`는 실제 대상 앱이다. 실행 전 [자원 매핑](../resource-mapping.md), [가격 계약](../price-format.md), [계산 계약](../cost-calculation.md)을 읽는다. 의존성은 requirements.txt에 있다.
 
 1. 분석 스킬이 환경 루트와 참조 모듈·차트, 트래픽 결과를 읽어 `pricing-inventory.json`을 작성한다. 정확한 SKU 또는 사용 유형을 아직 모르면 비용 항목을 삭제하거나 가격을 만들어 넣지 않는다. C4 형식에 맞게 미정 사용량과 가정을 기록한다. `demo-inventory.json`은 설정 스냅샷 예시이며 최신 앱 구성으로 다시 작성해야 한다.
+   `demo-catalog-inventory.json`은 정확한 공개 카탈로그 선택자를 연결한 서울 구성 예시다. 같은 규격·리전·과금 방식인지 확인한 후 필요한 선택자를 사용한다. 다른 트래픽 목적지나 DB 규격에 그대로 적용하지 않는다. GCP의 Networking·무료 구간·NAT 과금 수량과 시크릿·메트릭의 단위는 가격 계약을 따른다.
 2. map으로 자원 목록을 가격 입력으로 변환한다. 트래픽이 없거나 기본 시나리오라면 그렇게 표시하고 종합 때 최종 추천 크기로 재계산한다.
 3. lookup으로 실제 단가를 조회한다. 가격 API가 실패했을 때 알고 있는 공개 가격을 최신 조회값처럼 대신 넣지 않는다.
 4. calculate로 비용과 예산을 계산한다. C4 입력에서는 resource-assessment.json도 전달한다.

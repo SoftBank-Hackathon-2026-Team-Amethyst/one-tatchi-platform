@@ -50,12 +50,15 @@ def summed(values, empty_zero=False):
 def validate_price_record(value, item, version, target):
     require(isinstance(value, dict), "price: expected object")
     require(set(value) in (set(PRICE_KEYS.split()), set(PRICE_KEYS.split()) | {"provider_details"}), "price: missing or unknown fields")
-    require(version == "2" or "provider_details" not in value, "provider_details requires result version 2")
+    require(version in ("2", "3") or "provider_details" not in value, "provider_details requires result version 2")
     for key in ("sku", "provider_service", "source", "source_unit"):
         string(value[key], "price." + key)
     require(value["currency"] == "USD", "price: expected USD")
     require(value["unit"] == item["unit"], "price: unit does not match input")
-    utc_time(value["effective_at"], "price.effective_at")
+    if value["effective_at"] is None:
+        require(version == "3" and (value.get("provider_details") or {}).get("api") == "v2beta", "effective date can be unknown only for the explicit latest-price API")
+    else:
+        utc_time(value["effective_at"], "price.effective_at")
     factor = decimal_value(value["source_usage_per_unit"], "price.source_usage_per_unit", positive=True)
     tiers = value["tiers"]
     require(isinstance(tiers, list) and tiers, "price: tiers required")
@@ -69,10 +72,13 @@ def validate_price_record(value, item, version, target):
         expected = high
     require(expected is None, "price: final tier must be unbounded")
     details = value.get("provider_details")
-    if target == "gcp" and version == "2":
-        require(details is not None and all(Decimal(tier["unit_price"]) > 0 for tier in tiers),
+    if target == "gcp" and version in ("2", "3"):
+        require(details is not None and ((version == "3" and details.get("api") == "v2beta") or all(Decimal(tier["unit_price"]) > 0 for tier in tiers)),
                 "GCP paid quote requires provider details and excludes unverified free tiers")
     if details is not None:
+        if details.get("api") == "v2beta":
+            validate_direct_details(details, value, version)
+            return
         fields(details, "usage_unit base_unit base_unit_conversion_factor display_quantity currency_conversion_rate aggregation effective_time tiers", "provider_details")
         require(details["usage_unit"] == value["source_unit"], "provider_details: source unit mismatch")
         string(details["base_unit"], "provider_details.base_unit")
@@ -103,9 +109,31 @@ def validate_price_record(value, item, version, target):
             require(type(agg.get("aggregationCount", 1)) is int and agg.get("aggregationCount", 1) > 0, "invalid aggregation count")
 
 
+def validate_direct_details(details, price, version):
+    fields(details, "api usage_unit unit_quantity aggregation effective_time tiers", "direct provider details")
+    require(version == "3" and price["effective_at"] is None and details["effective_time"] is None,
+            "latest direct API must not invent a price effective timestamp")
+    require(details["usage_unit"] == price["source_unit"] and price["source_usage_per_unit"] == "1", "direct unit mapping mismatch")
+    from pricing_contract import GCP_DIRECT_UNITS
+    require(GCP_DIRECT_UNITS.get(price["unit"]) == price["source_unit"], "direct canonical unit differs from source unit")
+    quantity = decimal_value(details["unit_quantity"], "direct unit_quantity", positive=True)
+    require(isinstance(details["tiers"], list) and len(details["tiers"]) == len(price["tiers"]), "direct tier count mismatch")
+    for raw, tier in zip(details["tiers"], price["tiers"]):
+        fields(raw, "from units nanos", "direct money tier")
+        require(decimal_value(raw["from"], "direct tier.from") == Decimal(tier["from"]), "direct tier boundary mismatch")
+        require(isinstance(raw["units"], str) and raw["units"].isdigit() and type(raw["nanos"]) is int and 0 <= raw["nanos"] < 1000000000,
+                "invalid direct Money")
+        amount = Decimal(raw["units"]) + Decimal(raw["nanos"]) / Decimal(1000000000)
+        require(amount / quantity == Decimal(tier["unit_price"]), "direct normalized price differs from source Money")
+    agg = details["aggregation"]
+    fields(agg, "aggregationLevel aggregationInterval aggregationCount", "direct aggregation")
+    require(agg["aggregationLevel"] in ("ACCOUNT", "PROJECT", "AGGREGATION_LEVEL_UNSPECIFIED") and agg["aggregationInterval"] in ("MONTHLY", "DAILY", "AGGREGATION_INTERVAL_UNSPECIFIED") and agg["aggregationCount"] == 1,
+            "invalid direct aggregation")
+
+
 def validate_prices(data, prices):
     fields(prices, "schema_version input_id input_sha256 queried_at status candidates issues", "prices")
-    require(prices["schema_version"] in ("1", "2"), "prices: unsupported schema version")
+    require(prices["schema_version"] in ("1", "2", "3"), "prices: unsupported schema version")
     require(prices["input_id"] == data["input_id"] and prices["input_sha256"] == input_hash(data), "prices: input identity or hash mismatch")
     utc_time(prices["queried_at"], "queried_at")
     require(prices["status"] in ("complete", "partial"), "prices: invalid status")
@@ -179,6 +207,9 @@ def group_cost(entries):
     require(len(baseline_values) <= 1, "same SKU has conflicting aggregation baselines")
     baseline = next(iter(baseline_values)) if baseline_values else Decimal(0)
     aggregation = (price.get("provider_details") or {}).get("aggregation") or {}
+    if (price.get("provider_details") or {}).get("api") == "v2beta" and any(Decimal(tier["unit_price"]) == 0 for tier in tiers):
+        if not all(item["attributes"].get("free_tier_policy") == "verified_catalog" for item, _ in entries) or not baseline_values:
+            return None, None, False, False, "unverified_free_tier", "Catalog free tiers need explicit verified eligibility and account/project baseline"
     if len(tiers) > 1:
         if aggregation.get("aggregationInterval") == "DAILY" or aggregation.get("aggregationCount", 1) != 1:
             return None, None, False, False, "unsupported_aggregation", "Monthly usage cannot resolve daily or multi-period tiers"
@@ -277,7 +308,7 @@ def _calculate(data, prices, assessment):
     validate_input(data)
     records = validate_prices(data, prices)
     audited = assess_input(data, assessment)
-    result = dict(schema_version="2", input_id=data["input_id"], input_sha256=input_hash(data), prices_sha256=input_hash(prices),
+    result = dict(schema_version="3", input_id=data["input_id"], input_sha256=input_hash(data), prices_sha256=input_hash(prices),
                   generated_at=timestamp(), queried_at=prices["queried_at"], status="complete", candidates=[], issues=[])
     for candidate in data["candidates"]:
         cid = candidate["candidate_id"]
@@ -364,7 +395,7 @@ def _calculate(data, prices, assessment):
 
 def validate_cost_snapshot(value):
     fields(value, "schema_version input_id input_sha256 prices_sha256 generated_at queried_at status candidates issues", "cost snapshot")
-    require(value["schema_version"] in ("1", "2") and value["status"] in ("complete", "partial"), "cost snapshot: unsupported version or status")
+    require(value["schema_version"] in ("1", "2", "3") and value["status"] in ("complete", "partial"), "cost snapshot: unsupported version or status")
     utc_time(value["generated_at"], "generated_at"); utc_time(value["queried_at"], "queried_at")
     require(isinstance(value["candidates"], list) and value["candidates"], "cost snapshot: candidates required")
     result = {}

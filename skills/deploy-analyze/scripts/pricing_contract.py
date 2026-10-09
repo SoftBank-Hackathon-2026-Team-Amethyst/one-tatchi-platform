@@ -7,7 +7,8 @@ from datetime import date, datetime, timezone
 from decimal import Decimal
 from pathlib import Path
 
-UNITS = {"hour", "gb_month", "gib_month", "gb", "gib", "request", "vcpu_hour", "gib_hour", "lcu_hour"}
+UNITS = {"hour", "gb_month", "gib_month", "gb", "gib", "request", "vcpu_hour", "gib_hour", "lcu_hour", "secret_month", "metric_month", "sample"}
+GCP_DIRECT_UNITS = {"hour":"h", "vcpu_hour":"h", "gib_hour":"GiBy.h", "gib_month":"GiBy.mo", "gb_month":"GBy.mo", "gib":"GiBy", "gb":"GBy", "request":"count", "sample":"count", "secret_month":"mo"}
 DECIMAL = re.compile(r"(?:0|[1-9][0-9]*)(?:\.[0-9]+)?\Z")
 BUDGETS = {(0, 100000), (100001, 500000), (500001, 1000000), (1000001, None)}
 
@@ -59,7 +60,7 @@ def usage(value, path):
 
 def validate_input(data):
     fields(data, "schema_version input_id created_at template_version monthly_hours monthly_budget budget_basis fx candidates", "input")
-    require(data["schema_version"] in ("1", "2"), "schema_version: unsupported version")
+    require(data["schema_version"] in ("1", "2", "3"), "schema_version: unsupported version")
     string(data["input_id"], "input_id")
     utc_time(data["created_at"], "created_at")
     require(isinstance(data["template_version"], str) and re.fullmatch(r"v\d+\.\d+\.\d+", data["template_version"]) is not None,

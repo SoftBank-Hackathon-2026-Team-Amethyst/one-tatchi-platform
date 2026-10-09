@@ -85,12 +85,16 @@ AWS SDK 기본 자격증명 경로를 사용한다. 필요한 읽기 권한은 p
 | ecr / storage | usage_type |
 | logs / ingestion, storage | usage_type |
 | internet_egress / transfer | usage_type, to_location |
+| aws_public_ipv4 / address_hours | usage_type |
+| aws_metrics / metrics | usage_type; 단위 metric_month |
+| aws_secrets / storage, access_requests | usage_type; 단위 secret_month, request |
+| aws_audit_storage / storage, write_requests, read_requests | usage_type |
 
-usage_type은 공급자 카탈로그에서 확인한 정확한 usagetype 문자열이다. 지역 접두사를 추측해 만들지 않는다. 조회기는 DescribeServices로 서비스 필드를 확인하고 GetAttributeValues로 usage_type이 존재하는지 확인한다. 자원 목록에 필요한 사용 유형을 채우는 작업은 C4와 연결된다. 기본 EC2 프로필은 Compute Instance · preInstalledSw: NA · capacitystatus: Used이며 이에 충돌하는 속성은 거부한다.
+usage_type은 공급자 카탈로그에서 확인한 정확한 usagetype 문자열이다. 지역 접두사를 추측해 만들지 않는다. 조회기는 DescribeServices로 서비스 필드를 확인하고 GetProducts의 정확한 조건과 반환 상품을 대조해 usage_type을 검증한다. 전 세계 사용 유형을 매 항목마다 먼저 수집하지 않는다. GetAttributeValues는 별도 탐색 도구로 사용할 수 있다. 자원 목록에 필요한 사용 유형을 채우는 작업은 C4와 연결된다. 기본 EC2 프로필은 Compute Instance · preInstalledSw: NA · capacitystatus: Used이며 이에 충돌하는 속성은 거부한다.
 
 추가 필터는 operation, license_model, volume_api_name, product_family, to_location, from_location을 사용할 수 있다. API 속성 이름으로 변환한 뒤 서비스 메타데이터에 있는지 확인한다. rate_code는 상품 필터가 아니라 가격 차원 선택용이며, 선택된 구간이 전체 사용량을 설명하지 못하면 미조회로 남긴다. internet_egress는 견적 리전을 fromRegionCode로 지정한다. 정확한 과금 차원을 확정하지 못하면 다른 공식 가격으로 임의 대체하지 않는다.
 
-Hrs · hrs · Hours는 hour, GB-Mo · GB-month는 gb_month, GB는 gb, Requests는 request, LCU-Hrs는 lcu_hour로 정규화한다. 변환 계수는 1이다. 단위가 맞지 않거나 조건부 appliesTo가 있는 항목은 미조회로 남긴다. GB를 GiB로 임의 변환하지 않는다.
+Hrs · hrs · Hours는 hour, GB-Mo · GB-month는 gb_month, GB는 gb, Requests · API Requests는 request, LCU-Hrs는 lcu_hour, Secrets는 secret_month, Metrics는 metric_month로 정규화한다. 변환 계수는 1이다. secret_month는 시크릿 1개의 월 사용량이며 GB 저장량이 아니다. metric_month는 커스텀 메트릭 1개의 월 사용량이다. 단위가 맞지 않거나 조건부 appliesTo가 있는 항목은 미조회로 남긴다. GB를 GiB로 임의 변환하지 않는다.
 
 C3에서 GCP 조회를 연결했다. 온프레미스의 비어 있지 않은 항목은 unsupported_resource로 남긴다. 어느 공급자의 조회가 실패해도 다른 공급자의 성공 결과는 보존한다. 온프레미스의 빈 items는 조회할 클라우드 항목이 없어 complete이며 운영 비용 미산정 가정은 입력에 유지한다. lookup 자체는 비용과 예산 판정을 생성하지 않는다. calculate로 이어서 계산한다.
 
@@ -108,7 +112,7 @@ lookup 명령과 입력 파일 형식은 AWS와 같다. 후보 target은 gcp, �
 
 인증은 google.auth.default()로 기존 ADC를 읽는다. 기존 사용자 ADC의 스코프는 유지한다. 스코프가 필요한 서비스 계정 자격증명에는 cloud-billing.readonly를 메모리에서만 적용한다. 도구는 gcloud 로그인, ADC 파일 작성, IAM 변경, API 활성화를 수행하지 않는다. 기존 인증과 quota project 설정으로 Catalog API를 사용할 수 있어야 한다. 자격증명 로드 · 갱신 실패는 authentication_failed, API 비활성은 api_disabled로 기록한다.
 
-Cloud Billing Catalog API의 services.list와 services.skus.list를 사용한다. 서비스 ID를 추측하지 않고 표시 이름으로 서비스를 찾으며, SKU 조회 시 currencyCode=USD를 명시한다. 페이지 크기는 5000이고 다음 페이지 토큰을 끝까지 처리한다. 동일 실행에서는 서비스와 SKU 목록을 재사용한다. 연결 제한은 5초, 응답 제한은 15초이며 인증 갱신은 최대 1회다. HTTP 429와 5xx는 재시도 가능 사유를 남기고 자체 Catalog 재시도는 하지 않는다.
+Cloud Billing Catalog API의 services.list와 services.skus.list를 사용한다. 서비스 ID를 추측하지 않고 표시 이름으로 서비스를 찾으며, SKU 조회는 공식 API의 기본 통화 USD를 사용하고 반환 Money의 USD를 검증한다. 서비스 목록 페이지 크기는 5000, v1 SKU 목록은 1000이고 다음 페이지 토큰을 끝까지 처리한다. 동일 실행에서는 서비스와 SKU 목록을 재사용한다. 연결 제한은 5초, 응답 제한은 45초이며 ADC 인증 갱신은 최대 1회다. HTTP 429와 5xx는 재시도 가능 사유를 남기고 자체 Catalog 재시도는 하지 않는다.
 
 [Catalog API 계약](https://docs.cloud.google.com/billing/docs/reference/rest/v1/services.skus/list)에 따라 리전 · 카테고리 · 소비 방식과 가격 적용 시점을 확인한다. 조회 시각과 effectiveTime은 구분한다. 전역 SKU는 GLOBAL 지리 정보 또는 명시적인 global 서비스 리전이 있을 때만 사용하며, 빈 리전 목록만으로 전역이라고 추정하지 않는다.
 
@@ -130,15 +134,35 @@ CPU와 메모리는 각각 별도 item_id와 billing_dimension으로 기록한�
 
 단가와 구간 경계는 baseUnit · baseUnitConversionFactor로 정규화한다. h/s는 hour 또는 vcpu_hour, GiBy.h/GiBy.s/By.s는 gib_hour, GiBy.mo는 gib_month, GBy.mo는 gb_month, GiBy/GBy/By는 gib 또는 gb, count는 request를 지원한다. 필요한 baseUnit이 맞지 않으면 unsupported_unit으로 남긴다. 같은 월 단위는 공급자의 월 기준을 그대로 유지하며 바이트·초에서 월로 변환할 때의 기준은 730시간이다. displayQuantity는 표시 권장값이므로 가격에 곱하지 않는다.
 
-공개 유료 구성의 기본 단가를 조회한다. 크레딧 · 약정 · 계정별 할인은 적용하지 않는다. 전체 단가가 0인 무료 SKU는 기본 후보에서 제외하고, 0원 구간이 있는 SKU는 무료 한도의 자격과 공유 범위가 확인되지 않아 unsupported_resource로 남긴다. 유료 SKU를 확정하지 못하면 가격을 임의 대체하지 않는다.
+공개 종량제 기본 단가를 조회한다. 크레딧 · 약정 · 계정별 할인은 적용하지 않는다. v1 조회는 전체 단가가 0인 SKU를 제외하고, 무료 구간의 자격이 미확인인 SKU를 unsupported_resource로 남긴다. v2beta 조회는 무료 구간을 포함한 원본 가격표를 보존하며, 무료 적용 여부는 calculate에서 별도로 확인한다. 가격표 조회 성공과 월 비용 산정 성공은 구분한다.
 
-provider_details는 GCP price의 추가 근거다. 키는 usage_unit, base_unit, base_unit_conversion_factor, display_quantity, currency_conversion_rate, aggregation, effective_time, tiers다. 수치는 십진 문자열로 보존하며 tiers는 원본 시작 사용량 from, 정수부 units 문자열, nanos 정수를 담는다. aggregation은 공급자 aggregationLevel · aggregationInterval · aggregationCount 또는 null이다. C5는 일 단위·여러 기간 구간을 미산정 처리하고, 계정/프로젝트 월 구간에는 tier_baseline_usage를 요구한다.
+provider_details는 GCP v1 price의 추가 근거다. 키는 usage_unit, base_unit, base_unit_conversion_factor, display_quantity, currency_conversion_rate, aggregation, effective_time, tiers다. 수치는 십진 문자열로 보존하며 tiers는 원본 시작 사용량 from, 정수부 units 문자열, nanos 정수를 담는다. aggregation은 공급자 aggregationLevel · aggregationInterval · aggregationCount 또는 null이다. C5는 일 단위·여러 기간 구간을 미산정 처리하고, 계정/프로젝트 월 구간에는 tier_baseline_usage를 요구한다.
 
 [gcp-input.json](examples/pricing/gcp-input.json)과 [gcp-prices-complete.json](examples/pricing/gcp-prices-complete.json)은 합성 서울 CPU 단가의 입력 · 결과 견본이다. 실제 API 조회 근거가 아니다.
 
+## C7 실조회에서 확인한 인증·직접 조회 경로
+
+lookup의 --gcp-account <기존-gcloud-계정>과 --gcp-quota-project <프로젝트>로 활성 계정·ADC 파일을 바꾸지 않고 기존 캐시 계정을 명시할 수 있다. 계정 옵션을 생략하면 기존 ADC를 사용하고, quota project만 지정하면 메모리에서 해당 값으로 요청한다. 토큰은 메모리에만 두고 출력하지 않는다. gcloud 로그나 인증이 갱신되지 않으면 authentication_failed로 남긴다. API 활성화와 IAM 변경은 가격 도구가 수행하지 않는다.
+
+v1 전체 카탈로그의 후속 페이지가 지연될 때, 정확한 sku_id와 catalog_api=v2beta를 명시하면 [공식 skus.get](https://docs.cloud.google.com/billing/docs/reference/pricing-api/rest/v2beta/skus/get)과 [skus.price.get](https://docs.cloud.google.com/billing/docs/reference/pricing-api/rest/v2beta/skus.price/get)으로 직접 조회한다. 서비스·설명·taxonomy·지리 범위를 확인하고 소비 모델 Default만 선택한다. CUD나 다른 모델의 낮은 가격을 기본 단가로 선택하지 않는다. v1 탐색은 계속 지원한다.
+
+직접 조회의 resource_family와 resource_group은 v2 metadata의 taxonomyCategories에서 확인한 값을 쓴다. 서울 E2의 resource_family=Compute, resource_group=E2가 그 예다. 제품 코드에 SKU나 단가를 하드코딩하지 않는다. API의 단위가 지원 정규화 단위와 일치하는 경우에만 계산하고 unitQuantity로 나눈 단가를 기록한다.
+
+v2beta의 Cloud NAT·로드밸런서 조회는 Networking 서비스에서 찾는다. NAT 공인 IP의 gcp_public_ipv4 항목은 service_id=E505-1604-58F8로 지정한다. VM 공인 IP와 NAT IP를 같은 SKU로 처리하지 않는다. gcp_metrics/metrics는 Cloud Monitoring, gcp_secrets/storage·access_requests는 Secret Manager, gcp_audit_storage/storage는 조건부 추가 Cloud Logging 보존 비용에 연결한다. 로드밸런서 outbound_processed_data는 inbound processed_data와 별도 항목이다.
+
+직접 API의 count는 request 또는 sample, mo는 secret_month로 명시한다. Prometheus의 unitQuantity=1000000이면 반환 금액을 백만으로 나눠 샘플당 단가를 만들고 구간 경계는 원본 샘플 수를 보존한다. GCP 시크릿 사용량에는 활성 버전·복제 위치·부분 월 사용량을 반영해야 한다.
+
+Public NAT uptime SKU 32E2-4EFC-EF9F는 nat_billing_basis=assigned_vm_hours를 명시하고 quantity를 할당된 VM 수로 입력한다. 게이트웨이 수로 계산하지 않는다. 32대 초과의 상한 모델은 아직 지원하지 않아 거부한다. 월 VM-hours를 모르면 monthly_usage=null을 유지한다.
+
+무료 구간의 월 비용 계산은 확인된 무료 적용 조건을 나타내는 free_tier_policy=verified_catalog와 동일 계정/프로젝트의 tier_baseline_usage를 모두 요구한다. 값을 추측해 채우지 않는다. 확인하지 못하면 가격표는 보존하되 비용은 unverified_free_tier로 미산정 처리한다. 무료 구간이 있는 가격표를 모두 유료로 바꾸거나 자동으로 무료 한도를 부여하지 않는다.
+
+[demo-catalog-inventory.json](examples/pricing/demo-catalog-inventory.json)은 demo-app의 서울 구성과 2026-10-09 공개 API를 대조해 정확한 선택자를 채운 예시다. 단가를 내장하지 않으므로 map 후 lookup으로 새 가격을 조회한다. 다른 리전·규격·트래픽 목적지에는 그대로 사용하지 않는다. 선택적 비용과 사용량 미정도 포함하므로 이 예시만으로 전체 견적이 완성되지는 않는다.
+
+v2beta API는 가격 적용 날짜를 반환하지 않는다. 버전 3 price.effective_at은 null이며 보고서에 공급 API 미제공으로 표시한다. queried_at을 적용 날짜로 복사하지 않는다. provider_details는 api=v2beta, usage_unit, unit_quantity, aggregation, effective_time=null, 원본 Money tiers(from·units·nanos)를 가진다. V1의 baseUnitConversionFactor나 displayQuantity를 제공받은 값처럼 만들지 않는다. 실제 반환 통화·단위·구간·Default 소비 모델과 원본 Money의 정규화 관계를 검사한다.
+
 ## 공통 형식과 파일 연결
 
-현재 입력 · 단가 · 계산 결과 예시의 `schema_version`은 `"2"`다. C3에서 GCP 원본 가격 근거를 보존할 provider_details를 추가하면서 버전을 올렸다. 입력 검증기는 기존 버전 `"1"` 입력도 지원하고 해시는 원래 입력 그대로 계산한다. lookup 출력은 항상 버전 `"2"`이며 calculate도 비용 결과를 버전 "2"로 생성한다. 지원하지 않는 버전, 중복 JSON 키, 필수 키 누락, 정의되지 않은 키, 잘못된 타입은 오류다. 확장을 추가하면 계약 버전을 갱신한다.
+입력·기존 예시는 버전 "1"·"2"를 유지하고 입력 검증기는 "1"·"2"·"3"을 지원한다. 현재 lookup·calculate 출력은 "3"이다. C7에서 명시한 GCP SKU의 공식 최신 가격 API를 지원하면서, API가 제공하지 않는 가격 적용 시점을 null로 보존하기 위해 버전을 올렸다. 해시는 원래 입력 그대로 계산한다. 기존 버전 1·2 단가도 계산기로 읽을 수 있다. 지원하지 않는 버전, 중복 JSON 키, 필수 키 누락, 정의되지 않은 키, 잘못된 타입은 오류다. 확장을 추가하면 계약 버전을 갱신한다. 가격 적용 시점 null은 버전 3의 명시적인 v2beta 최신 가격 결과에만 허용한다.
 
 - 금액 · 사용량 · 수량은 음수가 아닌 유한 십진 문자열이다. 지수 표기, NaN, Infinity와 쉼표를 허용하지 않는다. 개수 `quantity`는 양의 정수다.
 - 조회 · 생성 시각은 UTC RFC 3339 문자열, 기준일은 `YYYY-MM-DD`다.

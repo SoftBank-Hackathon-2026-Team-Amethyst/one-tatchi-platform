@@ -33,6 +33,13 @@ PROFILES = {
     ("logs", "ingestion"): ("AmazonCloudWatch", ("usage_type",), {}),
     ("logs", "storage"): ("AmazonCloudWatch", ("usage_type",), {}),
     ("internet_egress", "transfer"): ("AWSDataTransfer", ("usage_type", "to_location"), {}),
+    ("aws_public_ipv4", "address_hours"): ("AmazonVPC", ("usage_type",), {}),
+    ("aws_metrics", "metrics"): ("AmazonCloudWatch", ("usage_type",), {}),
+    ("aws_secrets", "storage"): ("AWSSecretsManager", ("usage_type",), {}),
+    ("aws_secrets", "access_requests"): ("AWSSecretsManager", ("usage_type",), {}),
+    ("aws_audit_storage", "storage"): ("AmazonS3", ("usage_type",), {}),
+    ("aws_audit_storage", "write_requests"): ("AmazonS3", ("usage_type",), {}),
+    ("aws_audit_storage", "read_requests"): ("AmazonS3", ("usage_type",), {}),
 }
 ALIASES = {
     "instance_type": "instanceType", "instance_class": "instanceType",
@@ -46,7 +53,7 @@ ALIASES = {
 # Preserve AWS's billed GB unit; never silently label it GiB.
 UNITS = {"Hrs": "hour", "hrs": "hour", "Hours": "hour", "GB-Mo": "gb_month",
          "GB-month": "gb_month", "GB": "gb", "Requests": "request",
-         "LCU-Hrs": "lcu_hour"}
+         "LCU-Hrs": "lcu_hour", "Secrets": "secret_month", "Metrics": "metric_month", "API Requests": "request"}
 
 
 def decimal_text(value):
@@ -163,9 +170,8 @@ class AWSPrices:
         names = self.attributes(service)
         if not set(filters) <= names:
             raise LookupError("unsupported_resource", "AWS service does not expose the requested lookup attributes")
-        # Verify regional billing type spelling against provider metadata.
-        if "usagetype" in filters and filters["usagetype"] not in self.attribute_values(service, "usagetype"):
-            raise LookupError("not_found", "AWS billing usage type was not found")
+        # GetProducts verifies the exact supplied usage type against each
+        # returned product. Do not scan the entire global usage-type catalog.
         return service, filters
 
     def lookup(self, candidate, item, now=None):

@@ -1,0 +1,1234 @@
+{
+  "B561-BFBD-1264": {
+    "metadata": {
+      "name": "skus/B561-BFBD-1264",
+      "skuId": "B561-BFBD-1264",
+      "displayName": "Regional Kubernetes Clusters",
+      "service": "services/CCD8-9BF1-090E",
+      "productTaxonomy": {
+        "taxonomyCategories": [
+          {
+            "category": "GCP"
+          },
+          {
+            "category": "Anthos"
+          },
+          {
+            "category": "GKE"
+          },
+          {
+            "category": "Cluster"
+          }
+        ]
+      },
+      "geoTaxonomy": {
+        "type": "TYPE_GLOBAL",
+        "globalMetadata": {}
+      }
+    },
+    "price": {
+      "name": "skus/B561-BFBD-1264/price",
+      "currencyCode": "USD",
+      "skuPrices": [
+        {
+          "consumptionModel": "consumptionModels/7754-699E-0EBF",
+          "consumptionModelDescription": "Default",
+          "valueType": "rate",
+          "rate": {
+            "tiers": [
+              {
+                "startAmount": {
+                  "value": "0"
+                },
+                "listPrice": {
+                  "currencyCode": "USD",
+                  "nanos": 100000000
+                }
+              }
+            ],
+            "unitInfo": {
+              "unit": "h",
+              "unitDescription": "hour",
+              "unitQuantity": {
+                "value": "1"
+              }
+            },
+            "aggregationInfo": {
+              "level": "LEVEL_ACCOUNT",
+              "interval": "INTERVAL_MONTHLY"
+            }
+          }
+        }
+      ]
+    }
+  },
+  "0306-B164-A7B7": {
+    "metadata": {
+      "name": "skus/0306-B164-A7B7",
+      "skuId": "0306-B164-A7B7",
+      "displayName": "Storage PD Capacity in Seoul",
+      "service": "services/6F81-5844-456A",
+      "productTaxonomy": {
+        "taxonomyCategories": [
+          {
+            "category": "GCP"
+          },
+          {
+            "category": "Compute"
+          },
+          {
+            "category": "Persistent Disk"
+          },
+          {
+            "category": "Standard"
+          },
+          {
+            "category": "Capacity"
+          }
+        ]
+      },
+      "geoTaxonomy": {
+        "type": "TYPE_REGIONAL",
+        "regionalMetadata": {
+          "region": {
+            "region": "asia-northeast3"
+          }
+        }
+      }
+    },
+    "price": {
+      "name": "skus/0306-B164-A7B7/price",
+      "currencyCode": "USD",
+      "skuPrices": [
+        {
+          "consumptionModel": "consumptionModels/7754-699E-0EBF",
+          "consumptionModelDescription": "Default",
+          "valueType": "rate",
+          "rate": {
+            "tiers": [
+              {
+                "startAmount": {
+                  "value": "0"
+                },
+                "listPrice": {
+                  "currencyCode": "USD",
+                  "nanos": 52000000
+                }
+              }
+            ],
+            "unitInfo": {
+              "unit": "GiBy.mo",
+              "unitDescription": "gibibyte month",
+              "unitQuantity": {
+                "value": "1"
+              }
+            },
+            "aggregationInfo": {
+              "level": "LEVEL_ACCOUNT",
+              "interval": "INTERVAL_MONTHLY"
+            }
+          }
+        }
+      ]
+    }
+  },
+  "28C7-7317-B255": {
+    "metadata": {
+      "name": "skus/28C7-7317-B255",
+      "skuId": "28C7-7317-B255",
+      "displayName": "Cloud SQL for PostgreSQL: Zonal - Small instance in Seoul",
+      "service": "services/9662-B51E-5089",
+      "productTaxonomy": {
+        "taxonomyCategories": [
+          {
+            "category": "GCP"
+          },
+          {
+            "category": "Databases"
+          },
+          {
+            "category": "Cloud SQL"
+          },
+          {
+            "category": "Postgres"
+          },
+          {
+            "category": "Compute"
+          },
+          {
+            "category": "Cores: 1 to 64"
+          }
+        ]
+      },
+      "geoTaxonomy": {
+        "type": "TYPE_REGIONAL",
+        "regionalMetadata": {
+          "region": {
+            "region": "asia-northeast3"
+          }
+        }
+      }
+    },
+    "price": {
+      "name": "skus/28C7-7317-B255/price",
+      "currencyCode": "USD",
+      "skuPrices": [
+        {
+          "consumptionModel": "consumptionModels/7754-699E-0EBF",
+          "consumptionModelDescription": "Default",
+          "valueType": "rate",
+          "rate": {
+            "tiers": [
+              {
+                "startAmount": {
+                  "value": "0"
+                },
+                "listPrice": {
+                  "currencyCode": "USD",
+                  "nanos": 45500000
+                }
+              }
+            ],
+            "unitInfo": {
+              "unit": "h",
+              "unitDescription": "hour",
+              "unitQuantity": {
+                "value": "1"
+              }
+            },
+            "aggregationInfo": {
+              "level": "LEVEL_ACCOUNT",
+              "interval": "INTERVAL_MONTHLY"
+            }
+          }
+        }
+      ]
+    }
+  },
+  "B160-DAEA-03EE": {
+    "metadata": {
+      "name": "skus/B160-DAEA-03EE",
+      "skuId": "B160-DAEA-03EE",
+      "displayName": "Cloud SQL for PostgreSQL: Zonal - Standard storage in Seoul",
+      "service": "services/9662-B51E-5089",
+      "productTaxonomy": {
+        "taxonomyCategories": [
+          {
+            "category": "GCP"
+          },
+          {
+            "category": "Databases"
+          },
+          {
+            "category": "Cloud SQL"
+          },
+          {
+            "category": "Postgres"
+          },
+          {
+            "category": "Persistent Disk"
+          },
+          {
+            "category": "SSD"
+          },
+          {
+            "category": "Capacity"
+          }
+        ]
+      },
+      "geoTaxonomy": {
+        "type": "TYPE_REGIONAL",
+        "regionalMetadata": {
+          "region": {
+            "region": "asia-northeast3"
+          }
+        }
+      }
+    },
+    "price": {
+      "name": "skus/B160-DAEA-03EE/price",
+      "currencyCode": "USD",
+      "skuPrices": [
+        {
+          "consumptionModel": "consumptionModels/7754-699E-0EBF",
+          "consumptionModelDescription": "Default",
+          "valueType": "rate",
+          "rate": {
+            "tiers": [
+              {
+                "startAmount": {
+                  "value": "0"
+                },
+                "listPrice": {
+                  "currencyCode": "USD",
+                  "nanos": 221000000
+                }
+              }
+            ],
+            "unitInfo": {
+              "unit": "GiBy.mo",
+              "unitDescription": "gibibyte month",
+              "unitQuantity": {
+                "value": "1"
+              }
+            },
+            "aggregationInfo": {
+              "level": "LEVEL_ACCOUNT",
+              "interval": "INTERVAL_MONTHLY"
+            }
+          }
+        }
+      ]
+    }
+  },
+  "8502-299A-ABAF": {
+    "metadata": {
+      "name": "skus/8502-299A-ABAF",
+      "skuId": "8502-299A-ABAF",
+      "displayName": "Artifact Registry Storage",
+      "service": "services/149C-F9EC-3994",
+      "productTaxonomy": {
+        "taxonomyCategories": [
+          {
+            "category": "GCP"
+          },
+          {
+            "category": "Other"
+          },
+          {
+            "category": "Artifact Registry"
+          },
+          {
+            "category": "Artifacts"
+          }
+        ]
+      },
+      "geoTaxonomy": {
+        "type": "TYPE_GLOBAL",
+        "globalMetadata": {}
+      }
+    },
+    "price": {
+      "name": "skus/8502-299A-ABAF/price",
+      "currencyCode": "USD",
+      "skuPrices": [
+        {
+          "consumptionModel": "consumptionModels/7754-699E-0EBF",
+          "consumptionModelDescription": "Default",
+          "valueType": "rate",
+          "rate": {
+            "tiers": [
+              {
+                "startAmount": {
+                  "value": "0"
+                },
+                "listPrice": {
+                  "currencyCode": "USD"
+                }
+              },
+              {
+                "startAmount": {
+                  "value": "0.5"
+                },
+                "listPrice": {
+                  "currencyCode": "USD",
+                  "nanos": 100000000
+                }
+              }
+            ],
+            "unitInfo": {
+              "unit": "GiBy.mo",
+              "unitDescription": "gibibyte month",
+              "unitQuantity": {
+                "value": "1"
+              }
+            },
+            "aggregationInfo": {
+              "level": "LEVEL_ACCOUNT",
+              "interval": "INTERVAL_MONTHLY"
+            }
+          }
+        }
+      ]
+    }
+  },
+  "143F-A1B0-E0BE": {
+    "metadata": {
+      "name": "skus/143F-A1B0-E0BE",
+      "skuId": "143F-A1B0-E0BE",
+      "displayName": "Log Storage cost",
+      "service": "services/5490-F7B7-8DF6",
+      "productTaxonomy": {
+        "taxonomyCategories": [
+          {
+            "category": "GCP"
+          },
+          {
+            "category": "Ops Tools"
+          },
+          {
+            "category": "Cloud Logging"
+          },
+          {
+            "category": "Logs"
+          }
+        ]
+      },
+      "geoTaxonomy": {
+        "type": "TYPE_GLOBAL",
+        "globalMetadata": {}
+      }
+    },
+    "price": {
+      "name": "skus/143F-A1B0-E0BE/price",
+      "currencyCode": "USD",
+      "skuPrices": [
+        {
+          "consumptionModel": "consumptionModels/7754-699E-0EBF",
+          "consumptionModelDescription": "Default",
+          "valueType": "rate",
+          "rate": {
+            "tiers": [
+              {
+                "startAmount": {
+                  "value": "0"
+                },
+                "listPrice": {
+                  "currencyCode": "USD"
+                }
+              },
+              {
+                "startAmount": {
+                  "value": "50"
+                },
+                "listPrice": {
+                  "currencyCode": "USD",
+                  "nanos": 500000000
+                }
+              }
+            ],
+            "unitInfo": {
+              "unit": "GiBy",
+              "unitDescription": "gibibyte",
+              "unitQuantity": {
+                "value": "1"
+              }
+            },
+            "aggregationInfo": {
+              "level": "LEVEL_PROJECT",
+              "interval": "INTERVAL_MONTHLY"
+            }
+          }
+        }
+      ]
+    }
+  },
+  "F4AE-5A52-ACE3": {
+    "metadata": {
+      "name": "skus/F4AE-5A52-ACE3",
+      "skuId": "F4AE-5A52-ACE3",
+      "displayName": "Log Retention cost",
+      "service": "services/5490-F7B7-8DF6",
+      "productTaxonomy": {
+        "taxonomyCategories": [
+          {
+            "category": "GCP"
+          },
+          {
+            "category": "Ops Tools"
+          },
+          {
+            "category": "Cloud Logging"
+          },
+          {
+            "category": "Custom Retention Billing"
+          }
+        ]
+      },
+      "geoTaxonomy": {
+        "type": "TYPE_GLOBAL",
+        "globalMetadata": {}
+      }
+    },
+    "price": {
+      "name": "skus/F4AE-5A52-ACE3/price",
+      "currencyCode": "USD",
+      "skuPrices": [
+        {
+          "consumptionModel": "consumptionModels/7754-699E-0EBF",
+          "consumptionModelDescription": "Default",
+          "valueType": "rate",
+          "rate": {
+            "tiers": [
+              {
+                "startAmount": {
+                  "value": "0"
+                },
+                "listPrice": {
+                  "currencyCode": "USD",
+                  "nanos": 10000000
+                }
+              }
+            ],
+            "unitInfo": {
+              "unit": "GiBy.mo",
+              "unitDescription": "gibibyte month",
+              "unitQuantity": {
+                "value": "1"
+              }
+            },
+            "aggregationInfo": {
+              "level": "LEVEL_ACCOUNT",
+              "interval": "INTERVAL_MONTHLY"
+            }
+          }
+        }
+      ]
+    }
+  },
+  "A4E4-DF03-CDB6": {
+    "metadata": {
+      "name": "skus/A4E4-DF03-CDB6",
+      "skuId": "A4E4-DF03-CDB6",
+      "displayName": "Prometheus Samples Ingested",
+      "service": "services/58CD-E7C3-72CA",
+      "productTaxonomy": {
+        "taxonomyCategories": [
+          {
+            "category": "GCP"
+          },
+          {
+            "category": "Ops Tools"
+          },
+          {
+            "category": "Cloud Monitoring"
+          },
+          {
+            "category": "GPE"
+          }
+        ]
+      },
+      "geoTaxonomy": {
+        "type": "TYPE_GLOBAL",
+        "globalMetadata": {}
+      }
+    },
+    "price": {
+      "name": "skus/A4E4-DF03-CDB6/price",
+      "currencyCode": "USD",
+      "skuPrices": [
+        {
+          "consumptionModel": "consumptionModels/7754-699E-0EBF",
+          "consumptionModelDescription": "Default",
+          "valueType": "rate",
+          "rate": {
+            "tiers": [
+              {
+                "startAmount": {
+                  "value": "0"
+                },
+                "listPrice": {
+                  "currencyCode": "USD",
+                  "nanos": 60000000
+                }
+              },
+              {
+                "startAmount": {
+                  "value": "50000000000"
+                },
+                "listPrice": {
+                  "currencyCode": "USD",
+                  "nanos": 48000000
+                }
+              },
+              {
+                "startAmount": {
+                  "value": "250000000000"
+                },
+                "listPrice": {
+                  "currencyCode": "USD",
+                  "nanos": 36000000
+                }
+              },
+              {
+                "startAmount": {
+                  "value": "500000000000"
+                },
+                "listPrice": {
+                  "currencyCode": "USD",
+                  "nanos": 24000000
+                }
+              }
+            ],
+            "unitInfo": {
+              "unit": "count",
+              "unitDescription": "count",
+              "unitQuantity": {
+                "value": "1000000"
+              }
+            },
+            "aggregationInfo": {
+              "level": "LEVEL_ACCOUNT",
+              "interval": "INTERVAL_MONTHLY"
+            }
+          }
+        }
+      ]
+    }
+  },
+  "7756-ADEF-84F4": {
+    "metadata": {
+      "name": "skus/7756-ADEF-84F4",
+      "skuId": "7756-ADEF-84F4",
+      "displayName": "Secret version replica storage",
+      "service": "services/EE82-7A5E-871C",
+      "productTaxonomy": {
+        "taxonomyCategories": [
+          {
+            "category": "GCP"
+          },
+          {
+            "category": "Cloud Security"
+          },
+          {
+            "category": "Cloud Security - Other"
+          },
+          {
+            "category": "Other Security Platform"
+          },
+          {
+            "category": "Other Platform"
+          },
+          {
+            "category": "Secret Manager"
+          },
+          {
+            "category": "Other"
+          }
+        ]
+      },
+      "geoTaxonomy": {
+        "type": "TYPE_GLOBAL",
+        "globalMetadata": {}
+      }
+    },
+    "price": {
+      "name": "skus/7756-ADEF-84F4/price",
+      "currencyCode": "USD",
+      "skuPrices": [
+        {
+          "consumptionModel": "consumptionModels/7754-699E-0EBF",
+          "consumptionModelDescription": "Default",
+          "valueType": "rate",
+          "rate": {
+            "tiers": [
+              {
+                "startAmount": {
+                  "value": "0"
+                },
+                "listPrice": {
+                  "currencyCode": "USD"
+                }
+              },
+              {
+                "startAmount": {
+                  "value": "6"
+                },
+                "listPrice": {
+                  "currencyCode": "USD",
+                  "nanos": 60000000
+                }
+              }
+            ],
+            "unitInfo": {
+              "unit": "mo",
+              "unitDescription": "month",
+              "unitQuantity": {
+                "value": "1"
+              }
+            },
+            "aggregationInfo": {
+              "level": "LEVEL_ACCOUNT",
+              "interval": "INTERVAL_MONTHLY"
+            }
+          }
+        }
+      ]
+    }
+  },
+  "EBA7-264F-2D2C": {
+    "metadata": {
+      "name": "skus/EBA7-264F-2D2C",
+      "skuId": "EBA7-264F-2D2C",
+      "displayName": "Secret access operations",
+      "service": "services/EE82-7A5E-871C",
+      "productTaxonomy": {
+        "taxonomyCategories": [
+          {
+            "category": "GCP"
+          },
+          {
+            "category": "Cloud Security"
+          },
+          {
+            "category": "Cloud Security - Other"
+          },
+          {
+            "category": "Other Security Platform"
+          },
+          {
+            "category": "Other Platform"
+          },
+          {
+            "category": "Secret Manager"
+          },
+          {
+            "category": "Other"
+          }
+        ]
+      },
+      "geoTaxonomy": {
+        "type": "TYPE_GLOBAL",
+        "globalMetadata": {}
+      }
+    },
+    "price": {
+      "name": "skus/EBA7-264F-2D2C/price",
+      "currencyCode": "USD",
+      "skuPrices": [
+        {
+          "consumptionModel": "consumptionModels/7754-699E-0EBF",
+          "consumptionModelDescription": "Default",
+          "valueType": "rate",
+          "rate": {
+            "tiers": [
+              {
+                "startAmount": {
+                  "value": "0"
+                },
+                "listPrice": {
+                  "currencyCode": "USD"
+                }
+              },
+              {
+                "startAmount": {
+                  "value": "10000"
+                },
+                "listPrice": {
+                  "currencyCode": "USD",
+                  "nanos": 30000000
+                }
+              }
+            ],
+            "unitInfo": {
+              "unit": "count",
+              "unitDescription": "count",
+              "unitQuantity": {
+                "value": "10000"
+              }
+            },
+            "aggregationInfo": {
+              "level": "LEVEL_ACCOUNT",
+              "interval": "INTERVAL_MONTHLY"
+            }
+          }
+        }
+      ]
+    }
+  },
+  "70A1-9E75-5BB1": {
+    "metadata": {
+      "name": "skus/70A1-9E75-5BB1",
+      "skuId": "70A1-9E75-5BB1",
+      "displayName": "Network Internet Data Transfer Out from Seoul to South Korea",
+      "service": "services/6F81-5844-456A",
+      "productTaxonomy": {
+        "taxonomyCategories": [
+          {
+            "category": "GCP"
+          },
+          {
+            "category": "Network"
+          },
+          {
+            "category": "Egress"
+          },
+          {
+            "category": "GCE"
+          },
+          {
+            "category": "Premium"
+          }
+        ]
+      },
+      "geoTaxonomy": {
+        "type": "TYPE_REGIONAL",
+        "regionalMetadata": {
+          "region": {
+            "region": "asia-northeast3"
+          }
+        }
+      }
+    },
+    "price": {
+      "name": "skus/70A1-9E75-5BB1/price",
+      "currencyCode": "USD",
+      "skuPrices": [
+        {
+          "consumptionModel": "consumptionModels/7754-699E-0EBF",
+          "consumptionModelDescription": "Default",
+          "valueType": "rate",
+          "rate": {
+            "tiers": [
+              {
+                "startAmount": {
+                  "value": "0"
+                },
+                "listPrice": {
+                  "currencyCode": "USD",
+                  "nanos": 190000000
+                }
+              },
+              {
+                "startAmount": {
+                  "value": "1024"
+                },
+                "listPrice": {
+                  "currencyCode": "USD",
+                  "nanos": 180000000
+                }
+              },
+              {
+                "startAmount": {
+                  "value": "10240"
+                },
+                "listPrice": {
+                  "currencyCode": "USD",
+                  "nanos": 150000000
+                }
+              }
+            ],
+            "unitInfo": {
+              "unit": "GiBy",
+              "unitDescription": "gibibyte",
+              "unitQuantity": {
+                "value": "1"
+              }
+            },
+            "aggregationInfo": {
+              "level": "LEVEL_ACCOUNT",
+              "interval": "INTERVAL_MONTHLY"
+            }
+          }
+        }
+      ]
+    }
+  },
+  "015F-5732-FFF0": {
+    "metadata": {
+      "name": "skus/015F-5732-FFF0",
+      "skuId": "015F-5732-FFF0",
+      "displayName": "Networking Cloud Nat Data Processing",
+      "service": "services/E505-1604-58F8",
+      "productTaxonomy": {
+        "taxonomyCategories": [
+          {
+            "category": "GCP"
+          },
+          {
+            "category": "Network"
+          },
+          {
+            "category": "Network Other"
+          },
+          {
+            "category": "NAT Gateway"
+          }
+        ]
+      },
+      "geoTaxonomy": {
+        "type": "TYPE_GLOBAL",
+        "globalMetadata": {}
+      }
+    },
+    "price": {
+      "name": "skus/015F-5732-FFF0/price",
+      "currencyCode": "USD",
+      "skuPrices": [
+        {
+          "consumptionModel": "consumptionModels/7754-699E-0EBF",
+          "consumptionModelDescription": "Default",
+          "valueType": "rate",
+          "rate": {
+            "tiers": [
+              {
+                "startAmount": {
+                  "value": "0"
+                },
+                "listPrice": {
+                  "currencyCode": "USD",
+                  "nanos": 45000000
+                }
+              }
+            ],
+            "unitInfo": {
+              "unit": "GiBy",
+              "unitDescription": "gibibyte",
+              "unitQuantity": {
+                "value": "1"
+              }
+            },
+            "aggregationInfo": {
+              "level": "LEVEL_ACCOUNT",
+              "interval": "INTERVAL_MONTHLY"
+            }
+          }
+        }
+      ]
+    }
+  },
+  "32E2-4EFC-EF9F": {
+    "metadata": {
+      "name": "skus/32E2-4EFC-EF9F",
+      "skuId": "32E2-4EFC-EF9F",
+      "displayName": "Networking Cloud Nat Gateway Uptime",
+      "service": "services/E505-1604-58F8",
+      "productTaxonomy": {
+        "taxonomyCategories": [
+          {
+            "category": "GCP"
+          },
+          {
+            "category": "Network"
+          },
+          {
+            "category": "Network Other"
+          },
+          {
+            "category": "NAT Gateway"
+          }
+        ]
+      },
+      "geoTaxonomy": {
+        "type": "TYPE_GLOBAL",
+        "globalMetadata": {}
+      }
+    },
+    "price": {
+      "name": "skus/32E2-4EFC-EF9F/price",
+      "currencyCode": "USD",
+      "skuPrices": [
+        {
+          "consumptionModel": "consumptionModels/7754-699E-0EBF",
+          "consumptionModelDescription": "Default",
+          "valueType": "rate",
+          "rate": {
+            "tiers": [
+              {
+                "startAmount": {
+                  "value": "0"
+                },
+                "listPrice": {
+                  "currencyCode": "USD",
+                  "nanos": 1400000
+                }
+              }
+            ],
+            "unitInfo": {
+              "unit": "h",
+              "unitDescription": "hour",
+              "unitQuantity": {
+                "value": "1"
+              }
+            },
+            "aggregationInfo": {
+              "level": "LEVEL_ACCOUNT",
+              "interval": "INTERVAL_MONTHLY"
+            }
+          }
+        }
+      ]
+    }
+  },
+  "8515-9425-D2CE": {
+    "metadata": {
+      "name": "skus/8515-9425-D2CE",
+      "skuId": "8515-9425-D2CE",
+      "displayName": "Networking Cloud NAT IP Usage",
+      "service": "services/E505-1604-58F8",
+      "productTaxonomy": {
+        "taxonomyCategories": [
+          {
+            "category": "GCP"
+          },
+          {
+            "category": "Network"
+          },
+          {
+            "category": "Network Other"
+          },
+          {
+            "category": "NAT Gateway"
+          },
+          {
+            "category": "Public NAT IP"
+          }
+        ]
+      },
+      "geoTaxonomy": {
+        "type": "TYPE_GLOBAL",
+        "globalMetadata": {}
+      }
+    },
+    "price": {
+      "name": "skus/8515-9425-D2CE/price",
+      "currencyCode": "USD",
+      "skuPrices": [
+        {
+          "consumptionModel": "consumptionModels/7754-699E-0EBF",
+          "consumptionModelDescription": "Default",
+          "valueType": "rate",
+          "rate": {
+            "tiers": [
+              {
+                "startAmount": {
+                  "value": "0"
+                },
+                "listPrice": {
+                  "currencyCode": "USD",
+                  "nanos": 5000000
+                }
+              }
+            ],
+            "unitInfo": {
+              "unit": "h",
+              "unitDescription": "hour",
+              "unitQuantity": {
+                "value": "1"
+              }
+            },
+            "aggregationInfo": {
+              "level": "LEVEL_ACCOUNT",
+              "interval": "INTERVAL_MONTHLY"
+            }
+          }
+        }
+      ]
+    }
+  },
+  "DEE3-C42E-3E4D": {
+    "metadata": {
+      "name": "skus/DEE3-C42E-3E4D",
+      "skuId": "DEE3-C42E-3E4D",
+      "displayName": "Cloud Load Balancer Forwarding Rule Minimum Global",
+      "service": "services/E505-1604-58F8",
+      "productTaxonomy": {
+        "taxonomyCategories": [
+          {
+            "category": "GCP"
+          },
+          {
+            "category": "Network"
+          },
+          {
+            "category": "Cloud LB"
+          },
+          {
+            "category": "Forwarding Rule Minimum"
+          }
+        ]
+      },
+      "geoTaxonomy": {
+        "type": "TYPE_GLOBAL",
+        "globalMetadata": {}
+      }
+    },
+    "price": {
+      "name": "skus/DEE3-C42E-3E4D/price",
+      "currencyCode": "USD",
+      "skuPrices": [
+        {
+          "consumptionModel": "consumptionModels/7754-699E-0EBF",
+          "consumptionModelDescription": "Default",
+          "valueType": "rate",
+          "rate": {
+            "tiers": [
+              {
+                "startAmount": {
+                  "value": "0"
+                },
+                "listPrice": {
+                  "currencyCode": "USD",
+                  "nanos": 25000000
+                }
+              }
+            ],
+            "unitInfo": {
+              "unit": "h",
+              "unitDescription": "hour",
+              "unitQuantity": {
+                "value": "1"
+              }
+            },
+            "aggregationInfo": {
+              "level": "LEVEL_ACCOUNT",
+              "interval": "INTERVAL_MONTHLY"
+            }
+          }
+        }
+      ]
+    }
+  },
+  "147E-ED36-67D1": {
+    "metadata": {
+      "name": "skus/147E-ED36-67D1",
+      "skuId": "147E-ED36-67D1",
+      "displayName": "Global External Application Load Balancer Inbound Data Processing for Seoul (asia-northeast3)",
+      "service": "services/E505-1604-58F8",
+      "productTaxonomy": {
+        "taxonomyCategories": [
+          {
+            "category": "GCP"
+          },
+          {
+            "category": "Network"
+          },
+          {
+            "category": "Cloud LB"
+          },
+          {
+            "category": "Inbound Data Processing"
+          },
+          {
+            "category": "HTTPS"
+          },
+          {
+            "category": "External"
+          },
+          {
+            "category": "Global"
+          }
+        ]
+      },
+      "geoTaxonomy": {
+        "type": "TYPE_REGIONAL",
+        "regionalMetadata": {
+          "region": {
+            "region": "asia-northeast3"
+          }
+        }
+      }
+    },
+    "price": {
+      "name": "skus/147E-ED36-67D1/price",
+      "currencyCode": "USD",
+      "skuPrices": [
+        {
+          "consumptionModel": "consumptionModels/7754-699E-0EBF",
+          "consumptionModelDescription": "Default",
+          "valueType": "rate",
+          "rate": {
+            "tiers": [
+              {
+                "startAmount": {
+                  "value": "0"
+                },
+                "listPrice": {
+                  "currencyCode": "USD",
+                  "nanos": 12000000
+                }
+              }
+            ],
+            "unitInfo": {
+              "unit": "GiBy",
+              "unitDescription": "gibibyte",
+              "unitQuantity": {
+                "value": "1"
+              }
+            },
+            "aggregationInfo": {
+              "level": "LEVEL_ACCOUNT",
+              "interval": "INTERVAL_MONTHLY"
+            }
+          }
+        }
+      ]
+    }
+  },
+  "3C98-FAA0-7935": {
+    "metadata": {
+      "name": "skus/3C98-FAA0-7935",
+      "skuId": "3C98-FAA0-7935",
+      "displayName": "Global External Application Load Balancer Outbound Data Processing for Seoul (asia-northeast3)",
+      "service": "services/E505-1604-58F8",
+      "productTaxonomy": {
+        "taxonomyCategories": [
+          {
+            "category": "GCP"
+          },
+          {
+            "category": "Network"
+          },
+          {
+            "category": "Cloud LB"
+          },
+          {
+            "category": "Outbound Data Processing"
+          },
+          {
+            "category": "HTTPS"
+          },
+          {
+            "category": "External"
+          },
+          {
+            "category": "Global"
+          }
+        ]
+      },
+      "geoTaxonomy": {
+        "type": "TYPE_REGIONAL",
+        "regionalMetadata": {
+          "region": {
+            "region": "asia-northeast3"
+          }
+        }
+      }
+    },
+    "price": {
+      "name": "skus/3C98-FAA0-7935/price",
+      "currencyCode": "USD",
+      "skuPrices": [
+        {
+          "consumptionModel": "consumptionModels/7754-699E-0EBF",
+          "consumptionModelDescription": "Default",
+          "valueType": "rate",
+          "rate": {
+            "tiers": [
+              {
+                "startAmount": {
+                  "value": "0"
+                },
+                "listPrice": {
+                  "currencyCode": "USD",
+                  "nanos": 12000000
+                }
+              }
+            ],
+            "unitInfo": {
+              "unit": "GiBy",
+              "unitDescription": "gibibyte",
+              "unitQuantity": {
+                "value": "1"
+              }
+            },
+            "aggregationInfo": {
+              "level": "LEVEL_ACCOUNT",
+              "interval": "INTERVAL_MONTHLY"
+            }
+          }
+        }
+      ]
+    }
+  }
+}

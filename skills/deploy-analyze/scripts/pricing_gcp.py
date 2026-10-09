@@ -2,6 +2,8 @@
 
 import json
 import re
+import os
+import subprocess
 from datetime import datetime, timezone
 from decimal import Decimal, InvalidOperation, localcontext
 
@@ -9,10 +11,11 @@ import google.auth
 from google.auth.credentials import with_scopes_if_required
 from google.auth.exceptions import DefaultCredentialsError, RefreshError, TransportError
 from google.auth.transport.requests import AuthorizedSession
+from google.oauth2.credentials import Credentials
 from requests.exceptions import RequestException, Timeout, ConnectionError
 
 from pricing_errors import LookupError
-from pricing_contract import unique_object
+from pricing_contract import unique_object, GCP_DIRECT_UNITS
 
 BASE_URL = "https://cloudbilling.googleapis.com/v1/"
 SCOPE = "https://www.googleapis.com/auth/cloud-billing.readonly"
@@ -25,6 +28,7 @@ PROFILES = {
     ("cloud_nat", "processed_data"): "Compute Engine",
     ("gcp_load_balancer", "load_balancer_hours"): "Compute Engine",
     ("gcp_load_balancer", "processed_data"): "Compute Engine",
+    ("gcp_load_balancer", "outbound_processed_data"): "Compute Engine",
     ("cloud_sql", "cpu_hours"): "Cloud SQL",
     ("cloud_sql", "memory_hours"): "Cloud SQL",
     ("cloud_sql", "instance_hours"): "Cloud SQL",
@@ -33,8 +37,13 @@ PROFILES = {
     ("gcp_logs", "ingestion"): "Cloud Logging",
     ("gcp_logs", "storage"): "Cloud Logging",
     ("gcp_internet_egress", "transfer"): "Compute Engine",
+    ("gcp_public_ipv4", "address_hours"): "Compute Engine",
+    ("gcp_metrics", "metrics"): "Cloud Monitoring",
+    ("gcp_secrets", "storage"): "Secret Manager",
+    ("gcp_secrets", "access_requests"): "Secret Manager",
+    ("gcp_audit_storage", "storage"): "Cloud Logging",
 }
-ATTRIBUTES = {"resource_family", "resource_group", "usage_type", "description", "sku_id", "service_id", "tier_baseline_usage"}
+ATTRIBUTES = {"resource_family", "resource_group", "usage_type", "description", "sku_id", "service_id", "tier_baseline_usage", "catalog_api", "free_tier_policy", "nat_billing_basis"}
 # (provider base unit, canonical usage in base units, allowed source units).
 GIB = Decimal(1073741824)
 MONTH_SECONDS = Decimal(730 * 3600)
@@ -118,21 +127,44 @@ def regional(sku, region):
 
 
 class GCPPrices:
-    def __init__(self, session=None):
+    def __init__(self, session=None, account=None, quota_project=None):
         self._session = session
+        self._account = account
+        self._quota_project = quota_project
         self._services = None
         self._skus = {}
 
     @property
     def session(self):
         if self._session is None:
-            credentials, _ = google.auth.default()
-            credentials = with_scopes_if_required(credentials, scopes=[SCOPE])
-            self._session = AuthorizedSession(credentials, max_refresh_attempts=1, refresh_timeout=15)
+            if self._account:
+                try:
+                    result = subprocess.run(
+                        ["gcloud", "auth", "print-access-token", "--account=" + self._account],
+                        capture_output=True, text=True, timeout=40,
+                        env=dict(os.environ, CLOUDSDK_CORE_DISABLE_FILE_LOGGING="true", CLOUDSDK_CORE_DISABLE_PROMPTS="true"),
+                    )
+                except subprocess.TimeoutExpired:
+                    raise LookupError("timeout", "Existing gcloud account token refresh timed out", True) from None
+                except OSError:
+                    raise LookupError("authentication_failed", "gcloud is required for the selected cached account") from None
+                if result.returncode or not result.stdout.strip():
+                    raise LookupError("authentication_failed", "Selected gcloud account needs login renewal")
+                credentials = Credentials(token=result.stdout.strip(), quota_project_id=self._quota_project)
+                refresh_attempts = 0
+            else:
+                options = {"quota_project_id": self._quota_project} if self._quota_project else {}
+                credentials, _ = google.auth.default(**options)
+                credentials = with_scopes_if_required(credentials, scopes=[SCOPE])
+                refresh_attempts = 1
+            self._session = AuthorizedSession(credentials, max_refresh_attempts=refresh_attempts, refresh_timeout=15)
         return self._session
 
-    def request(self, path, params):
-        response = self.session.get(BASE_URL + path, params=params, timeout=(5, 15))
+    def request(self, path, params, version="v1"):
+        require_version = version in ("v1", "v2beta")
+        if not require_version:
+            raise LookupError("unsupported_resource", "Unsupported GCP public API version")
+        response = self.session.get("https://cloudbilling.googleapis.com/" + version + "/" + path, params=params, timeout=(5, 45))
         try:
             body = json.loads(response.text, parse_float=Decimal, object_pairs_hook=unique_object,
                               parse_constant=lambda _: (_ for _ in ()).throw(ValueError("nonfinite JSON")))
@@ -179,7 +211,7 @@ class GCPPrices:
 
     def skus(self, service):
         if service not in self._skus:
-            self._skus[service] = list(self.pages(service + "/skus", "skus", currencyCode="USD", pageSize=5000))
+            self._skus[service] = list(self.pages(service + "/skus", "skus", pageSize=1000))
         return self._skus[service]
 
     def lookup(self, candidate, item, now=None):
@@ -207,6 +239,10 @@ class GCPPrices:
             raise LookupError("unsupported_resource", "GCP lookup requires resource_family, resource_group, and exact description or sku_id")
         if attrs.get("usage_type", "OnDemand") != "OnDemand":
             raise LookupError("unsupported_resource", "GCP base quotes require public OnDemand usage")
+        if attrs.get("catalog_api") == "v2beta" and item["resource_kind"] in {"cloud_nat", "gcp_load_balancer"}:
+            display_name = "Networking"
+        if attrs.get("catalog_api") == "v2beta" and item["resource_kind"] == "gcp_public_ipv4" and attrs.get("service_id") == "E505-1604-58F8":
+            display_name = "Networking"
         services = []
         for service in self.services():
             name, sid = service["name"], service["serviceId"]
@@ -219,6 +255,10 @@ class GCPPrices:
         if len(services) != 1:
             raise LookupError("ambiguous_sku", "Multiple GCP catalog services matched")
         service = services[0]
+        if attrs.get("catalog_api") == "v2beta":
+            return self.direct_sku(candidate, item, service)
+        if "catalog_api" in attrs and attrs["catalog_api"] != "v1":
+            raise LookupError("unsupported_resource", "Unsupported GCP catalog selection")
         matches, free_issues = {}, []
         for sku in self.skus(service):
             sid = sku["skuId"]
@@ -254,6 +294,76 @@ class GCPPrices:
         if len(matches) != 1:
             raise LookupError("ambiguous_sku", "Multiple GCP paid SKUs matched; refine resource attributes")
         return normalize(next(iter(matches.values())), service, item, now)
+
+
+    def direct_sku(self, candidate, item, service):
+        attrs = item["attributes"]
+        sid = attrs.get("sku_id", "")
+        if re.fullmatch(r"[A-Za-z0-9-]+", sid) is None:
+            raise LookupError("unsupported_resource", "Direct GCP pricing requires an explicit public SKU identifier")
+        if item["resource_kind"] == "cloud_nat" and item["billing_dimension"] == "gateway_hours" and (attrs.get("nat_billing_basis") != "assigned_vm_hours" or item["quantity"] > 32):
+            raise LookupError("unsupported_resource", "Public NAT uptime requires assigned VM-hours and at most 32 assigned VMs; capped gateways need a separate model")
+        metadata = self.request("skus/" + sid, {}, version="v2beta")
+        if metadata.get("name") != "skus/" + sid or metadata.get("skuId") != sid or metadata.get("service") != service:
+            raise LookupError("invalid_provider_response", "GCP direct SKU identity or service does not match")
+        if "description" in attrs and metadata.get("displayName") != attrs["description"]:
+            raise LookupError("not_found", "GCP direct SKU description does not match")
+        if item["resource_kind"] == "cloud_nat" and "Private Nat" in metadata.get("displayName", ""):
+            raise LookupError("unsupported_resource", "Private NAT requires a separate gateway-hour billing model")
+        taxonomy = metadata["productTaxonomy"]["taxonomyCategories"]
+        categories = {entry["category"] for entry in taxonomy}
+        if attrs["resource_family"] not in categories or attrs["resource_group"] not in categories:
+            raise LookupError("not_found", "GCP direct SKU taxonomy does not match")
+        if item["resource_kind"] == "gke_node" and "VMs On Demand" not in categories:
+            raise LookupError("unsupported_resource", "GCP direct node quote must use On-Demand VM taxonomy")
+        geo = metadata["geoTaxonomy"]
+        kind = geo["type"]
+        if kind == "TYPE_REGIONAL":
+            regions = [geo["regionalMetadata"]["region"]["region"]]
+        elif kind == "TYPE_GLOBAL":
+            regions = [candidate["region"]]
+        elif kind == "TYPE_MULTI_REGIONAL":
+            regions = [entry["region"] for entry in geo["multiRegionalMetadata"]["regions"]]
+        else:
+            raise LookupError("unsupported_resource", "Direct GCP geographic scope is not supported")
+        if candidate["region"] not in regions:
+            raise LookupError("not_found", "GCP direct SKU does not apply to the requested region")
+        result = self.request("skus/" + sid + "/price", {}, version="v2beta")
+        if result.get("name") != "skus/" + sid + "/price" or result.get("currencyCode") != "USD":
+            raise ValueError("invalid direct price identity or currency")
+        models = [model for model in result["skuPrices"] if model.get("consumptionModelDescription") == "Default"]
+        if len(models) != 1 or models[0].get("valueType") != "rate":
+            raise LookupError("ambiguous_sku", "Exactly one public Default consumption rate is required")
+        rate = models[0]["rate"]
+        unit_info = rate["unitInfo"]
+        source_unit = unit_info["unit"]
+        if GCP_DIRECT_UNITS.get(item["unit"]) != source_unit:
+            raise LookupError("unsupported_unit", "GCP direct unit does not match the requested canonical unit")
+        quantity = number(unit_info["unitQuantity"]["value"])
+        if quantity <= 0:
+            raise ValueError("invalid direct unit quantity")
+        raw, tiers = [], []
+        for tier in rate["tiers"]:
+            start = number(tier["startAmount"]["value"])
+            amount, units, nanos = money(tier["listPrice"])
+            # Preserve catalog free tiers; eligibility is checked at calculation.
+            raw.append({"from":text(start), "units":units, "nanos":nanos})
+            tiers.append({"from":text(start), "to":None, "unit_price":text(amount / quantity)})
+        pairs = sorted(zip(raw, tiers), key=lambda pair: Decimal(pair[1]["from"]))
+        if not pairs or Decimal(pairs[0][1]["from"]) != 0:
+            raise ValueError("direct tiers must start at zero")
+        for index, (_, tier) in enumerate(pairs[:-1]):
+            next_start = pairs[index + 1][1]["from"]
+            if Decimal(next_start) <= Decimal(tier["from"]):
+                raise LookupError("ambiguous_sku", "Direct GCP tiers have duplicate boundaries")
+            tier["to"] = next_start
+        agg = rate.get("aggregationInfo") or {}
+        levels = {"LEVEL_ACCOUNT":"ACCOUNT", "LEVEL_PROJECT":"PROJECT", "LEVEL_UNSPECIFIED":"AGGREGATION_LEVEL_UNSPECIFIED"}
+        intervals = {"INTERVAL_MONTHLY":"MONTHLY", "INTERVAL_DAILY":"DAILY", "INTERVAL_UNSPECIFIED":"AGGREGATION_INTERVAL_UNSPECIFIED"}
+        aggregation = {"aggregationLevel":levels[agg.get("level", "LEVEL_UNSPECIFIED")], "aggregationInterval":intervals[agg.get("interval", "INTERVAL_UNSPECIFIED")], "aggregationCount":1}
+        return {"sku":sid, "provider_service":service, "currency":"USD", "source":"https://docs.cloud.google.com/billing/docs/reference/pricing-api/rest/v2beta/skus.price/get",
+                "effective_at":None, "unit":item["unit"], "source_unit":source_unit, "source_usage_per_unit":"1", "tiers":[pair[1] for pair in pairs],
+                "provider_details":{"api":"v2beta", "usage_unit":source_unit, "unit_quantity":text(quantity), "aggregation":aggregation, "effective_time":None, "tiers":[pair[0] for pair in pairs]}}
 
 
 def normalize(sku, service, item, now):

@@ -66,6 +66,46 @@ class GCPLookupTests(unittest.TestCase):
             provider.lookup(self.candidate, self.item, NOW)
         self.assertEqual(caught.exception.code, code)
 
+    def test_explicit_cached_account_uses_memory_token_without_changing_adc(self):
+        completed = Mock(returncode=0, stdout='fixture-access-token', stderr='')
+        with patch('pricing_gcp.subprocess.run', return_value=completed) as run, patch('pricing_gcp.google.auth.default') as adc, patch('pricing_gcp.AuthorizedSession') as authorized:
+            GCPPrices(account='team@example.com', quota_project='team-project').session
+            adc.assert_not_called()
+            self.assertIn('--account=team@example.com',run.call_args.args[0])
+            self.assertFalse(run.call_args.kwargs.get('shell',False))
+            self.assertEqual(authorized.call_args.args[0].quota_project_id,'team-project')
+            self.assertEqual(authorized.call_args.kwargs['max_refresh_attempts'],0)
+
+    def test_failed_cached_account_does_not_expose_token_or_stderr(self):
+        with patch('pricing_gcp.subprocess.run', return_value=Mock(returncode=1,stdout='secret',stderr='secret')):
+            with self.assertRaises(LookupError) as caught:GCPPrices(account='team@example.com').session
+        self.assertEqual(caught.exception.code,'authentication_failed')
+        self.assertNotIn('secret',str(caught.exception))
+
+    def test_direct_public_sku_uses_default_model_not_cheaper_cud(self):
+        self.item['attributes']={'resource_family':'Compute','resource_group':'E2','sku_id':'9304-94C4-2117','description':'E2 Instance Core running in Seoul','catalog_api':'v2beta'}
+        session=Mock();session.get.side_effect=[response(fixture('services.json')),response(fixture('direct-cpu-metadata.json')),response(fixture('direct-cpu-price.json'))]
+        # Match the fixture's synthetic service list to the real response service.
+        services=fixture('services.json');services['services'][0].update(name='services/6F81-5844-456A',serviceId='6F81-5844-456A')
+        session.get.side_effect=[response(services),response(fixture('direct-cpu-metadata.json')),response(fixture('direct-cpu-price.json'))]
+        result=GCPPrices(session).lookup(self.candidate,self.item,NOW)
+        self.assertEqual(result['tiers'][0]['unit_price'],'0.02802642')
+        self.assertIsNone(result['effective_at']);self.assertIsNone(result['provider_details']['effective_time'])
+        self.assertEqual(result['provider_details']['api'],'v2beta')
+        self.assertIn('/v2beta/skus/9304-94C4-2117/price',session.get.call_args.args[0])
+        self.assertNotIn('currencyCode',session.get.call_args.kwargs['params'])
+
+    def test_direct_sku_region_and_default_ambiguity_rejected(self):
+        self.item['attributes']={'resource_family':'Compute','resource_group':'E2','sku_id':'9304-94C4-2117','catalog_api':'v2beta'}
+        services=fixture('services.json');services['services'][0].update(name='services/6F81-5844-456A',serviceId='6F81-5844-456A')
+        for scenario in ('region','model'):
+            metadata=fixture('direct-cpu-metadata.json');quote=fixture('direct-cpu-price.json')
+            if scenario=='region':metadata['geoTaxonomy']['regionalMetadata']['region']['region']='us-central1'
+            else:quote['skuPrices'].append(copy.deepcopy(quote['skuPrices'][1]))
+            session=Mock();session.get.side_effect=[response(services),response(metadata),response(quote)]
+            with self.subTest(scenario=scenario),self.assertRaises(LookupError) as caught:GCPPrices(session).lookup(self.candidate,self.item,NOW)
+            self.assertEqual(caught.exception.code,'not_found' if scenario=='region' else 'ambiguous_sku')
+
     def test_seoul_cpu_money_and_usd_query(self):
         result, session = self.query(fixture('cpu.json'))
         self.assertEqual(result['tiers'], [{'from':'0','to':None,'unit_price':'0.021177'}])
@@ -73,8 +113,9 @@ class GCPLookupTests(unittest.TestCase):
         self.assertEqual(result['provider_details']['tiers'], [{'from':'0','units':'0','nanos':21177000}])
         self.assertEqual(result['provider_details']['base_unit_conversion_factor'], '3600')
         self.assertEqual(session.get.call_args.args[0], 'https://cloudbilling.googleapis.com/v1/services/COMPUTE/skus')
-        self.assertEqual(session.get.call_args.kwargs['params']['currencyCode'], 'USD')
-        self.assertEqual(session.get.call_args.kwargs['timeout'], (5,15))
+        self.assertNotIn('currencyCode',session.get.call_args.kwargs['params'])
+        self.assertEqual(result['currency'],'USD')
+        self.assertEqual(session.get.call_args.kwargs['timeout'], (5,45))
 
     def test_aggregation_baseline_is_not_a_gcp_catalog_selector(self):
         self.item['attributes']['tier_baseline_usage']='100'
@@ -311,7 +352,7 @@ class GCPLookupTests(unittest.TestCase):
         validate_input(mixed)
         aws,gcp=Mock(),Mock();aws.lookup.return_value={'sku':'aws-success'};gcp.lookup.side_effect=LookupError('api_disabled','GCP API disabled')
         result=price.lookup(mixed,provider=aws,gcp_provider=gcp)
-        self.assertEqual(result['schema_version'],'2')
+        self.assertEqual(result['schema_version'],'3')
         self.assertEqual(result['input_sha256'],input_hash(mixed))
         self.assertEqual(result['status'],'partial')
         self.assertEqual(result['candidates'][0]['items'][0]['price']['sku'],'aws-success')
@@ -334,7 +375,7 @@ class GCPLookupTests(unittest.TestCase):
                 code=price.main(['lookup','--input',str(source),'--output',str(destination)])
             result=json.loads(destination.read_text())
         self.assertEqual(code,0)
-        self.assertEqual(result['schema_version'],'2')
+        self.assertEqual(result['schema_version'],'3')
         self.assertEqual(result['candidates'][0]['region'],'asia-northeast3')
         self.assertEqual(result['candidates'][0]['items'][0]['price']['sku'],'CPU-EXAMPLE')
 

@@ -20,6 +20,7 @@ ISSUES = {
     "unknown_operating_cost": "온프레미스 운영 비용 미산정", "unconfirmed_catalog": "정확한 카탈로그 항목 미확인",
     "unsupported_aggregation": "월 합계로 처리할 수 없는 구간 집계", "unknown_aggregation_baseline": "계정·프로젝트의 기존 사용량 미정",
     "unknown_savings": "완전한 대안 견적이 없어 절감액 미산정",
+    "unverified_free_tier": "무료 구간의 적용 조건·기존 사용량 미확인",
 }
 
 
@@ -172,7 +173,7 @@ def render_reports(data, prices, costs, candidate_id, assessment=None, alternati
             for item in candidate["items"]:
                 p = item["price"]
                 if p is not None:
-                    lines.append("| " + " | ".join(escaped(value) for value in (candidate["candidate_id"], item["item_id"], p["sku"], p["source"], p["unit"], p["effective_at"])) + " |")
+                    lines.append("| " + " | ".join(escaped(value) for value in (candidate["candidate_id"], item["item_id"], p["sku"], p["source"], p["unit"], p["effective_at"] or "공급 API 미제공 (최신 단가 조회)")) + " |")
         lines.extend(["", "## 근거 파일의 해시", "", "- 입력: `" + input_hash(data) + "`", "- 단가: `" + input_hash(prices) + "`", "- 계산: `" + input_hash(costs) + "`"])
         if assessment is not None:
             lines.append("- 자원 평가: `" + input_hash(assessment) + "`")

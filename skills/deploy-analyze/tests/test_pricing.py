@@ -58,10 +58,6 @@ class AWSLookupTests(unittest.TestCase):
         names = list(product["product"]["attributes"])
         self.stub.add_response("describe_services", {"Services": [{"ServiceCode": service, "AttributeNames": names}]},
                                {"ServiceCode": service, "FormatVersion": "aws_v1", "MaxResults": 100})
-        if "usagetype" in product["product"]["attributes"]:
-            usage_type = product["product"]["attributes"]["usagetype"]
-            self.stub.add_response("get_attribute_values", {"AttributeValues": [{"Value": usage_type}]},
-                                   {"ServiceCode": service, "AttributeName": "usagetype", "MaxResults": 100})
 
     def products(self, product, pages=None):
         p = product["product"]
