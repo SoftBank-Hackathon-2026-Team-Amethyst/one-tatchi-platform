@@ -1,0 +1,51 @@
+variable "name" {
+  description = "k3d 클러스터 이름. kube context는 k3d-<name>"
+  type        = string
+  default     = "@@CLUSTER_NAME@@"
+}
+
+variable "service" {
+  description = "앱 이름. 네임스페이스 릴리스 · DB · Secret 이름의 접두사"
+  type        = string
+  default     = "@@APP@@"
+}
+
+variable "repositories" {
+  description = "GHCR 이미지 저장소 이름 (서비스 이름)"
+  type        = list(string)
+  default     = @@REPOSITORIES_HCL@@
+}
+
+variable "public_service" {
+  description = "외부에 노출할 서비스(k8s Service 이름). Quick Tunnel이 여기로 연결한다"
+  type        = string
+  default     = "@@PUBLIC_SERVICE@@"
+}
+
+variable "public_service_port" {
+  type    = number
+  default = @@PUBLIC_SERVICE_PORT@@
+}
+
+variable "database_name" {
+  type    = string
+  default = "@@DB_NAME@@"
+}
+
+variable "github_owner" {
+  description = "GHCR 소유자 (GitHub 조직 또는 사용자)"
+  type        = string
+  default     = "@@ORG@@"
+}
+
+variable "environments" {
+  description = "배포 환경. 환경마다 네임스페이스와 DB를 하나씩 만든다"
+  type        = list(string)
+  default     = ["test", "prod"]
+}
+
+variable "chart_version" {
+  description = "service-base 차트 버전 (template_version과 같게)"
+  type        = string
+  default     = "@@CHART_VERSION@@"
+}

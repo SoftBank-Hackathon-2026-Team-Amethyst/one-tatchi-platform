@@ -1,0 +1,24 @@
+# App Chart 값 (모든 배포 대상 공통). 대상별 차이는 deploy/<대상>/ 에 둔다.
+# 키는 platform charts/app/values.yaml 이 기준이다. 비밀값은 적지 않는다.
+image:
+  repository: ghcr.io/@@ORG_LOWER@@/@@SERVICE@@   # 파이프라인이 대상에 맞게 덮어쓴다 (aws는 ECR)
+  tag: ""                                         # 커밋 SHA. 파이프라인이 넣는다
+
+containerPort: @@PORT@@
+service:
+  port: @@PORT@@   # 다른 서비스가 http://@@SERVICE@@:@@PORT@@ 로 부른다
+
+probe:
+  path: @@HEALTH@@
+
+# 고정 환경변수만. DB 접속은 envFromSecrets: [<앱>-db] (Terraform이 만든 Secret, 키 DATABASE_URL · PG_URL)
+env: {}
+envFromSecrets: []
+
+# 배포마다 적용할 SQL이 있으면 enabled: true, secretName: <앱>-db. 파이프라인이 --set-file migration.sql=<경로>로 넣는다.
+migration:
+  enabled: false
+
+# 외부에 열 서비스(보통 FE)만 true. BE는 FE가 클러스터 안에서 프록시한다. onprem은 deploy/onprem/values.yaml에서 끈다.
+ingress:
+  enabled: false

@@ -1,0 +1,157 @@
+# AWS 루트. state 버킷 · CI 역할 · DNS 존은 bootstrap(platform)에서 관리한다. 플랫폼 모듈을 태그로 참조한다.
+terraform {
+  required_version = ">= 1.11"
+
+  required_providers {
+    aws = {
+      source  = "hashicorp/aws"
+      version = "~> 6.0"
+    }
+    helm = {
+      source  = "hashicorp/helm"
+      version = "~> 3.0"
+    }
+  }
+
+  # bucket은 워크플로가 -backend-config로 넣는다 (vars.TF_STATE_BUCKET).
+  backend "s3" {
+    key          = "@@APP@@/aws.tfstate"
+    region       = "ap-northeast-2"
+    use_lockfile = true
+    encrypt      = true
+  }
+}
+
+provider "aws" {
+  region              = var.region
+  allowed_account_ids = [var.account_id]
+
+  default_tags {
+    tags = { Project = "one-tatchi", ManagedBy = "terraform", Stack = var.service }
+  }
+}
+
+data "aws_caller_identity" "current" {}
+
+# bootstrap의 CI 역할을 재사용한다.
+data "aws_iam_role" "plan" {
+  name = "one-tatchi-gha-plan"
+}
+
+data "aws_iam_role" "deploy" {
+  name = "one-tatchi-gha-deploy"
+}
+
+# EKS access entry에는 STS 세션이 아닌 IAM 역할 ARN이 필요하다.
+data "aws_iam_roles" "team_administrators" {
+  name_regex  = "^AWSReservedSSO_AdministratorAccess_.*$"
+  path_prefix = "/aws-reserved/sso.amazonaws.com/${var.region}/"
+}
+
+data "aws_route53_zone" "service" {
+  count        = var.domain_name == "" ? 0 : 1
+  name         = var.domain_name
+  private_zone = false
+}
+
+module "network" {
+  source = "git::https://github.com/SoftBank-Hackathon-2026-Team-Amethyst/one-tatchi-platform.git//modules/network/aws?ref=@@TEMPLATE_VERSION@@"
+
+  name       = var.name
+  cidr       = "10.0.0.0/16"
+  az_count   = 2
+  single_nat = true
+}
+
+module "cluster" {
+  source = "git::https://github.com/SoftBank-Hackathon-2026-Team-Amethyst/one-tatchi-platform.git//modules/cluster/aws?ref=@@TEMPLATE_VERSION@@"
+
+  name                = var.name
+  kubernetes_version  = var.kubernetes_version
+  network_id          = module.network.network_id
+  subnet_ids          = module.network.private_subnet_ids
+  node_instance_types = var.node_instance_types
+  node_count          = var.node_count
+
+  admin_principal_arns = distinct(concat(
+    [data.aws_iam_role.deploy.arn],
+    sort(tolist(data.aws_iam_roles.team_administrators.arns)),
+    var.additional_admin_principal_arns,
+  ))
+  viewer_principal_arns = [data.aws_iam_role.plan.arn]
+}
+
+provider "helm" {
+  kubernetes = {
+    host                   = module.cluster.endpoint
+    cluster_ca_certificate = base64decode(module.cluster.ca_certificate)
+    exec = {
+      api_version = "client.authentication.k8s.io/v1beta1"
+      command     = "aws"
+      args        = ["eks", "get-token", "--cluster-name", module.cluster.cluster_name, "--region", var.region]
+    }
+  }
+}
+
+module "registry" {
+  source = "git::https://github.com/SoftBank-Hackathon-2026-Team-Amethyst/one-tatchi-platform.git//modules/registry/aws?ref=@@TEMPLATE_VERSION@@"
+
+  repositories = var.repositories
+}
+
+module "database" {
+  source = "git::https://github.com/SoftBank-Hackathon-2026-Team-Amethyst/one-tatchi-platform.git//modules/database/aws?ref=@@TEMPLATE_VERSION@@"
+
+  name                       = "${var.service}-db"
+  database_name              = var.database_name
+  engine_version             = "17"
+  instance_class             = var.db_instance_class
+  storage_gb                 = 20
+  multi_az                   = false
+  network_id                 = module.network.network_id
+  subnet_ids                 = module.network.private_subnet_ids
+  allowed_security_group_ids = [module.cluster.node_security_group_id]
+}
+
+module "cluster_addons" {
+  source = "git::https://github.com/SoftBank-Hackathon-2026-Team-Amethyst/one-tatchi-platform.git//modules/cluster_addons/aws?ref=@@TEMPLATE_VERSION@@"
+
+  cluster_name         = module.cluster.cluster_name
+  region               = var.region
+  network_id           = module.network.network_id
+  readable_secret_arns = [module.database.credentials_secret_id]
+  dns_zone_id          = var.domain_name == "" ? "" : data.aws_route53_zone.service[0].zone_id
+}
+
+module "observability" {
+  source = "git::https://github.com/SoftBank-Hackathon-2026-Team-Amethyst/one-tatchi-platform.git//modules/observability/aws?ref=@@TEMPLATE_VERSION@@"
+
+  cluster_name  = module.cluster.cluster_name
+  region        = var.region
+  ingress_class = module.cluster_addons.ingress_class
+  ingress_group = var.service
+}
+
+# 환경별 네임스페이스와 DB 접속 Secret(cloud-secrets → <service>-db). 앱은 deploy.yml이 이 네임스페이스에 올린다.
+# test · prod가 같은 RDS를 쓴다.
+resource "helm_release" "service_base" {
+  for_each = toset(var.environments)
+
+  name       = "${var.service}-base-${each.key}"
+  namespace  = "default"
+  repository = "oci://ghcr.io/softbank-hackathon-2026-team-amethyst/charts"
+  chart      = "service-base"
+  version    = var.chart_version
+
+  values = [yamlencode({
+    namespace   = each.key
+    secretStore = module.cluster_addons.secret_store_name
+    database = {
+      secretName = "${var.service}-db"
+      remoteKey  = module.database.credentials_secret_id
+      host       = module.database.host
+      port       = module.database.port
+      name       = module.database.database_name
+    }
+  })]
+}

@@ -1,0 +1,30 @@
+# infra/envs/aws
+
+platform 모듈을 `?ref=@@TEMPLATE_VERSION@@` 태그로 참조해 AWS 인프라를 만드는 Terraform 루트. 값은 `terraform.tfvars`.
+
+- 서울 리전, AZ 2개, NAT 1개, EKS, `t3.medium` 노드 2대, RDS PostgreSQL 17(`db.t4g.micro`), ECR, 애드온, CloudWatch · Grafana.
+- state 버킷 · CI 역할 · DNS 존은 platform `bootstrap`의 것을 재사용한다.
+- 환경(test · prod)마다 네임스페이스와 DB 접속 Secret(`service-base` 차트).
+
+## 반영은 CI가 한다
+
+`.github/workflows/infra.yml`이 PR에서 plan(코멘트), **main 머지에서 apply**. 머지 전에 plan 코멘트의 변경 목록과 비용을 확인한다. 스킬과 사람은 apply하지 않는다.
+
+로컬에서는 plan까지만:
+
+```bash
+aws sso login --profile <프로필>
+export AWS_PROFILE=<프로필>
+terraform init -backend-config="bucket=<TF_STATE_BUCKET>"
+terraform fmt -check && terraform validate && terraform plan
+```
+
+## 생성 후 확인
+
+```bash
+terraform output
+$(terraform output -raw kubeconfig_command)
+kubectl get nodes
+kubectl get clustersecretstore cloud-secrets
+helm list -A
+```

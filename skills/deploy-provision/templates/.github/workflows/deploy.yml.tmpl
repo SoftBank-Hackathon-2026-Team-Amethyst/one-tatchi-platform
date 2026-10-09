@@ -1,0 +1,71 @@
+name: deploy
+
+# 검사 → test → prod. 본문은 one-tatchi-platform의 재사용 워크플로이고, 여기서는 입력만 넘긴다.
+# - pull_request: 검사만
+# - push yolo/**: 검사 → test (AI 승격 판단을 바로 실행)
+# - push main:    검사 → test → prod (prod 승인 여부는 .deploy/config.yaml의 compliance)
+# - workflow_dispatch(main): 대상 하나를 골라 검사 → test → prod를 다시 실행
+# push 배포 대상은 레포 변수 DEPLOY_TARGET(aws | onprem, 기본 @@DEFAULT_TARGET@@)으로 고른다.
+on:
+  pull_request:
+  push:
+    branches: [main, "yolo/**"]
+  workflow_dispatch:
+    inputs:
+      target:
+        description: 다시 배포할 대상
+        required: true
+        type: choice
+        options: [aws, onprem]
+
+permissions:
+  contents: read
+  id-token: write   # 감사 로그(S3)용 OIDC
+  packages: write   # onprem 이미지(GHCR) push
+
+jobs:
+  checks:
+    uses: SoftBank-Hackathon-2026-Team-Amethyst/one-tatchi-platform/.github/workflows/checks.yml@@@TEMPLATE_VERSION@@
+    with:
+      node-dirs: '@@NODE_DIRS@@'
+      python-dirs: '@@PYTHON_DIRS@@'
+      db-init: @@DB_INIT@@
+      image-dirs: '@@IMAGE_DIRS@@'
+      iac-path: infra
+
+  test:
+    needs: checks
+    if: github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main')
+    uses: SoftBank-Hackathon-2026-Team-Amethyst/one-tatchi-platform/.github/workflows/deploy.yml@@@TEMPLATE_VERSION@@
+    with:
+      target: ${{ inputs.target || vars.DEPLOY_TARGET || '@@DEFAULT_TARGET@@' }}
+      cluster: ${{ (inputs.target || vars.DEPLOY_TARGET || '@@DEFAULT_TARGET@@') == 'aws' && '@@CLUSTER_AWS@@' || '@@CLUSTER_ONPREM@@' }}
+      ingress-group: @@APP@@-test
+      host: @@HOST_TEST@@  # aws만
+      environment: test
+      namespace: test
+      services: >-
+        @@SERVICES_JSON@@
+      # yolo 브랜치는 AI 승격 판단대로 바로 실행하고, 그 외(main)는 사람이 Slack 버튼으로 결정한다
+      promote-mode: ${{ startsWith(github.ref, 'refs/heads/yolo/') && 'auto' || 'manual' }}
+      chart-version: @@CHART_VERSION@@
+      template-ref: @@TEMPLATE_VERSION@@
+    secrets: inherit
+
+  # test에서 만든 같은 이미지(같은 커밋 SHA 태그)를 prod에 올린다. 다시 빌드하지 않는다.
+  prod:
+    needs: test
+    if: (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && github.ref == 'refs/heads/main'
+    uses: SoftBank-Hackathon-2026-Team-Amethyst/one-tatchi-platform/.github/workflows/deploy.yml@@@TEMPLATE_VERSION@@
+    with:
+      target: ${{ inputs.target || vars.DEPLOY_TARGET || '@@DEFAULT_TARGET@@' }}
+      cluster: ${{ (inputs.target || vars.DEPLOY_TARGET || '@@DEFAULT_TARGET@@') == 'aws' && '@@CLUSTER_AWS@@' || '@@CLUSTER_ONPREM@@' }}
+      ingress-group: @@APP@@-prod
+      host: @@HOST_PROD@@  # aws만
+      environment: prod
+      namespace: prod
+      services: >-
+        @@SERVICES_JSON@@
+      chart-version: @@CHART_VERSION@@
+      template-ref: @@TEMPLATE_VERSION@@
+    secrets: inherit

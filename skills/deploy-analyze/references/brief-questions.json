@@ -1,0 +1,139 @@
+{
+  "questions": [
+    {
+      "field": "expected_daily_users",
+      "header": "1/5 사용자 수",
+      "question": "하루에 서비스를 이용할 예상 사용자 수는 어느 범위인가요? 동시 접속자 수가 아닌 하루 기준으로 선택해 주세요.",
+      "skip_value": null,
+      "options": [
+        {
+          "label": "100명 이하",
+          "description": "하루 0~100명",
+          "value": {"min": 0, "max": 100}
+        },
+        {
+          "label": "101~1,000명",
+          "description": "하루 100명 초과, 1,000명 이하",
+          "value": {"min": 101, "max": 1000}
+        },
+        {
+          "label": "1,001~10,000명",
+          "description": "하루 1,000명 초과, 10,000명 이하",
+          "value": {"min": 1001, "max": 10000}
+        },
+        {
+          "label": "10,001명 이상",
+          "description": "하루 10,000명 초과",
+          "value": {"min": 10001, "max": null}
+        }
+      ]
+    },
+    {
+      "field": "monthly_budget",
+      "header": "2/5 월 예산",
+      "question": "서버·DB 등 인프라에 쓸 월 예산은 어느 범위인가요? 원화(KRW) 기준으로 선택해 주세요.",
+      "skip_value": null,
+      "options": [
+        {
+          "label": "10만 원 이하",
+          "description": "월 0~100,000원",
+          "value": {"min": 0, "max": 100000, "currency": "KRW"}
+        },
+        {
+          "label": "10만 원 초과~50만 원 이하",
+          "description": "월 100,001~500,000원",
+          "value": {"min": 100001, "max": 500000, "currency": "KRW"}
+        },
+        {
+          "label": "50만 원 초과~100만 원 이하",
+          "description": "월 500,001~1,000,000원",
+          "value": {"min": 500001, "max": 1000000, "currency": "KRW"}
+        },
+        {
+          "label": "100만 원 초과",
+          "description": "월 1,000,001원 이상",
+          "value": {"min": 1000001, "max": null, "currency": "KRW"}
+        }
+      ]
+    },
+    {
+      "field": "handles_sensitive_data",
+      "header": "3/5 민감 데이터",
+      "question": "개인정보, 결제, 금융 데이터 등 민감한 데이터를 저장하거나 처리하나요?",
+      "skip_value": "unknown",
+      "options": [
+        {
+          "label": "예",
+          "description": "민감한 데이터를 저장하거나 처리합니다.",
+          "value": "yes"
+        },
+        {
+          "label": "아니오",
+          "description": "민감한 데이터를 저장하거나 처리하지 않습니다.",
+          "value": "no"
+        },
+        {
+          "label": "모름",
+          "description": "아직 확인하지 못했습니다.",
+          "value": "unknown"
+        }
+      ]
+    },
+    {
+      "field": "preferred_target",
+      "header": "4/5 배포 대상",
+      "question": "선호하는 배포 대상을 선택해 주세요.",
+      "skip_value": "auto",
+      "options": [
+        {
+          "label": "AWS",
+          "description": "AWS 클라우드에 배포합니다.",
+          "value": "aws"
+        },
+        {
+          "label": "GCP",
+          "description": "Google Cloud에 배포합니다.",
+          "value": "gcp"
+        },
+        {
+          "label": "온프레미스",
+          "description": "직접 운영하는 서버에 배포합니다.",
+          "value": "onprem"
+        },
+        {
+          "label": "추천",
+          "description": "답변과 앱 분석을 바탕으로 추천받습니다.",
+          "value": "auto"
+        }
+      ]
+    },
+    {
+      "field": "availability",
+      "header": "5/5 가용성",
+      "question": "서비스 중단을 어느 정도 허용할 수 있나요?",
+      "skip_value": "unknown",
+      "options": [
+        {
+          "label": "시연용",
+          "description": "시연이나 개발용이며 잠깐 멈춰도 됩니다.",
+          "value": "demo"
+        },
+        {
+          "label": "일반 운영",
+          "description": "일반 사용자에게 서비스를 제공합니다.",
+          "value": "standard"
+        },
+        {
+          "label": "중단에 민감",
+          "description": "잠깐의 중단도 서비스에 큰 영향을 줍니다.",
+          "value": "high"
+        },
+        {
+          "label": "모름",
+          "description": "아직 가용성 요구를 정하지 않았습니다.",
+          "value": "unknown"
+        }
+      ]
+    }
+  ]
+}

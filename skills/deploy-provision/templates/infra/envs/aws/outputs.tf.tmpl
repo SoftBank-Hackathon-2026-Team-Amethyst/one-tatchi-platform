@@ -1,0 +1,33 @@
+output "cluster_name" {
+  value = module.cluster.cluster_name
+}
+
+output "region" {
+  value = var.region
+}
+
+output "kubeconfig_command" {
+  description = "본인 SSO 로그인 후 실행할 접속 명령"
+  value       = "aws eks update-kubeconfig --region ${var.region} --name ${module.cluster.cluster_name}"
+}
+
+output "repository_urls" {
+  value = module.registry.repository_urls
+}
+
+output "database" {
+  value = {
+    host      = module.database.host
+    port      = module.database.port
+    name      = module.database.database_name
+    remoteKey = module.database.credentials_secret_id
+  }
+}
+
+output "ingress_group" {
+  value = var.service
+}
+
+output "dashboard_path" {
+  value = module.observability.dashboard_path
+}

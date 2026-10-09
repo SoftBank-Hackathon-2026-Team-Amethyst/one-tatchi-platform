@@ -1,0 +1,24 @@
+# infra/envs/onprem
+
+self-hosted runner가 있는 기기(k3d)를 온프레미스 대상으로 쓰는 Terraform 루트. 플랫폼 모듈을 `?ref=@@TEMPLATE_VERSION@@` 태그로 참조한다.
+state는 이 기기의 `terraform.tfstate`에만 있다(.gitignore). 다른 기기에서 쓰려면 처음부터 새로 만든다.
+
+만드는 것: k3d 클러스터, Argo Rollouts · External Secrets, 환경(test · prod)마다 네임스페이스 · Postgres · DB 접속 Secret · Cloudflare Quick Tunnel.
+
+## 사람이 기기에서 실행 (스킬 · CI는 apply하지 않는다)
+
+```bash
+# 처음: provider가 클러스터 출력값을 쓰므로 클러스터를 먼저 만든다
+terraform init
+terraform apply -target=module.cluster
+terraform apply
+
+# 외부 주소 (Quick Tunnel, cloudflared 재시작 시 바뀜)
+terraform output public_url_commands
+```
+
+그다음 GitHub Actions self-hosted runner를 이 기기에 등록한다(라벨 `self-hosted`, `onprem`). kube context는 `terraform output kube_context`.
+
+앱 배포는 사람이 하지 않는다. `.github/workflows/deploy.yml`이 이 runner에서 `yolo/*` push → test, `main` push → test → prod(승인)로 올린다.
+
+손으로 `helm upgrade`할 때는 Helm 4에서 `--server-side=false --wait=legacy`가 필요하다.
