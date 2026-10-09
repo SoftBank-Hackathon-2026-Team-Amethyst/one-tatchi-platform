@@ -10,6 +10,8 @@
 
 ## Unreleased
 
+- `skills/`: 에이전트 스킬 추가 (T13). `/janto-deploy`(기능 브랜치 + main PR), `/yolo-deploy`(`yolo/<기능>` push, 검사 실패 수정 루프 규칙), `deploy-analyze`(T15 브리프 + 분석기 5개 + 보고서 · `config.yaml`의 `target` · `services`), `deploy-provision`(산출물 템플릿 · `render.sh` · `check-artifacts.sh`), `deploy-release` · `deploy-rollback`(`rollout.yml` 요청). 스킬은 apply하지 않고 템플릿을 태그로만 참조한다. 설치는 `scripts/install-skills.sh`
+
 ## v1.10.0
 
 - Slack 운영 승인 · 거절 버튼 (T26): `deploy.yml` gate가 regulated 운영 배포마다 승인 대기 알림과 버튼을 올리고, 봇이 prod environment의 custom deployment protection rule을 승인 · 거절한다. `slack-notify` 버튼 `approve` · `reject`와 입력 `approval`, 결과 `waiting` 아이콘 추가

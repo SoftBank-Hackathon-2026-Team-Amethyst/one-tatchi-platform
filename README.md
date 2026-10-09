@@ -101,6 +101,7 @@ demo-app은 템플릿을 **태그로 고정해 참조**만 한다. 그래서 에
 
 - [설계 문서](docs/plan.html): 브라우저로 열어 본다 (다이어그램은 Mermaid로 그려진다)
 - [해야 할 일](docs/tasks.md): 단계별 작업과 역할 분담
+- [에이전트 스킬](skills/README.md): `/janto-deploy` · `/yolo-deploy`와 하위 스킬, 설치(`scripts/install-skills.sh`), 두 경로의 차이
 
 ## 작업 현황
 

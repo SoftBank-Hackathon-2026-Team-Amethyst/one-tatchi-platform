@@ -1,0 +1,30 @@
+name: infra
+
+# 인프라 변경(aws): PR에서는 plan(읽기 전용 역할, 코멘트), main 머지에서는 apply(반영 역할).
+# 본문은 one-tatchi-platform의 재사용 워크플로이고, 여기서는 입력만 넘긴다.
+# 온프레미스(infra/envs/onprem)는 state가 그 기기에만 있어 CI가 아니라 기기에서 apply한다.
+on:
+  pull_request:
+    paths: ["infra/**", ".github/workflows/infra.yml"]
+  push:
+    branches: [main]
+    paths: ["infra/**", ".github/workflows/infra.yml"]
+
+permissions:
+  id-token: write
+  contents: read
+  pull-requests: write
+
+concurrency:
+  group: infra-aws
+  cancel-in-progress: false
+
+jobs:
+  aws:
+    uses: SoftBank-Hackathon-2026-Team-Amethyst/one-tatchi-platform/.github/workflows/infra.yml@@@TEMPLATE_VERSION@@
+    with:
+      working-directory: infra/envs/aws
+      cluster: @@CLUSTER_AWS@@
+      mode: ${{ github.event_name == 'push' && 'apply' || 'plan' }}
+      template-ref: @@TEMPLATE_VERSION@@
+    secrets: inherit

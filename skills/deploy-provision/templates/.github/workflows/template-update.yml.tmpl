@@ -1,0 +1,28 @@
+name: template-update
+
+# one-tatchi-platform에 새 태그가 나오면 템플릿 버전을 올리는 PR을 연다(T22). PR은 janto 경로로 리뷰한다.
+# 업데이트 도구 자체는 메이저 태그(@v1)를 따라간다. 배포 템플릿 참조(@vX.Y.Z)와 달리 고정하지 않는다.
+on:
+  repository_dispatch:
+    types: [template-released]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 올릴 버전(vX.Y.Z). 비우면 최신 태그
+        required: false
+  schedule:
+    - cron: "0 0 * * *" # 알림을 놓쳤을 때 대비 (매일 09:00 KST)
+
+permissions:
+  contents: read
+
+jobs:
+  update:
+    # GitHub App(봇) 설정 전에는 돌지 않는다
+    if: vars.BOT_CLIENT_ID != ''
+    uses: SoftBank-Hackathon-2026-Team-Amethyst/one-tatchi-platform/.github/workflows/template-update.yml@v1
+    with:
+      version: ${{ github.event.client_payload.version || inputs.version || '' }}
+      app-client-id: ${{ vars.BOT_CLIENT_ID }}
+    secrets:
+      app-private-key: ${{ secrets.BOT_PRIVATE_KEY }}

@@ -438,12 +438,12 @@ Claude Code는 `/todo-task`, Codex는 `$todo-task`로 이 순서를 따르는 �
 **목표** 두 스킬이 demo-app에 PR 또는 `yolo/*` 브랜치를 만든다. 스킬은 직접 apply하지 않는다.
 
 **할 일**
-- [ ] 기존 배포 스킬을 platform의 `skills/`로 이동
-- [ ] platform의 `skills/`를 새 계약에 맞게 수정: 로컬 자격증명으로 apply하는 단계 제거
+- [ ] 기존 배포 스킬을 platform의 `skills/`로 이동 (사전 검증 레포의 7개 중 6개. `deploy-relocate`는 비목표라 제외. `deploy-analyze`는 T15 브리프 스킬 위에 분석기를 더함)
+- [ ] platform의 `skills/`를 새 계약에 맞게 수정: 로컬 자격증명으로 apply하는 단계 제거 (release · rollback은 `rollout.yml` 요청으로 대체)
 - [ ] `/janto-deploy`: 리뷰 지점 1 → 기능 브랜치 + main PR
 - [ ] `/yolo-deploy`: `yolo/<기능>` push
 - [ ] 산출물 생성(6.3 표): Dockerfile, 값 파일, `infra/envs/<대상>`(원격 모듈 참조 + tfvars), `.deploy/config.yaml`(`template_version` 포함), `.deploy/smoke.yaml`(API 분석으로 smoke 요청 목록), 재사용 워크플로 호출부
-- [ ] `.deploy/`에 배포 기록
+- [ ] `.deploy/`에 배포 기록 (`.deploy/log/<시각>-<스킬>.md`, 브리프 · 분석 · 보고서도 커밋)
 
 **완료 기준** demo-app에 두 스킬을 실행하면 PR과 `yolo/*` 브랜치가 생기고, 템플릿은 태그로 참조된다.
 

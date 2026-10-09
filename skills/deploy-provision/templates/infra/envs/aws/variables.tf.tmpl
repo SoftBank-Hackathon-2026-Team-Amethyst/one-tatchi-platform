@@ -1,0 +1,77 @@
+# 값은 terraform.tfvars에 둔다 (스킬이 쓴다).
+variable "account_id" {
+  description = "AWS 계정. 잘못된 계정으로 apply하는 것을 provider에서 차단한다"
+  type        = string
+}
+
+variable "region" {
+  type    = string
+  default = "ap-northeast-2"
+
+  validation {
+    condition     = var.region == "ap-northeast-2"
+    error_message = "팀 SCP와 S3 backend는 서울 리전(ap-northeast-2)을 사용합니다."
+  }
+}
+
+variable "name" {
+  description = "VPC와 EKS 클러스터 이름"
+  type        = string
+}
+
+variable "service" {
+  description = "앱 이름. 이미지 저장소 · DB · Secret · ALB Ingress 그룹 접두사"
+  type        = string
+}
+
+variable "repositories" {
+  description = "ECR 이미지 저장소 이름 (서비스 이름)"
+  type        = list(string)
+}
+
+variable "database_name" {
+  type = string
+}
+
+variable "domain_name" {
+  description = "bootstrap에서 만든 Route53 public hosted zone. 비우면 도메인 없이 ALB 주소로 연다"
+  type        = string
+  default     = ""
+}
+
+variable "kubernetes_version" {
+  type    = string
+  default = "1.36"
+}
+
+variable "node_instance_types" {
+  type    = list(string)
+  default = ["t3.medium"]
+}
+
+variable "node_count" {
+  type    = object({ min = number, desired = number, max = number })
+  default = { min = 2, desired = 2, max = 3 }
+}
+
+variable "db_instance_class" {
+  type    = string
+  default = "db.t4g.micro"
+}
+
+variable "additional_admin_principal_arns" {
+  description = "팀 SSO 관리자와 CI deploy 역할 외에 추가할 IAM 관리자 역할 ARN"
+  type        = list(string)
+  default     = []
+}
+
+variable "environments" {
+  description = "앱을 배포할 환경(네임스페이스)"
+  type        = list(string)
+  default     = ["test", "prod"]
+}
+
+variable "chart_version" {
+  description = "service-base 차트 버전 (template_version과 같게)"
+  type        = string
+}
