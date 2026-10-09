@@ -39,7 +39,10 @@ inputs:
     default: "0"
   model:
     description: 판단에 쓸 Claude 모델
-    default: claude-opus-5-5
+    default: claude-sonnet-5-5
+  api-timeout-seconds:
+    description: Claude API 호출 제한 시간(초). 넘으면 재시도 없이 abort
+    default: "60"
   anthropic-api-key:
     description: Claude API 키 (secrets.ANTHROPIC_API_KEY). 비어 있으면 AI 판단 없이 abort
     default: ""
@@ -99,6 +102,7 @@ runs:
         WORK_DIR: ${{ runner.temp }}/promote-judge/${{ inputs.release }}
         RELEASE: ${{ inputs.release }}
         MODEL: ${{ inputs.model }}
+        API_TIMEOUT_SECONDS: ${{ inputs.api-timeout-seconds }}
         ANTHROPIC_API_KEY: ${{ inputs.anthropic-api-key }}
       run: bash "$GITHUB_ACTION_PATH/judge.sh"
 

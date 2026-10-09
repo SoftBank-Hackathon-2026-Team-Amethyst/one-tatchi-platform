@@ -14,8 +14,8 @@ Blue-Green 배포에서 green(새 버전)을 승격할지 버릴지 정한다 (T
 | 3 | `judge.sh` | 지표와 규칙 판정을 Claude에 보내 `{decision, reason}`을 받는다 | `judgment.json` |
 | 4 | `act.sh` | auto면 `kubectl argo rollouts promote · abort`, manual이면 실행하지 않는다. Job Summary에 근거를 남긴다 | |
 
-- 규칙 판정이 fail이면 AI 답과 관계없이 abort다.
-- 1 · 2단계가 실패하거나, API 키가 없거나, Claude 호출이 실패 · 거절 · 형식 오류면 abort다.
+- 규칙 판정이 fail이면 AI 답과 관계없이 abort다 ([ADR 0004](../../../docs/adr/0004-promotion-judge-rule-veto.md)).
+- 1 · 2단계가 실패하거나, API 키가 없거나, Claude 호출이 실패 · 시간 초과 · 거절 · 형식 오류면 재시도 없이 abort다.
 
 ## 입력
 
@@ -32,7 +32,8 @@ Blue-Green 배포에서 green(새 버전)을 승격할지 버릴지 정한다 (T
 | `max-error-rate` | `0` | 허용 에러율(%) |
 | `max-p95-ms` | `2000` | 허용 p95 응답 시간(ms). 비우면 검사 안 함 |
 | `max-restarts` | `0` | 허용 green 파드 재시작 수 (생성 이후 합계) |
-| `model` | `claude-opus-5-5` | 판단 모델 |
+| `model` | `claude-sonnet-5-5` | 판단 모델 |
+| `api-timeout-seconds` | `60` | Claude API 호출 제한 시간(초). 넘으면 재시도 없이 abort |
 | `anthropic-api-key` | `""` | 비어 있으면 AI 판단 없이 abort |
 | `slack-token` · `slack-channel` | `""` | 비어 있으면 알림 생략 |
 | `audit-bucket` | `""` | 비어 있으면 감사 로그 생략 |
@@ -99,13 +100,29 @@ Blue-Green 배포에서 green(새 버전)을 승격할지 버릴지 정한다 (T
  "rule": {"verdict": "fail", "reasons": ["에러율 50% > 기준 0%"]}}
 ```
 
+## AI 판단
+
+`judge.sh`가 `metrics.json`을 Claude Messages API(curl)에 보내고 `judgment.json`을 만든다.
+
+- 구조화 출력(`output_config.format`, JSON schema)으로 `{"decision": "promote" | "abort", "reason": "..."}`만 받는다. thinking 블록은 건너뛰고 text 블록을 읽는다.
+- 규칙이 fail이어도 호출한다. 결정은 abort로 고정하고, AI가 쓴 원인 설명을 근거로 남긴다.
+- `fallbacks: "default"`(헤더 `anthropic-beta: server-side-fallback-2026-07-01`): 안전 분류기가 거절하면 서버가 다른 모델로 다시 시도한다. 그래도 거절이면 abort다.
+- 결정 출처 `source`: `ai`(규칙 pass, AI 결정) · `rule`(규칙 fail, 거부권) · `fallback`(AI 판단 없음 → abort)
+
+```json
+{"decision": "promote", "source": "ai", "reason": "에러율 0%, p95 38ms로 기준 안이고 green 파드 2개 모두 Ready라 승격한다.",
+ "model": "claude-sonnet-5-5", "ai_seconds": 4,
+ "ai": {"decision": "promote", "reason": "…", "error": null},
+ "rule": {"verdict": "pass", "reasons": []}, "metrics": {"requests": 120, "error_rate": 0, "p95_ms": 38, "...": "..."}}
+```
+
 ## 테스트
 
 ```bash
 bash .github/actions/promote-judge/tests/run.sh
 ```
 
-가짜 green(`tests/fake_server.py`)과 가짜 kubectl(`tests/fake-kubectl`)로 클러스터 없이 돈다.
+가짜 green(`tests/fake_server.py`), 가짜 kubectl(`tests/fake-kubectl`), 가짜 Claude API(`tests/fake_claude.py`)로 클러스터 · API 키 없이 돈다.
 
 ## 기준값 근거
 

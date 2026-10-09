@@ -152,4 +152,79 @@ results badinput 20 0
 metrics badinput MAX_ERROR_RATE=abc
 [ "$(m badinput .rule.verdict)" = fail ] || fail "잘못된 기준값인데 fail이 아니다"
 
+# ---------- judge.sh ----------
+claude_pid=""
+start_claude() {  # start_claude <모드> → CLAUDE_URL
+  [ -n "$claude_pid" ] && kill "$claude_pid" 2>/dev/null
+  python3 "$here/fake_claude.py" "$1" "$tmp/claude-capture.json" > "$tmp/claude.log" &
+  claude_pid=$!
+  for _ in $(seq 1 50); do
+    port="$(sed -n 's/^listening 127\.0\.0\.1:\([0-9]*\)$/\1/p' "$tmp/claude.log")"
+    [ -n "$port" ] && { CLAUDE_URL="http://127.0.0.1:$port"; return; }
+    sleep 0.1
+  done
+  fail "가짜 Claude가 뜨지 않았다"
+}
+trap '[ -n "$server_pid" ] && kill "$server_pid" 2>/dev/null; [ -n "$claude_pid" ] && kill "$claude_pid" 2>/dev/null; rm -rf "$tmp"' EXIT
+
+# judge <이름> <metrics 이름(m-*)> [환경변수...]
+judge() {
+  local name="$1" from="$2"; shift 2
+  mkdir -p "$tmp/j-$name"
+  cp "$tmp/m-$from/metrics.json" "$tmp/j-$name/metrics.json"
+  : > "$tmp/j-$name/github_output"
+  env WORK_DIR="$tmp/j-$name" RELEASE=demo-app-be MODEL=claude-sonnet-5-5 ANTHROPIC_API_KEY=test-key \
+    ANTHROPIC_BASE_URL="$CLAUDE_URL" API_TIMEOUT_SECONDS=2 GITHUB_OUTPUT="$tmp/j-$name/github_output" "$@" \
+    bash "$action/judge.sh" > "$tmp/j-$name.log" 2>&1 || { cat "$tmp/j-$name.log" >&2; return 1; }
+}
+j() { jq -r "$2" "$tmp/j-$1/judgment.json"; }
+
+echo "== judge 규칙 pass + AI promote → promote (source ai), 요청 형식 확인"
+start_claude promote
+judge promote ok
+[ "$(j promote '.decision + " " + .source')" = "promote ai" ] || fail "promote가 아니다: $(j promote .)"
+cap="$tmp/claude-capture.json"
+[ "$(jq -r '.path + " " + .api_key + " " + .version' "$cap")" = "/v1/messages test-key 2023-06-01" ] || fail "요청 헤더가 틀렸다"
+[ "$(jq -r '.body.model' "$cap")" = claude-sonnet-5-5 ] || fail "모델이 전달되지 않았다"
+[ "$(jq -r '.body.output_config.format.schema.properties.decision.enum | join(",")' "$cap")" = "promote,abort" ] || fail "구조화 출력 스키마가 없다"
+jq -e '.body.messages[0].content | fromjson | .rule.verdict == "pass"' "$cap" >/dev/null || fail "metrics.json이 전달되지 않았다"
+grep -q '^decision=promote$' "$tmp/j-promote/github_output" || fail "step 출력 decision이 없다"
+grep -q '^report=' "$tmp/j-promote/github_output" || fail "step 출력 report가 없다"
+
+echo "== judge 규칙 pass + AI abort → abort (source ai)"
+start_claude abort
+judge aiabort ok
+[ "$(j aiabort '.decision + " " + .source')" = "abort ai" ] || fail "AI abort를 따르지 않았다"
+
+echo "== judge 규칙 fail + AI promote → abort (규칙 거부권), 근거는 AI 문장"
+start_claude promote
+judge veto bad
+[ "$(j veto '.decision + " " + .source')" = "abort rule" ] || fail "규칙 거부권이 동작하지 않았다: $(j veto .)"
+[ "$(j veto .reason)" = "가짜 판단: promote" ] || fail "AI 근거가 남지 않았다"
+
+for mode in err500 slow badjson refusal; do
+  echo "== judge AI 실패($mode) → abort (source fallback)"
+  start_claude "$mode"
+  judge "$mode" ok
+  [ "$(j "$mode" '.decision + " " + .source')" = "abort fallback" ] || fail "$mode인데 abort fallback이 아니다: $(j "$mode" .)"
+  [ "$(j "$mode" '.ai.error')" != null ] || fail "$mode 원인이 남지 않았다"
+done
+
+echo "== judge API 키 없음 → 호출하지 않고 abort"
+rm -f "$tmp/claude-capture.json"
+judge nokey ok ANTHROPIC_API_KEY=
+[ "$(j nokey '.decision + " " + .ai.error')" = "abort API 키 없음" ] || fail "키 없음 처리가 틀렸다"
+[ ! -f "$tmp/claude-capture.json" ] || fail "키가 없는데 API를 호출했다"
+
+echo "== judge 규칙 fail + API 키 없음 → abort, 근거는 규칙 문장"
+judge nokeyfail bad ANTHROPIC_API_KEY=
+[ "$(j nokeyfail .source)" = rule ] || fail "source가 rule이 아니다"
+j nokeyfail .reason | grep -q '^규칙 판정 fail: 에러율' || fail "규칙 문장이 근거로 남지 않았다"
+
+echo "== judge metrics.json이 없으면 abort"
+mkdir -p "$tmp/m-missing"
+echo '깨진 파일' > "$tmp/m-missing/metrics.json"
+judge missing missing ANTHROPIC_API_KEY=
+[ "$(j missing .decision)" = abort ] || fail "지표가 없는데 abort가 아니다"
+
 echo "통과"
