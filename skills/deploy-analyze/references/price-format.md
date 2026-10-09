@@ -56,6 +56,10 @@ calculate --input <pricing-input.json> --prices <prices.json> --assessment <reso
 
 계산 결과의 issue에는 unknown_usage, unknown_incremental_usage, unsupported_aggregation, unknown_aggregation_baseline과 C4 평가 사유가 포함될 수 있다. compare는 unknown_savings를 사용한다. tier_baseline_usage는 공급자 조회 필터가 아닌 계산용 십진 문자열 attributes이며 같은 SKU의 값은 일치해야 한다.
 
+## C6 예산 표와 추천 비용 요약
+
+report --input <pricing-input.json> --prices <prices.json> --costs <costs.json> --assessment <resource-assessment.json> --candidate <candidate-id> --budget-output <budget.md> --summary-output <cost-summary.md> --report <report.md>로 같은 계산 결과의 표와 요약을 생성한다. assessment와 report 옵션은 해당 자료를 사용할 때 전달한다. 후보는 분석 스킬이 정한다. [보고서 생성 계약](cost-reporting.md)에 데이터 대조·부분 결과·대안 비교·표지 갱신과 파일 보존을 설명한다. 가격 API를 호출하지 않으며 config.yaml을 변경하지 않는다.
+
 ## C2 AWS 조회 사용법과 지원 범위
 
 의존성은 스킬의 requirements.txt에 있다. 다음 명령은 실제 앱 입력을 검증하거나 단가를 조회한다.
