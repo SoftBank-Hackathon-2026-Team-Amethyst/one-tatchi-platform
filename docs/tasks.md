@@ -329,7 +329,7 @@ Claude Code는 `/todo-task`, Codex는 `$todo-task`로 이 순서를 따르는 �
 **목표** `envs/gcp` 루트로 같은 App Chart가 GCP에서 뜬다.
 
 **할 일**
-- [ ] GCP 프로젝트와 결제 연결
+- [x] GCP 프로젝트와 결제 연결
 - [ ] platform의 `ci_identity/gcp`(Workload Identity Federation, demo-app 신뢰)
 - [ ] network · cluster(GKE) · registry(Artifact Registry) · database(Cloud SQL) · secrets · observability 구현
 - [ ] 출력값 이름이 aws 구현체와 같은지 확인
