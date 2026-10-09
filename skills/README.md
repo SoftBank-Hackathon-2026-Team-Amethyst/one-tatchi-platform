@@ -31,7 +31,8 @@ scripts/install-skills.sh --remove   # 링크만 지운다
 - **템플릿 본문은 고치지 않는다**: 검사 단계 · App Chart 보안 설정 · Terraform 모듈은 platform에 있다. 스킬은 변수 값과 호출부만 만든다.
 - **비밀값을 쓰지 않는다**: 값 파일 · tfvars · 브리프에 토큰 · 비밀번호 · 접속 문자열을 적지 않는다. DB 접속 정보는 Terraform이 만든 k8s Secret(`<서비스>-db`)으로 들어간다.
 - **`compliance`는 사람이 정한다**: `deploy-analyze`의 저장 스크립트가 브리프 답변으로 한 번 쓴다. 바꾸려면 janto PR(CODEOWNERS 리뷰). yolo 경로에서 바꾸면 검사(`config-guard`)가 실패한다.
-- **기록**: 스킬 실행마다 `.deploy/log/<YYYYMMDD-HHMMSS>-<스킬>.md`를 남긴다. 중간 산출물(`.deploy/brief.md`, `.deploy/analysis/`, `.deploy/report.md`)도 레포에 커밋한다.
+- **`.deploy/config.yaml`에는 파이프라인 값만**(`template_version`, `compliance`). 이 파일은 CODEOWNERS 리뷰 대상이라, 스킬 인계값(`target`, `services`)은 `.deploy/plan.yaml`에 둔다. 그래야 janto 산출물 PR이 오너 리뷰 없이 머지된다.
+- **기록**: 스킬 실행마다 `.deploy/log/<YYYYMMDD-HHMMSS>-<스킬>.md`를 남긴다. 중간 산출물(`.deploy/brief.md`, `.deploy/analysis/`, `.deploy/report.md`, `.deploy/plan.yaml`)도 레포에 커밋한다.
 
 ## 두 경로의 차이
 

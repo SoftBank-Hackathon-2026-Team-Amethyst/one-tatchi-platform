@@ -15,11 +15,11 @@
 | `CLUSTER_NAME` | onprem k3d 클러스터 이름 (context는 `k3d-<이름>`) | `onetouch` |
 | `REPOSITORIES_HCL` | 이미지 저장소 이름 목록, HCL 리스트 문자열 | `["demo-app-be", "demo-app-fe"]` |
 | `PUBLIC_SERVICE`, `PUBLIC_SERVICE_PORT` | onprem Quick Tunnel이 연결할 서비스와 포트 (`public: true`인 서비스) | `demo-app-fe`, `3000` |
-| `DEFAULT_TARGET` | `config.yaml`의 `target`. 레포 변수 `DEPLOY_TARGET`이 없을 때의 기본값 | `onprem` |
+| `DEFAULT_TARGET` | `plan.yaml`의 `target`. 레포 변수 `DEPLOY_TARGET`이 없을 때의 기본값 | `onprem` |
 | `CLUSTER_AWS` | EKS 클러스터 이름 (`infra/envs/aws` 변수 `name`) | `one-tatchi` |
 | `CLUSTER_ONPREM` | self-hosted runner의 kube context (`k3d-<이름>`) | `k3d-onetouch` |
 | `HOST_TEST`, `HOST_PROD` | aws만. 서비스 도메인. 없으면 빈 값(ALB 주소로 HTTP) | `yolo.onetatchi.soulee.dev` / `onetatchi.soulee.dev` |
-| `SERVICES_JSON` | `deploy.yml` 입력 `services`. `config.yaml`의 `services` 순서대로 `{"name","path","values","migration"?}` | 아래 |
+| `SERVICES_JSON` | `deploy.yml` 입력 `services`. `plan.yaml`의 `services` 순서대로 `{"name","path","values","migration"?}` | 아래 |
 | `NODE_DIRS`, `PYTHON_DIRS`, `IMAGE_DIRS` | `checks.yml` 입력. 런타임별 서비스 경로 JSON 배열 | `["be","fe"]`, `[]`, `["be","fe"]` |
 | `DB_INIT` | 테스트 전에 Postgres에 넣을 SQL. 없으면 빈 값 | `db/init.sql` |
 | `OWNERS` | CODEOWNERS에 넣을 사람(GitHub 로그인). AI 계정은 넣지 않는다 | `@silano08 @soulee-dev` |
@@ -89,9 +89,10 @@ platform 모듈을 `?ref=@@TEMPLATE_VERSION@@`로 참조하는 Terraform 루트.
 - `README.md`: 사람이 실행할 명령(aws는 SSO 로그인 → plan만, apply는 CI; onprem은 기기에서 apply).
 - `.terraform.lock.hcl`은 `terraform init -backend=false` 뒤 커밋한다.
 
-### `.deploy/config.yaml`
+### `.deploy/config.yaml`, `.deploy/plan.yaml`
 
-`template_version`(처음 한 번), `compliance`(`write_brief.py`만), `target` · `services`(`deploy-analyze`). 형식은 `deploy-analyze/references/report-format.md`. `config-guard`가 `compliance`와 `template_version` 형식을 검사한다.
+`config.yaml`: `template_version`(처음 한 번), `compliance`(`write_brief.py`만). 파이프라인이 읽고 CODEOWNERS 리뷰 대상이라 **스킬은 그 밖의 키를 넣지 않는다**(넣으면 janto PR마다 오너 리뷰가 붙는다). `config-guard`가 형식을 검사한다.
+`plan.yaml`: `target` · `services`(`deploy-analyze`가 쓴다). 형식은 `deploy-analyze/references/report-format.md`.
 
 ### `.deploy/smoke.json`
 
