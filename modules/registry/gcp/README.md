@@ -4,6 +4,7 @@
 
 ```hcl
 module "registry" {
+  project_id          = "one-tatchi-gejkm"
   source       = "../../modules/registry/gcp"
   repositories = ["demo-app-be", "demo-app-fe"]
 }

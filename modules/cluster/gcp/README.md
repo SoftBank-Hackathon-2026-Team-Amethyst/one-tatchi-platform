@@ -4,6 +4,7 @@ AWS의 EKS 관리형 노드 그룹에 대응하는 GKE Standard Regional 클러�
 
 ```hcl
 module "cluster" {
+  project_id          = "one-tatchi-gejkm"
   source              = "<platform 고정 태그의 modules/cluster/gcp>"
   name                = "one-tatchi"
   network_id          = module.network.network_id
