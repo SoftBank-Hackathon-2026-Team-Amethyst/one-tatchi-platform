@@ -1,0 +1,23 @@
+# 스킬 사이의 인계값. deploy-analyze가 쓰고 deploy-provision이 읽는다. 파이프라인은 읽지 않는다.
+# (config.yaml은 CODEOWNERS 리뷰 대상이라 파이프라인 값만 둔다)
+target: aws                     # aws | onprem | gcp(구현 예정). 워크플로 호출부의 기본 대상(레포 변수 DEPLOY_TARGET이 없을 때)
+services:
+- name: demo-app-be             # 이미지 저장소 · Rollout · k8s Service 이름
+  path: be                      # 빌드 컨텍스트
+  runtime: node                 # checks.yml node-dirs
+  port: 8000
+  health: /health
+  public: false                 # FE nginx가 /api, /health를 프록시한다
+  database: true                # envFromSecrets: [demo-app-db]
+  migration: db/init.sql        # 배포마다 적용. 여러 번 실행해도 안전해야 한다
+  resources: {cpu: 100m, memory: 128Mi, memoryLimit: 256Mi}
+  replicas: {default: 2, aws: 1, onprem: 1}
+- name: demo-app-fe
+  path: fe
+  runtime: node
+  port: 3000
+  health: /
+  public: true                  # onprem: Quick Tunnel → Service, aws: ALB Ingress
+  database: false
+  resources: {cpu: 50m, memory: 32Mi, memoryLimit: 64Mi}
+  replicas: {default: 2, aws: 1, onprem: 1}

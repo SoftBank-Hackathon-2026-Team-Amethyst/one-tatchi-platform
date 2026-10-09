@@ -91,6 +91,12 @@ def main(argv=None):
         query.add_argument("--output", required=True)
         query.add_argument("--gcp-account")
         query.add_argument("--gcp-quota-project")
+        reuse = commands.add_parser("reuse-prices")
+        reuse.add_argument("--input", required=True)
+        reuse.add_argument("--source-input", required=True)
+        reuse.add_argument("--prices", required=True)
+        reuse.add_argument("--output", required=True)
+        reuse.add_argument("--evidence", required=True)
         mapping = commands.add_parser("map")
         mapping.add_argument("--inventory", required=True)
         mapping.add_argument("--output", required=True)
@@ -116,6 +122,20 @@ def main(argv=None):
         reporting.add_argument("--alternative-costs")
         reporting.add_argument("--report")
         args = parser.parse_args(argv)
+        if args.command == "reuse-prices":
+            from pricing_calculate import load_document
+            from pricing_reuse import reuse_prices
+            paths = [output_path(args.input, destination) for destination in (args.output, args.evidence)]
+            if paths[0] == paths[1]:
+                raise InputError("reuse: output and evidence must differ")
+            for source in (args.source_input, args.prices):
+                for destination in (args.output, args.evidence):
+                    output_path(source, destination)
+            result, evidence = reuse_prices(load_input(args.input), load_input(args.source_input), load_document(args.prices))
+            write_result(paths[0], result)
+            write_result(paths[1], evidence)
+            print(json.dumps(dict(status=result["status"], output=str(paths[0]), issues=result["issues"]), ensure_ascii=False))
+            return 3 if result["status"] == "partial" else 0
         if args.command == "map":
             from pricing_map import load_inventory, map_inventory
             path = output_path(args.inventory, args.output)

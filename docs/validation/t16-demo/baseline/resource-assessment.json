@@ -1,0 +1,1221 @@
+{
+  "schema_version": "1",
+  "input_id": "demo-monthly-forecast",
+  "inventory_sha256": "61f3da4bf6901755b152e8a09754b57be677b2da70774627b988a73a857d16ef",
+  "input_sha256": "8be76c5cdbba894b8337aba75a41a8c3774c9d83029cfe10707aefa13d7d6d20",
+  "status": "partial",
+  "candidates": [
+    {
+      "candidate_id": "demo-aws",
+      "selected_values": {
+        "nodes": {
+          "tier": "root",
+          "value": {
+            "min": 3,
+            "desired": 3,
+            "max": 3
+          },
+          "source": {
+            "path": "demo-app/infra/envs/aws/main.tf",
+            "ref": "7893547913b57705d7f2e366f375b15beadcbba4",
+            "note": "Explicit node_count takes priority over module desired=2."
+          }
+        },
+        "node_types": {
+          "tier": "root",
+          "value": [
+            "t3.medium"
+          ],
+          "source": {
+            "path": "demo-app/infra/envs/aws/main.tf",
+            "ref": "7893547913b57705d7f2e366f375b15beadcbba4",
+            "note": "Explicit Linux AL2023 node type."
+          }
+        },
+        "nat_count": {
+          "tier": "root",
+          "value": 1,
+          "source": {
+            "path": "demo-app/infra/envs/aws/main.tf",
+            "ref": "7893547913b57705d7f2e366f375b15beadcbba4",
+            "note": "single_nat=true; one shared NAT."
+          }
+        },
+        "db_class": {
+          "tier": "root",
+          "value": "db.t4g.micro",
+          "source": {
+            "path": "demo-app/infra/envs/aws/main.tf",
+            "ref": "7893547913b57705d7f2e366f375b15beadcbba4",
+            "note": "One shared RDS instance."
+          }
+        },
+        "db_count": {
+          "tier": "root",
+          "value": 1,
+          "source": {
+            "path": "demo-app/infra/envs/aws/main.tf",
+            "ref": "7893547913b57705d7f2e366f375b15beadcbba4",
+            "note": "database module is outside the environment loop."
+          }
+        },
+        "db_storage": {
+          "tier": "root",
+          "value": {
+            "min": "20",
+            "max": "20"
+          },
+          "source": {
+            "path": "demo-app/infra/envs/aws/main.tf",
+            "ref": "7893547913b57705d7f2e366f375b15beadcbba4",
+            "note": "20 GB gp3 storage."
+          }
+        },
+        "alb_count": {
+          "tier": "root",
+          "value": 3,
+          "source": {
+            "path": "demo-app/.github/workflows/deploy.yml + infra/envs/aws/main.tf",
+            "ref": "7893547913b57705d7f2e366f375b15beadcbba4",
+            "note": "Separate ingress groups demo-app-test/demo-app-prod/demo-app; readonly ELB API confirms three ALBs."
+          }
+        },
+        "node_disk_usage": {
+          "tier": "assumption",
+          "value": {
+            "min": "20",
+            "max": "20"
+          },
+          "source": {
+            "path": "AWS EKS/EC2/EBS readonly metadata",
+            "ref": null,
+            "note": "Three node root disks observed at 20GB gp3; future monthly storage modeled at current size."
+          }
+        },
+        "repositories": {
+          "tier": "root",
+          "value": 2,
+          "source": {
+            "path": "demo-app/infra/envs/aws/main.tf",
+            "ref": "7893547913b57705d7f2e366f375b15beadcbba4",
+            "note": "BE/FE repositories, shared across test/prod."
+          }
+        }
+      },
+      "used_values": [
+        "alb_count",
+        "db_class",
+        "db_count",
+        "db_storage",
+        "nat_count",
+        "node_disk_usage",
+        "node_types",
+        "nodes",
+        "repositories"
+      ],
+      "shared_resources": [
+        {
+          "resource_id": "aws-cluster",
+          "environments": [
+            "test",
+            "prod"
+          ],
+          "counted_once": true
+        },
+        {
+          "resource_id": "aws-nodes",
+          "environments": [
+            "test",
+            "prod"
+          ],
+          "counted_once": true
+        },
+        {
+          "resource_id": "aws-node-disks",
+          "environments": [
+            "test",
+            "prod"
+          ],
+          "counted_once": true
+        },
+        {
+          "resource_id": "aws-nat",
+          "environments": [
+            "test",
+            "prod"
+          ],
+          "counted_once": true
+        },
+        {
+          "resource_id": "aws-alb",
+          "environments": [
+            "test",
+            "prod"
+          ],
+          "counted_once": true
+        },
+        {
+          "resource_id": "aws-db",
+          "environments": [
+            "test",
+            "prod"
+          ],
+          "counted_once": true
+        },
+        {
+          "resource_id": "aws-registry",
+          "environments": [
+            "test",
+            "prod"
+          ],
+          "counted_once": true
+        },
+        {
+          "resource_id": "aws-observability",
+          "environments": [
+            "test",
+            "prod"
+          ],
+          "counted_once": true
+        },
+        {
+          "resource_id": "aws-egress",
+          "environments": [
+            "test",
+            "prod"
+          ],
+          "counted_once": true
+        },
+        {
+          "resource_id": "aws-addresses",
+          "environments": [
+            "test",
+            "prod"
+          ],
+          "counted_once": true
+        },
+        {
+          "resource_id": "aws-secrets",
+          "environments": [
+            "test",
+            "prod"
+          ],
+          "counted_once": true
+        },
+        {
+          "resource_id": "aws-audit",
+          "environments": [
+            "test",
+            "prod"
+          ],
+          "counted_once": true
+        },
+        {
+          "resource_id": "aws-metrics-disk",
+          "environments": [
+            "test",
+            "prod"
+          ],
+          "counted_once": true
+        }
+      ],
+      "excluded_resources": {
+        "aws_metrics": {
+          "path": "docs/adr/0014-demo-cost-assumptions.md",
+          "ref": "ADR-0014",
+          "note": "Paid custom metric ingestion outside this demo quote; Prometheus node/disk costs remain. Not proof that account custom metrics are absent."
+        }
+      },
+      "sizing": {
+        "check": "within_supplied_bounds",
+        "node_expansion": "not_indicated",
+        "demand": {
+          "cpu_millicores": "600",
+          "memory_mib": "640",
+          "pod_slots": "8"
+        },
+        "available": {
+          "cpu_millicores": "4700",
+          "memory_mib": "7168",
+          "pod_slots": "26"
+        },
+        "reason": "Aggregate requests only; placement, affinity, live allocatable capacity and other workloads require separate verification",
+        "source": {
+          "path": "docs/adr/0014-demo-cost-assumptions.md",
+          "ref": "ADR-0014",
+          "note": "Demo aggregate capacity assumption only, not measured allocatable or placement verification."
+        },
+        "traffic_scenario": "final"
+      },
+      "operating_costs": {},
+      "issues": [
+        {
+          "candidate_id": "demo-aws",
+          "item_id": "aws-cluster-cluster_hours",
+          "code": "unknown_incremental_usage",
+          "message": "App addition usage is unknown or unbounded",
+          "retryable": false
+        },
+        {
+          "candidate_id": "demo-aws",
+          "item_id": "aws-nodes-instance_hours",
+          "code": "unknown_incremental_usage",
+          "message": "App addition usage is unknown or unbounded",
+          "retryable": false
+        },
+        {
+          "candidate_id": "demo-aws",
+          "item_id": "aws-node-disks-storage",
+          "code": "unknown_incremental_usage",
+          "message": "App addition usage is unknown or unbounded",
+          "retryable": false
+        },
+        {
+          "candidate_id": "demo-aws",
+          "item_id": "aws-nat-gateway_hours",
+          "code": "unknown_incremental_usage",
+          "message": "App addition usage is unknown or unbounded",
+          "retryable": false
+        },
+        {
+          "candidate_id": "demo-aws",
+          "item_id": "aws-nat-processed_data",
+          "code": "unknown_incremental_usage",
+          "message": "App addition usage is unknown or unbounded",
+          "retryable": false
+        },
+        {
+          "candidate_id": "demo-aws",
+          "item_id": "aws-alb-load_balancer_hours",
+          "code": "unknown_incremental_usage",
+          "message": "App addition usage is unknown or unbounded",
+          "retryable": false
+        },
+        {
+          "candidate_id": "demo-aws",
+          "item_id": "aws-alb-lcu_hours",
+          "code": "unknown_incremental_usage",
+          "message": "App addition usage is unknown or unbounded",
+          "retryable": false
+        },
+        {
+          "candidate_id": "demo-aws",
+          "item_id": "aws-db-instance_hours",
+          "code": "unknown_incremental_usage",
+          "message": "App addition usage is unknown or unbounded",
+          "retryable": false
+        },
+        {
+          "candidate_id": "demo-aws",
+          "item_id": "aws-db-storage",
+          "code": "unknown_incremental_usage",
+          "message": "App addition usage is unknown or unbounded",
+          "retryable": false
+        },
+        {
+          "candidate_id": "demo-aws",
+          "item_id": "aws-registry-storage",
+          "code": "unknown_incremental_usage",
+          "message": "App addition usage is unknown or unbounded",
+          "retryable": false
+        },
+        {
+          "candidate_id": "demo-aws",
+          "item_id": "aws-observability-ingestion",
+          "code": "unknown_incremental_usage",
+          "message": "App addition usage is unknown or unbounded",
+          "retryable": false
+        },
+        {
+          "candidate_id": "demo-aws",
+          "item_id": "aws-observability-storage",
+          "code": "unknown_incremental_usage",
+          "message": "App addition usage is unknown or unbounded",
+          "retryable": false
+        },
+        {
+          "candidate_id": "demo-aws",
+          "item_id": "aws-egress-transfer",
+          "code": "unknown_incremental_usage",
+          "message": "App addition usage is unknown or unbounded",
+          "retryable": false
+        },
+        {
+          "candidate_id": "demo-aws",
+          "item_id": "aws-addresses-address_hours",
+          "code": "unknown_incremental_usage",
+          "message": "App addition usage is unknown or unbounded",
+          "retryable": false
+        },
+        {
+          "candidate_id": "demo-aws",
+          "item_id": "aws-secrets-storage",
+          "code": "unknown_incremental_usage",
+          "message": "App addition usage is unknown or unbounded",
+          "retryable": false
+        },
+        {
+          "candidate_id": "demo-aws",
+          "item_id": "aws-secrets-access",
+          "code": "unknown_incremental_usage",
+          "message": "App addition usage is unknown or unbounded",
+          "retryable": false
+        },
+        {
+          "candidate_id": "demo-aws",
+          "item_id": "aws-audit-storage",
+          "code": "unknown_incremental_usage",
+          "message": "App addition usage is unknown or unbounded",
+          "retryable": false
+        },
+        {
+          "candidate_id": "demo-aws",
+          "item_id": "aws-audit-write_requests",
+          "code": "unknown_incremental_usage",
+          "message": "App addition usage is unknown or unbounded",
+          "retryable": false
+        },
+        {
+          "candidate_id": "demo-aws",
+          "item_id": "aws-audit-read_requests",
+          "code": "unknown_incremental_usage",
+          "message": "App addition usage is unknown or unbounded",
+          "retryable": false
+        },
+        {
+          "candidate_id": "demo-aws",
+          "item_id": "aws-metrics-disk-storage",
+          "code": "unknown_incremental_usage",
+          "message": "App addition usage is unknown or unbounded",
+          "retryable": false
+        }
+      ]
+    },
+    {
+      "candidate_id": "demo-gcp",
+      "selected_values": {
+        "nodes": {
+          "tier": "module_default",
+          "value": {
+            "min": 3,
+            "desired": 3,
+            "max": 3
+          },
+          "source": {
+            "path": "modules/cluster/gcp/variables.tf",
+            "ref": "v1.16.0",
+            "note": "TOTAL nodes across zones; do not multiply by zone count."
+          }
+        },
+        "node_types": {
+          "tier": "module_default",
+          "value": [
+            "e2-standard-2"
+          ],
+          "source": {
+            "path": "modules/cluster/gcp/variables.tf",
+            "ref": "v1.16.0",
+            "note": "Referenced GKE default machine type."
+          }
+        },
+        "node_disk_gb": {
+          "tier": "module_default",
+          "value": 30,
+          "source": {
+            "path": "modules/cluster/gcp/main.tf",
+            "ref": "v1.16.0",
+            "note": "pd-standard disk_size_gb=30 per node."
+          }
+        },
+        "db_class": {
+          "tier": "module_default",
+          "value": "db-g1-small",
+          "source": {
+            "path": "modules/database/gcp/variables.tf",
+            "ref": "v1.16.0",
+            "note": "Shared-core SQL tier: use instance-hours, not assumed dedicated CPU/RAM pricing."
+          }
+        },
+        "db_storage_gb": {
+          "tier": "module_default",
+          "value": 20,
+          "source": {
+            "path": "modules/database/gcp/variables.tf",
+            "ref": "v1.16.0",
+            "note": "SQL PD_SSD initial disk is 20 GB; billing unit conversion must be checked."
+          }
+        },
+        "db_count": {
+          "tier": "root",
+          "value": 1,
+          "source": {
+            "path": "demo-app/infra/envs/gcp/main.tf",
+            "ref": "7893547913b57705d7f2e366f375b15beadcbba4",
+            "note": "Single database module outside test/prod service-base loop."
+          }
+        },
+        "cpu_usage": {
+          "tier": "assumption",
+          "value": {
+            "min": "1460",
+            "max": "1460"
+          },
+          "source": {
+            "path": "documented-assumption",
+            "ref": null,
+            "note": "2 vCPU x 730 hours per e2-standard-2 node; confirm resource specification with selected SKU."
+          }
+        },
+        "memory_usage": {
+          "tier": "assumption",
+          "value": {
+            "min": "5840",
+            "max": "5840"
+          },
+          "source": {
+            "path": "documented-assumption",
+            "ref": null,
+            "note": "8 GiB x 730 hours per e2-standard-2 node; confirm resource specification with selected SKU."
+          }
+        },
+        "disk_usage": {
+          "tier": "assumption",
+          "value": {
+            "min": "30",
+            "max": "30"
+          },
+          "source": {
+            "path": "docs/adr/0014-demo-cost-assumptions.md",
+            "ref": "ADR-0014",
+            "note": "Initial disk size modeled as GiB-month; actual billing and automatic disk growth unverified."
+          }
+        },
+        "sql_disk_usage": {
+          "tier": "assumption",
+          "value": {
+            "min": "20",
+            "max": "20"
+          },
+          "source": {
+            "path": "docs/adr/0014-demo-cost-assumptions.md",
+            "ref": "ADR-0014",
+            "note": "Initial disk size modeled as GiB-month; actual billing and automatic disk growth unverified."
+          }
+        },
+        "ingress_per_env": {
+          "tier": "assumption",
+          "value": 2,
+          "source": {
+            "path": "documented-assumption",
+            "ref": null,
+            "note": "Active and preview GCE ingresses per namespace; live forwarding rules and fees need verification."
+          }
+        },
+        "repositories": {
+          "tier": "root",
+          "value": 2,
+          "source": {
+            "path": "demo-app/infra/envs/gcp/main.tf",
+            "ref": "7893547913b57705d7f2e366f375b15beadcbba4",
+            "note": "BE/FE repositories, shared across test/prod."
+          }
+        }
+      },
+      "used_values": [
+        "cpu_usage",
+        "db_count",
+        "disk_usage",
+        "ingress_per_env",
+        "memory_usage",
+        "nodes",
+        "repositories",
+        "sql_disk_usage"
+      ],
+      "shared_resources": [
+        {
+          "resource_id": "gcp-cluster",
+          "environments": [
+            "test",
+            "prod"
+          ],
+          "counted_once": true
+        },
+        {
+          "resource_id": "gcp-nodes",
+          "environments": [
+            "test",
+            "prod"
+          ],
+          "counted_once": true
+        },
+        {
+          "resource_id": "gcp-node-disks",
+          "environments": [
+            "test",
+            "prod"
+          ],
+          "counted_once": true
+        },
+        {
+          "resource_id": "gcp-nat",
+          "environments": [
+            "test",
+            "prod"
+          ],
+          "counted_once": true
+        },
+        {
+          "resource_id": "gcp-db",
+          "environments": [
+            "test",
+            "prod"
+          ],
+          "counted_once": true
+        },
+        {
+          "resource_id": "gcp-registry",
+          "environments": [
+            "test",
+            "prod"
+          ],
+          "counted_once": true
+        },
+        {
+          "resource_id": "gcp-observability",
+          "environments": [
+            "test",
+            "prod"
+          ],
+          "counted_once": true
+        },
+        {
+          "resource_id": "gcp-egress",
+          "environments": [
+            "test",
+            "prod"
+          ],
+          "counted_once": true
+        },
+        {
+          "resource_id": "gcp-addresses",
+          "environments": [
+            "test",
+            "prod"
+          ],
+          "counted_once": true
+        },
+        {
+          "resource_id": "gcp-metrics",
+          "environments": [
+            "test",
+            "prod"
+          ],
+          "counted_once": true
+        },
+        {
+          "resource_id": "gcp-secrets",
+          "environments": [
+            "test",
+            "prod"
+          ],
+          "counted_once": true
+        },
+        {
+          "resource_id": "gcp-audit",
+          "environments": [
+            "test",
+            "prod"
+          ],
+          "counted_once": true
+        }
+      ],
+      "excluded_resources": {},
+      "sizing": {
+        "check": "within_supplied_bounds",
+        "node_expansion": "not_indicated",
+        "demand": {
+          "cpu_millicores": "600",
+          "memory_mib": "640",
+          "pod_slots": "8"
+        },
+        "available": {
+          "cpu_millicores": "4700",
+          "memory_mib": "7168",
+          "pod_slots": "305"
+        },
+        "reason": "Aggregate requests only; placement, affinity, live allocatable capacity and other workloads require separate verification",
+        "source": {
+          "path": "docs/adr/0014-demo-cost-assumptions.md",
+          "ref": "ADR-0014",
+          "note": "Demo aggregate capacity assumption only, not measured allocatable or placement verification."
+        },
+        "traffic_scenario": "final"
+      },
+      "operating_costs": {},
+      "issues": [
+        {
+          "candidate_id": "demo-gcp",
+          "item_id": "gcp-cluster-cluster_hours",
+          "code": "unknown_incremental_usage",
+          "message": "App addition usage is unknown or unbounded",
+          "retryable": false
+        },
+        {
+          "candidate_id": "demo-gcp",
+          "item_id": "gcp-nodes-cpu_hours",
+          "code": "unknown_incremental_usage",
+          "message": "App addition usage is unknown or unbounded",
+          "retryable": false
+        },
+        {
+          "candidate_id": "demo-gcp",
+          "item_id": "gcp-nodes-memory_hours",
+          "code": "unknown_incremental_usage",
+          "message": "App addition usage is unknown or unbounded",
+          "retryable": false
+        },
+        {
+          "candidate_id": "demo-gcp",
+          "item_id": "gcp-node-disks-storage",
+          "code": "unknown_incremental_usage",
+          "message": "App addition usage is unknown or unbounded",
+          "retryable": false
+        },
+        {
+          "candidate_id": "demo-gcp",
+          "item_id": "gcp-nat-gateway_hours",
+          "code": "unknown_incremental_usage",
+          "message": "App addition usage is unknown or unbounded",
+          "retryable": false
+        },
+        {
+          "candidate_id": "demo-gcp",
+          "item_id": "gcp-nat-processed_data",
+          "code": "unknown_incremental_usage",
+          "message": "App addition usage is unknown or unbounded",
+          "retryable": false
+        },
+        {
+          "candidate_id": "demo-gcp",
+          "item_id": "gcp-ingress-test-load_balancer_hours",
+          "code": "unknown_incremental_usage",
+          "message": "App addition usage is unknown or unbounded",
+          "retryable": false
+        },
+        {
+          "candidate_id": "demo-gcp",
+          "item_id": "gcp-ingress-test-processed_data",
+          "code": "unknown_incremental_usage",
+          "message": "App addition usage is unknown or unbounded",
+          "retryable": false
+        },
+        {
+          "candidate_id": "demo-gcp",
+          "item_id": "gcp-ingress-test-outbound-data",
+          "code": "unknown_incremental_usage",
+          "message": "App addition usage is unknown or unbounded",
+          "retryable": false
+        },
+        {
+          "candidate_id": "demo-gcp",
+          "item_id": "gcp-ingress-prod-load_balancer_hours",
+          "code": "unknown_incremental_usage",
+          "message": "App addition usage is unknown or unbounded",
+          "retryable": false
+        },
+        {
+          "candidate_id": "demo-gcp",
+          "item_id": "gcp-ingress-prod-processed_data",
+          "code": "unknown_incremental_usage",
+          "message": "App addition usage is unknown or unbounded",
+          "retryable": false
+        },
+        {
+          "candidate_id": "demo-gcp",
+          "item_id": "gcp-ingress-prod-outbound-data",
+          "code": "unknown_incremental_usage",
+          "message": "App addition usage is unknown or unbounded",
+          "retryable": false
+        },
+        {
+          "candidate_id": "demo-gcp",
+          "item_id": "gcp-db-instance_hours",
+          "code": "unknown_incremental_usage",
+          "message": "App addition usage is unknown or unbounded",
+          "retryable": false
+        },
+        {
+          "candidate_id": "demo-gcp",
+          "item_id": "gcp-db-storage",
+          "code": "unknown_incremental_usage",
+          "message": "App addition usage is unknown or unbounded",
+          "retryable": false
+        },
+        {
+          "candidate_id": "demo-gcp",
+          "item_id": "gcp-registry-storage",
+          "code": "unknown_incremental_usage",
+          "message": "App addition usage is unknown or unbounded",
+          "retryable": false
+        },
+        {
+          "candidate_id": "demo-gcp",
+          "item_id": "gcp-observability-ingestion",
+          "code": "unknown_incremental_usage",
+          "message": "App addition usage is unknown or unbounded",
+          "retryable": false
+        },
+        {
+          "candidate_id": "demo-gcp",
+          "item_id": "gcp-observability-storage",
+          "code": "unknown_incremental_usage",
+          "message": "App addition usage is unknown or unbounded",
+          "retryable": false
+        },
+        {
+          "candidate_id": "demo-gcp",
+          "item_id": "gcp-egress-transfer",
+          "code": "unknown_incremental_usage",
+          "message": "App addition usage is unknown or unbounded",
+          "retryable": false
+        },
+        {
+          "candidate_id": "demo-gcp",
+          "item_id": "gcp-addresses-address_hours",
+          "code": "unknown_incremental_usage",
+          "message": "App addition usage is unknown or unbounded",
+          "retryable": false
+        },
+        {
+          "candidate_id": "demo-gcp",
+          "item_id": "gcp-metrics-metrics",
+          "code": "unknown_incremental_usage",
+          "message": "App addition usage is unknown or unbounded",
+          "retryable": false
+        },
+        {
+          "candidate_id": "demo-gcp",
+          "item_id": "gcp-secrets-storage",
+          "code": "unknown_incremental_usage",
+          "message": "App addition usage is unknown or unbounded",
+          "retryable": false
+        },
+        {
+          "candidate_id": "demo-gcp",
+          "item_id": "gcp-secrets-access",
+          "code": "unknown_incremental_usage",
+          "message": "App addition usage is unknown or unbounded",
+          "retryable": false
+        },
+        {
+          "candidate_id": "demo-gcp",
+          "item_id": "gcp-audit-storage",
+          "code": "unknown_incremental_usage",
+          "message": "App addition usage is unknown or unbounded",
+          "retryable": false
+        }
+      ]
+    },
+    {
+      "candidate_id": "demo-onprem",
+      "selected_values": {},
+      "used_values": [],
+      "shared_resources": [],
+      "excluded_resources": {},
+      "sizing": {
+        "check": "unknown",
+        "node_expansion": "review_required",
+        "demand": null,
+        "available": null,
+        "reason": "Traffic or supplied cluster capacity is unknown; node quantity is not changed automatically"
+      },
+      "operating_costs": {
+        "power": {
+          "monthly_krw": null,
+          "source": {
+            "path": "user-input",
+            "ref": null,
+            "note": "No monthly power cost supplied."
+          }
+        },
+        "hardware": {
+          "monthly_krw": null,
+          "source": {
+            "path": "user-input",
+            "ref": null,
+            "note": "No monthly hardware cost supplied."
+          }
+        },
+        "labor": {
+          "monthly_krw": null,
+          "source": {
+            "path": "user-input",
+            "ref": null,
+            "note": "No monthly labor cost supplied."
+          }
+        }
+      },
+      "issues": [
+        {
+          "candidate_id": "demo-onprem",
+          "item_id": null,
+          "code": "unknown_capacity",
+          "message": "Traffic or supplied cluster capacity is unknown; node quantity is not changed automatically",
+          "retryable": false
+        },
+        {
+          "candidate_id": "demo-onprem",
+          "item_id": null,
+          "code": "unknown_operating_cost",
+          "message": "Onprem power operating cost is not estimated",
+          "retryable": false
+        },
+        {
+          "candidate_id": "demo-onprem",
+          "item_id": null,
+          "code": "unknown_operating_cost",
+          "message": "Onprem hardware operating cost is not estimated",
+          "retryable": false
+        },
+        {
+          "candidate_id": "demo-onprem",
+          "item_id": null,
+          "code": "unknown_operating_cost",
+          "message": "Onprem labor operating cost is not estimated",
+          "retryable": false
+        }
+      ]
+    }
+  ],
+  "issues": [
+    {
+      "candidate_id": "demo-aws",
+      "item_id": "aws-cluster-cluster_hours",
+      "code": "unknown_incremental_usage",
+      "message": "App addition usage is unknown or unbounded",
+      "retryable": false
+    },
+    {
+      "candidate_id": "demo-aws",
+      "item_id": "aws-nodes-instance_hours",
+      "code": "unknown_incremental_usage",
+      "message": "App addition usage is unknown or unbounded",
+      "retryable": false
+    },
+    {
+      "candidate_id": "demo-aws",
+      "item_id": "aws-node-disks-storage",
+      "code": "unknown_incremental_usage",
+      "message": "App addition usage is unknown or unbounded",
+      "retryable": false
+    },
+    {
+      "candidate_id": "demo-aws",
+      "item_id": "aws-nat-gateway_hours",
+      "code": "unknown_incremental_usage",
+      "message": "App addition usage is unknown or unbounded",
+      "retryable": false
+    },
+    {
+      "candidate_id": "demo-aws",
+      "item_id": "aws-nat-processed_data",
+      "code": "unknown_incremental_usage",
+      "message": "App addition usage is unknown or unbounded",
+      "retryable": false
+    },
+    {
+      "candidate_id": "demo-aws",
+      "item_id": "aws-alb-load_balancer_hours",
+      "code": "unknown_incremental_usage",
+      "message": "App addition usage is unknown or unbounded",
+      "retryable": false
+    },
+    {
+      "candidate_id": "demo-aws",
+      "item_id": "aws-alb-lcu_hours",
+      "code": "unknown_incremental_usage",
+      "message": "App addition usage is unknown or unbounded",
+      "retryable": false
+    },
+    {
+      "candidate_id": "demo-aws",
+      "item_id": "aws-db-instance_hours",
+      "code": "unknown_incremental_usage",
+      "message": "App addition usage is unknown or unbounded",
+      "retryable": false
+    },
+    {
+      "candidate_id": "demo-aws",
+      "item_id": "aws-db-storage",
+      "code": "unknown_incremental_usage",
+      "message": "App addition usage is unknown or unbounded",
+      "retryable": false
+    },
+    {
+      "candidate_id": "demo-aws",
+      "item_id": "aws-registry-storage",
+      "code": "unknown_incremental_usage",
+      "message": "App addition usage is unknown or unbounded",
+      "retryable": false
+    },
+    {
+      "candidate_id": "demo-aws",
+      "item_id": "aws-observability-ingestion",
+      "code": "unknown_incremental_usage",
+      "message": "App addition usage is unknown or unbounded",
+      "retryable": false
+    },
+    {
+      "candidate_id": "demo-aws",
+      "item_id": "aws-observability-storage",
+      "code": "unknown_incremental_usage",
+      "message": "App addition usage is unknown or unbounded",
+      "retryable": false
+    },
+    {
+      "candidate_id": "demo-aws",
+      "item_id": "aws-egress-transfer",
+      "code": "unknown_incremental_usage",
+      "message": "App addition usage is unknown or unbounded",
+      "retryable": false
+    },
+    {
+      "candidate_id": "demo-aws",
+      "item_id": "aws-addresses-address_hours",
+      "code": "unknown_incremental_usage",
+      "message": "App addition usage is unknown or unbounded",
+      "retryable": false
+    },
+    {
+      "candidate_id": "demo-aws",
+      "item_id": "aws-secrets-storage",
+      "code": "unknown_incremental_usage",
+      "message": "App addition usage is unknown or unbounded",
+      "retryable": false
+    },
+    {
+      "candidate_id": "demo-aws",
+      "item_id": "aws-secrets-access",
+      "code": "unknown_incremental_usage",
+      "message": "App addition usage is unknown or unbounded",
+      "retryable": false
+    },
+    {
+      "candidate_id": "demo-aws",
+      "item_id": "aws-audit-storage",
+      "code": "unknown_incremental_usage",
+      "message": "App addition usage is unknown or unbounded",
+      "retryable": false
+    },
+    {
+      "candidate_id": "demo-aws",
+      "item_id": "aws-audit-write_requests",
+      "code": "unknown_incremental_usage",
+      "message": "App addition usage is unknown or unbounded",
+      "retryable": false
+    },
+    {
+      "candidate_id": "demo-aws",
+      "item_id": "aws-audit-read_requests",
+      "code": "unknown_incremental_usage",
+      "message": "App addition usage is unknown or unbounded",
+      "retryable": false
+    },
+    {
+      "candidate_id": "demo-aws",
+      "item_id": "aws-metrics-disk-storage",
+      "code": "unknown_incremental_usage",
+      "message": "App addition usage is unknown or unbounded",
+      "retryable": false
+    },
+    {
+      "candidate_id": "demo-gcp",
+      "item_id": "gcp-cluster-cluster_hours",
+      "code": "unknown_incremental_usage",
+      "message": "App addition usage is unknown or unbounded",
+      "retryable": false
+    },
+    {
+      "candidate_id": "demo-gcp",
+      "item_id": "gcp-nodes-cpu_hours",
+      "code": "unknown_incremental_usage",
+      "message": "App addition usage is unknown or unbounded",
+      "retryable": false
+    },
+    {
+      "candidate_id": "demo-gcp",
+      "item_id": "gcp-nodes-memory_hours",
+      "code": "unknown_incremental_usage",
+      "message": "App addition usage is unknown or unbounded",
+      "retryable": false
+    },
+    {
+      "candidate_id": "demo-gcp",
+      "item_id": "gcp-node-disks-storage",
+      "code": "unknown_incremental_usage",
+      "message": "App addition usage is unknown or unbounded",
+      "retryable": false
+    },
+    {
+      "candidate_id": "demo-gcp",
+      "item_id": "gcp-nat-gateway_hours",
+      "code": "unknown_incremental_usage",
+      "message": "App addition usage is unknown or unbounded",
+      "retryable": false
+    },
+    {
+      "candidate_id": "demo-gcp",
+      "item_id": "gcp-nat-processed_data",
+      "code": "unknown_incremental_usage",
+      "message": "App addition usage is unknown or unbounded",
+      "retryable": false
+    },
+    {
+      "candidate_id": "demo-gcp",
+      "item_id": "gcp-ingress-test-load_balancer_hours",
+      "code": "unknown_incremental_usage",
+      "message": "App addition usage is unknown or unbounded",
+      "retryable": false
+    },
+    {
+      "candidate_id": "demo-gcp",
+      "item_id": "gcp-ingress-test-processed_data",
+      "code": "unknown_incremental_usage",
+      "message": "App addition usage is unknown or unbounded",
+      "retryable": false
+    },
+    {
+      "candidate_id": "demo-gcp",
+      "item_id": "gcp-ingress-test-outbound-data",
+      "code": "unknown_incremental_usage",
+      "message": "App addition usage is unknown or unbounded",
+      "retryable": false
+    },
+    {
+      "candidate_id": "demo-gcp",
+      "item_id": "gcp-ingress-prod-load_balancer_hours",
+      "code": "unknown_incremental_usage",
+      "message": "App addition usage is unknown or unbounded",
+      "retryable": false
+    },
+    {
+      "candidate_id": "demo-gcp",
+      "item_id": "gcp-ingress-prod-processed_data",
+      "code": "unknown_incremental_usage",
+      "message": "App addition usage is unknown or unbounded",
+      "retryable": false
+    },
+    {
+      "candidate_id": "demo-gcp",
+      "item_id": "gcp-ingress-prod-outbound-data",
+      "code": "unknown_incremental_usage",
+      "message": "App addition usage is unknown or unbounded",
+      "retryable": false
+    },
+    {
+      "candidate_id": "demo-gcp",
+      "item_id": "gcp-db-instance_hours",
+      "code": "unknown_incremental_usage",
+      "message": "App addition usage is unknown or unbounded",
+      "retryable": false
+    },
+    {
+      "candidate_id": "demo-gcp",
+      "item_id": "gcp-db-storage",
+      "code": "unknown_incremental_usage",
+      "message": "App addition usage is unknown or unbounded",
+      "retryable": false
+    },
+    {
+      "candidate_id": "demo-gcp",
+      "item_id": "gcp-registry-storage",
+      "code": "unknown_incremental_usage",
+      "message": "App addition usage is unknown or unbounded",
+      "retryable": false
+    },
+    {
+      "candidate_id": "demo-gcp",
+      "item_id": "gcp-observability-ingestion",
+      "code": "unknown_incremental_usage",
+      "message": "App addition usage is unknown or unbounded",
+      "retryable": false
+    },
+    {
+      "candidate_id": "demo-gcp",
+      "item_id": "gcp-observability-storage",
+      "code": "unknown_incremental_usage",
+      "message": "App addition usage is unknown or unbounded",
+      "retryable": false
+    },
+    {
+      "candidate_id": "demo-gcp",
+      "item_id": "gcp-egress-transfer",
+      "code": "unknown_incremental_usage",
+      "message": "App addition usage is unknown or unbounded",
+      "retryable": false
+    },
+    {
+      "candidate_id": "demo-gcp",
+      "item_id": "gcp-addresses-address_hours",
+      "code": "unknown_incremental_usage",
+      "message": "App addition usage is unknown or unbounded",
+      "retryable": false
+    },
+    {
+      "candidate_id": "demo-gcp",
+      "item_id": "gcp-metrics-metrics",
+      "code": "unknown_incremental_usage",
+      "message": "App addition usage is unknown or unbounded",
+      "retryable": false
+    },
+    {
+      "candidate_id": "demo-gcp",
+      "item_id": "gcp-secrets-storage",
+      "code": "unknown_incremental_usage",
+      "message": "App addition usage is unknown or unbounded",
+      "retryable": false
+    },
+    {
+      "candidate_id": "demo-gcp",
+      "item_id": "gcp-secrets-access",
+      "code": "unknown_incremental_usage",
+      "message": "App addition usage is unknown or unbounded",
+      "retryable": false
+    },
+    {
+      "candidate_id": "demo-gcp",
+      "item_id": "gcp-audit-storage",
+      "code": "unknown_incremental_usage",
+      "message": "App addition usage is unknown or unbounded",
+      "retryable": false
+    },
+    {
+      "candidate_id": "demo-onprem",
+      "item_id": null,
+      "code": "unknown_capacity",
+      "message": "Traffic or supplied cluster capacity is unknown; node quantity is not changed automatically",
+      "retryable": false
+    },
+    {
+      "candidate_id": "demo-onprem",
+      "item_id": null,
+      "code": "unknown_operating_cost",
+      "message": "Onprem power operating cost is not estimated",
+      "retryable": false
+    },
+    {
+      "candidate_id": "demo-onprem",
+      "item_id": null,
+      "code": "unknown_operating_cost",
+      "message": "Onprem hardware operating cost is not estimated",
+      "retryable": false
+    },
+    {
+      "candidate_id": "demo-onprem",
+      "item_id": null,
+      "code": "unknown_operating_cost",
+      "message": "Onprem labor operating cost is not estimated",
+      "retryable": false
+    }
+  ]
+}

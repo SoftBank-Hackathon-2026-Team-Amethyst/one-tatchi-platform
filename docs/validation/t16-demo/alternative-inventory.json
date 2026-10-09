@@ -1,0 +1,1822 @@
+{
+  "schema_version": "1",
+  "input_id": "demo-single-public-environment",
+  "created_at": "2026-10-09T14:51:53Z",
+  "template_version": "v1.16.0",
+  "monthly_hours": "730",
+  "monthly_budget": {
+    "min": 0,
+    "max": 100000,
+    "currency": "KRW"
+  },
+  "budget_basis": "total",
+  "fx": {
+    "usd_to_krw": "1343.456106",
+    "as_of": "2026-10-08",
+    "source": "ECB EXR daily reference rates: KRW/EUR divided by USD/EUR; input rounded to 6 decimals"
+  },
+  "candidates": [
+    {
+      "candidate_id": "demo-aws",
+      "target": "aws",
+      "region": "ap-northeast-2",
+      "configuration_status": "assumed",
+      "assumptions": [
+        "Configuration snapshot only; live state and runtime overrides have not been queried. Catalog selectors and unmeasured usage remain unconfirmed.",
+        "Live validation uses current configured resources. Unmeasured monthly usage and unsupported additional charges remain unknown; no zero-cost replacement is applied.",
+        "Additional selectors identify potential billable dimensions, not proof of measured monthly usage.",
+        "ADR-0014: monthly demo forecast, not actual billing or observed monthly usage; original API query time preserved.",
+        "Extra audit retention is conditional; DNS, backups and additional network telemetry outside this inventory need separate review.",
+        "Alternative: one public application environment plus central metrics; production external access differs. Three nodes and DB remain unchanged."
+      ],
+      "values": {
+        "nodes": {
+          "root": {
+            "value": {
+              "min": 3,
+              "desired": 3,
+              "max": 3
+            },
+            "source": {
+              "path": "demo-app/infra/envs/aws/main.tf",
+              "ref": "7893547913b57705d7f2e366f375b15beadcbba4",
+              "note": "Explicit node_count takes priority over module desired=2."
+            }
+          },
+          "module_default": {
+            "value": {
+              "min": 2,
+              "desired": 2,
+              "max": 3
+            },
+            "source": {
+              "path": "modules/cluster/aws/variables.tf",
+              "ref": "v1.16.0",
+              "note": "Referenced module default; overridden by environment root."
+            }
+          }
+        },
+        "node_types": {
+          "root": {
+            "value": [
+              "t3.medium"
+            ],
+            "source": {
+              "path": "demo-app/infra/envs/aws/main.tf",
+              "ref": "7893547913b57705d7f2e366f375b15beadcbba4",
+              "note": "Explicit Linux AL2023 node type."
+            }
+          }
+        },
+        "nat_count": {
+          "root": {
+            "value": 1,
+            "source": {
+              "path": "demo-app/infra/envs/aws/main.tf",
+              "ref": "7893547913b57705d7f2e366f375b15beadcbba4",
+              "note": "single_nat=true; one shared NAT."
+            }
+          }
+        },
+        "db_class": {
+          "root": {
+            "value": "db.t4g.micro",
+            "source": {
+              "path": "demo-app/infra/envs/aws/main.tf",
+              "ref": "7893547913b57705d7f2e366f375b15beadcbba4",
+              "note": "One shared RDS instance."
+            }
+          }
+        },
+        "db_count": {
+          "root": {
+            "value": 1,
+            "source": {
+              "path": "demo-app/infra/envs/aws/main.tf",
+              "ref": "7893547913b57705d7f2e366f375b15beadcbba4",
+              "note": "database module is outside the environment loop."
+            }
+          }
+        },
+        "db_storage": {
+          "root": {
+            "value": {
+              "min": "20",
+              "max": "20"
+            },
+            "source": {
+              "path": "demo-app/infra/envs/aws/main.tf",
+              "ref": "7893547913b57705d7f2e366f375b15beadcbba4",
+              "note": "20 GB gp3 storage."
+            }
+          }
+        },
+        "alb_count": {
+          "assumption": {
+            "value": 2,
+            "source": {
+              "path": "docs/adr/0014-demo-cost-assumptions.md",
+              "ref": "ADR-0014",
+              "note": "Hypothetical single public demo environment; does not modify actual ingress configuration."
+            }
+          }
+        },
+        "node_disk_usage": {
+          "assumption": {
+            "value": {
+              "min": "20",
+              "max": "20"
+            },
+            "source": {
+              "path": "AWS EKS/EC2/EBS readonly metadata",
+              "ref": null,
+              "note": "Three node root disks observed at 20GB gp3; future monthly storage modeled at current size."
+            }
+          }
+        },
+        "repositories": {
+          "root": {
+            "value": 2,
+            "source": {
+              "path": "demo-app/infra/envs/aws/main.tf",
+              "ref": "7893547913b57705d7f2e366f375b15beadcbba4",
+              "note": "BE/FE repositories, shared across test/prod."
+            }
+          }
+        }
+      },
+      "resources": [
+        {
+          "resource_id": "aws-cluster",
+          "resource_kind": "eks",
+          "shared": true,
+          "environments": [
+            "test",
+            "prod"
+          ],
+          "items": [
+            {
+              "item_id": "aws-cluster-cluster_hours",
+              "billing_dimension": "cluster_hours",
+              "attributes": {
+                "usage_type": "APN2-AmazonEKS-Hours:perCluster"
+              },
+              "quantity": 1,
+              "unit": "hour",
+              "cost_type": "fixed",
+              "monthly_usage": {
+                "min": "730",
+                "max": "730"
+              },
+              "incremental_usage": null,
+              "source": {
+                "path": "docs/adr/0014-demo-cost-assumptions.md",
+                "ref": "ADR-0014",
+                "note": "Catalog selector or usage must be confirmed before a complete quote. Monthly usage in this scenario follows ADR-0014 demo assumptions."
+              }
+            }
+          ]
+        },
+        {
+          "resource_id": "aws-nodes",
+          "resource_kind": "ec2",
+          "shared": true,
+          "environments": [
+            "test",
+            "prod"
+          ],
+          "items": [
+            {
+              "item_id": "aws-nodes-instance_hours",
+              "billing_dimension": "instance_hours",
+              "attributes": {
+                "instance_type": {
+                  "value_from": "node_types",
+                  "member": 0
+                },
+                "operating_system": "Linux",
+                "tenancy": "Shared"
+              },
+              "quantity": {
+                "value_from": "nodes",
+                "member": "desired"
+              },
+              "unit": "hour",
+              "cost_type": "fixed",
+              "monthly_usage": {
+                "min": "730",
+                "max": "730"
+              },
+              "incremental_usage": null,
+              "source": {
+                "path": "docs/adr/0014-demo-cost-assumptions.md",
+                "ref": "ADR-0014",
+                "note": "node_count.desired=3; do not derive quantity from replicas. Monthly usage in this scenario follows ADR-0014 demo assumptions."
+              }
+            }
+          ]
+        },
+        {
+          "resource_id": "aws-node-disks",
+          "resource_kind": "ebs",
+          "shared": true,
+          "environments": [
+            "test",
+            "prod"
+          ],
+          "items": [
+            {
+              "item_id": "aws-node-disks-storage",
+              "billing_dimension": "storage",
+              "attributes": {
+                "usage_type": "APN2-EBS:VolumeUsage.gp3",
+                "volume_api_name": "gp3"
+              },
+              "quantity": {
+                "value_from": "nodes",
+                "member": "desired"
+              },
+              "unit": "gb_month",
+              "cost_type": "fixed",
+              "monthly_usage": {
+                "value_from": "node_disk_usage"
+              },
+              "incremental_usage": null,
+              "source": {
+                "path": "docs/adr/0014-demo-cost-assumptions.md",
+                "ref": "ADR-0014",
+                "note": "Catalog selector or usage must be confirmed before a complete quote. Monthly usage in this scenario follows ADR-0014 demo assumptions."
+              }
+            }
+          ]
+        },
+        {
+          "resource_id": "aws-nat",
+          "resource_kind": "nat",
+          "shared": true,
+          "environments": [
+            "test",
+            "prod"
+          ],
+          "items": [
+            {
+              "item_id": "aws-nat-gateway_hours",
+              "billing_dimension": "gateway_hours",
+              "attributes": {
+                "usage_type": "APN2-NatGateway-Hours"
+              },
+              "quantity": {
+                "value_from": "nat_count"
+              },
+              "unit": "hour",
+              "cost_type": "fixed",
+              "monthly_usage": {
+                "min": "730",
+                "max": "730"
+              },
+              "incremental_usage": null,
+              "source": {
+                "path": "docs/adr/0014-demo-cost-assumptions.md",
+                "ref": "ADR-0014",
+                "note": "Catalog selector or usage must be confirmed before a complete quote. Monthly usage in this scenario follows ADR-0014 demo assumptions."
+              }
+            },
+            {
+              "item_id": "aws-nat-processed_data",
+              "billing_dimension": "processed_data",
+              "attributes": {
+                "usage_type": "APN2-NatGateway-Bytes"
+              },
+              "quantity": {
+                "value_from": "nat_count"
+              },
+              "unit": "gb",
+              "cost_type": "variable",
+              "monthly_usage": {
+                "min": "5",
+                "max": "10"
+              },
+              "incremental_usage": null,
+              "source": {
+                "path": "docs/adr/0014-demo-cost-assumptions.md",
+                "ref": "ADR-0014",
+                "note": "Catalog selector or usage must be confirmed before a complete quote. Monthly usage in this scenario follows ADR-0014 demo assumptions."
+              }
+            }
+          ]
+        },
+        {
+          "resource_id": "aws-alb",
+          "resource_kind": "alb",
+          "shared": true,
+          "environments": [
+            "test",
+            "prod"
+          ],
+          "items": [
+            {
+              "item_id": "aws-alb-load_balancer_hours",
+              "billing_dimension": "load_balancer_hours",
+              "attributes": {
+                "usage_type": "APN2-LoadBalancerUsage",
+                "operation": "LoadBalancing:Application"
+              },
+              "quantity": {
+                "value_from": "alb_count"
+              },
+              "unit": "hour",
+              "cost_type": "fixed",
+              "monthly_usage": {
+                "min": "730",
+                "max": "730"
+              },
+              "incremental_usage": null,
+              "source": {
+                "path": "docs/adr/0014-demo-cost-assumptions.md",
+                "ref": "ADR-0014",
+                "note": "Catalog selector or usage must be confirmed before a complete quote. Monthly usage in this scenario follows ADR-0014 demo assumptions."
+              }
+            },
+            {
+              "item_id": "aws-alb-lcu_hours",
+              "billing_dimension": "lcu_hours",
+              "attributes": {
+                "usage_type": "APN2-LCUUsage",
+                "operation": "LoadBalancing:Application"
+              },
+              "quantity": {
+                "value_from": "alb_count"
+              },
+              "unit": "lcu_hour",
+              "cost_type": "variable",
+              "monthly_usage": {
+                "min": "54.75",
+                "max": "109.5"
+              },
+              "incremental_usage": null,
+              "source": {
+                "path": "docs/adr/0014-demo-cost-assumptions.md",
+                "ref": "ADR-0014",
+                "note": "Catalog selector or usage must be confirmed before a complete quote. Monthly usage in this scenario follows ADR-0014 demo assumptions."
+              }
+            }
+          ]
+        },
+        {
+          "resource_id": "aws-db",
+          "resource_kind": "rds",
+          "shared": true,
+          "environments": [
+            "test",
+            "prod"
+          ],
+          "items": [
+            {
+              "item_id": "aws-db-instance_hours",
+              "billing_dimension": "instance_hours",
+              "attributes": {
+                "instance_class": {
+                  "value_from": "db_class"
+                },
+                "engine": "PostgreSQL",
+                "deployment": "Single-AZ"
+              },
+              "quantity": {
+                "value_from": "db_count"
+              },
+              "unit": "hour",
+              "cost_type": "fixed",
+              "monthly_usage": {
+                "min": "730",
+                "max": "730"
+              },
+              "incremental_usage": null,
+              "source": {
+                "path": "docs/adr/0014-demo-cost-assumptions.md",
+                "ref": "ADR-0014",
+                "note": "Shared physical DB is counted once, not once per namespace. Monthly usage in this scenario follows ADR-0014 demo assumptions."
+              }
+            },
+            {
+              "item_id": "aws-db-storage",
+              "billing_dimension": "storage",
+              "attributes": {
+                "usage_type": "APN2-RDS:GP3-Storage",
+                "engine": "PostgreSQL",
+                "deployment": "Single-AZ"
+              },
+              "quantity": {
+                "value_from": "db_count"
+              },
+              "unit": "gb_month",
+              "cost_type": "fixed",
+              "monthly_usage": {
+                "value_from": "db_storage"
+              },
+              "incremental_usage": null,
+              "source": {
+                "path": "docs/adr/0014-demo-cost-assumptions.md",
+                "ref": "ADR-0014",
+                "note": "Catalog selector or usage must be confirmed before a complete quote. Monthly usage in this scenario follows ADR-0014 demo assumptions."
+              }
+            }
+          ]
+        },
+        {
+          "resource_id": "aws-registry",
+          "resource_kind": "ecr",
+          "shared": true,
+          "environments": [
+            "test",
+            "prod"
+          ],
+          "items": [
+            {
+              "item_id": "aws-registry-storage",
+              "billing_dimension": "storage",
+              "attributes": {
+                "usage_type": "APN2-TimedStorage-ByteHrs"
+              },
+              "quantity": {
+                "value_from": "repositories"
+              },
+              "unit": "gb_month",
+              "cost_type": "variable",
+              "monthly_usage": {
+                "min": "0.5",
+                "max": "1"
+              },
+              "incremental_usage": null,
+              "source": {
+                "path": "docs/adr/0014-demo-cost-assumptions.md",
+                "ref": "ADR-0014",
+                "note": "Catalog selector or usage must be confirmed before a complete quote. Monthly usage in this scenario follows ADR-0014 demo assumptions."
+              }
+            }
+          ]
+        },
+        {
+          "resource_id": "aws-observability",
+          "resource_kind": "logs",
+          "shared": true,
+          "environments": [
+            "test",
+            "prod"
+          ],
+          "items": [
+            {
+              "item_id": "aws-observability-ingestion",
+              "billing_dimension": "ingestion",
+              "attributes": {
+                "usage_type": "APN2-DataProcessing-Bytes",
+                "operation": "PutLogEvents"
+              },
+              "quantity": 1,
+              "unit": "gb",
+              "cost_type": "variable",
+              "monthly_usage": {
+                "min": "2",
+                "max": "5"
+              },
+              "incremental_usage": null,
+              "source": {
+                "path": "docs/adr/0014-demo-cost-assumptions.md",
+                "ref": "ADR-0014",
+                "note": "Catalog selector or usage must be confirmed before a complete quote. Exact public catalog selector confirmed by AWS GetProducts; variable usage remains unknown. Monthly usage in this scenario follows ADR-0014 demo assumptions."
+              }
+            },
+            {
+              "item_id": "aws-observability-storage",
+              "billing_dimension": "storage",
+              "attributes": {
+                "usage_type": "APN2-TimedStorage-ByteHrs"
+              },
+              "quantity": 1,
+              "unit": "gb_month",
+              "cost_type": "variable",
+              "monthly_usage": {
+                "min": "1",
+                "max": "2"
+              },
+              "incremental_usage": null,
+              "source": {
+                "path": "docs/adr/0014-demo-cost-assumptions.md",
+                "ref": "ADR-0014",
+                "note": "Catalog selector or usage must be confirmed before a complete quote. Exact public catalog selector confirmed by AWS GetProducts; variable usage remains unknown. Monthly usage in this scenario follows ADR-0014 demo assumptions."
+              }
+            }
+          ]
+        },
+        {
+          "resource_id": "aws-egress",
+          "resource_kind": "internet_egress",
+          "shared": true,
+          "environments": [
+            "test",
+            "prod"
+          ],
+          "items": [
+            {
+              "item_id": "aws-egress-transfer",
+              "billing_dimension": "transfer",
+              "attributes": {
+                "usage_type": "APN2-DataTransfer-Out-Bytes",
+                "to_location": "External"
+              },
+              "quantity": 1,
+              "unit": "gb",
+              "cost_type": "variable",
+              "monthly_usage": {
+                "min": "5",
+                "max": "10"
+              },
+              "incremental_usage": null,
+              "source": {
+                "path": "docs/adr/0014-demo-cost-assumptions.md",
+                "ref": "ADR-0014",
+                "note": "Catalog selector or usage must be confirmed before a complete quote. Exact public catalog selector confirmed by AWS GetProducts; variable usage remains unknown. Monthly usage in this scenario follows ADR-0014 demo assumptions."
+              }
+            }
+          ]
+        },
+        {
+          "resource_id": "aws-addresses",
+          "resource_kind": "aws_public_ipv4",
+          "shared": true,
+          "environments": [
+            "test",
+            "prod"
+          ],
+          "items": [
+            {
+              "item_id": "aws-addresses-address_hours",
+              "billing_dimension": "address_hours",
+              "attributes": {
+                "usage_type": "APN2-PublicIPv4:InUseAddress"
+              },
+              "quantity": 5,
+              "unit": "hour",
+              "cost_type": "variable",
+              "monthly_usage": {
+                "min": "730",
+                "max": "730"
+              },
+              "incremental_usage": null,
+              "source": {
+                "path": "docs/adr/0014-demo-cost-assumptions.md",
+                "ref": "ADR-0014",
+                "note": "Catalog selector or usage must be confirmed before a complete quote. Exact public catalog selector confirmed by AWS GetProducts; variable usage remains unknown. Monthly usage in this scenario follows ADR-0014 demo assumptions."
+              }
+            }
+          ]
+        },
+        {
+          "resource_id": "aws-secrets",
+          "resource_kind": "aws_secrets",
+          "shared": true,
+          "environments": [
+            "test",
+            "prod"
+          ],
+          "items": [
+            {
+              "item_id": "aws-secrets-storage",
+              "billing_dimension": "storage",
+              "attributes": {
+                "usage_type": "APN2-AWSSecretsManager-Secrets"
+              },
+              "quantity": 2,
+              "unit": "secret_month",
+              "cost_type": "variable",
+              "monthly_usage": {
+                "min": "1",
+                "max": "1"
+              },
+              "incremental_usage": null,
+              "source": {
+                "path": "docs/adr/0014-demo-cost-assumptions.md",
+                "ref": "ADR-0014",
+                "note": "Catalog selector or usage must be confirmed before a complete quote. Exact public catalog selector confirmed by AWS GetProducts; variable usage remains unknown. Monthly usage in this scenario follows ADR-0014 demo assumptions."
+              }
+            },
+            {
+              "item_id": "aws-secrets-access",
+              "billing_dimension": "access_requests",
+              "attributes": {
+                "usage_type": "APN2-AWSSecretsManagerAPIRequest"
+              },
+              "quantity": 2,
+              "unit": "request",
+              "cost_type": "variable",
+              "monthly_usage": {
+                "min": "10000",
+                "max": "10000"
+              },
+              "incremental_usage": null,
+              "source": {
+                "path": "docs/adr/0014-demo-cost-assumptions.md",
+                "ref": "ADR-0014",
+                "note": "Secret access operations are separate from active secret/version storage; monthly access count unmeasured. Monthly usage in this scenario follows ADR-0014 demo assumptions."
+              }
+            }
+          ]
+        },
+        {
+          "resource_id": "aws-audit",
+          "resource_kind": "aws_audit_storage",
+          "shared": true,
+          "environments": [
+            "test",
+            "prod"
+          ],
+          "items": [
+            {
+              "item_id": "aws-audit-storage",
+              "billing_dimension": "storage",
+              "attributes": {
+                "usage_type": "APN2-TimedStorage-ByteHrs"
+              },
+              "quantity": 1,
+              "unit": "gb_month",
+              "cost_type": "variable",
+              "monthly_usage": {
+                "min": "1",
+                "max": "2"
+              },
+              "incremental_usage": null,
+              "source": {
+                "path": "docs/adr/0014-demo-cost-assumptions.md",
+                "ref": "ADR-0014",
+                "note": "Catalog selector or usage must be confirmed before a complete quote. Exact public catalog selector confirmed by AWS GetProducts; variable usage remains unknown. Monthly usage in this scenario follows ADR-0014 demo assumptions."
+              }
+            },
+            {
+              "item_id": "aws-audit-write_requests",
+              "billing_dimension": "write_requests",
+              "attributes": {
+                "usage_type": "APN2-Requests-Tier1"
+              },
+              "quantity": 1,
+              "unit": "request",
+              "cost_type": "variable",
+              "monthly_usage": {
+                "min": "1000",
+                "max": "1000"
+              },
+              "incremental_usage": null,
+              "source": {
+                "path": "docs/adr/0014-demo-cost-assumptions.md",
+                "ref": "ADR-0014",
+                "note": "Shared bootstrap S3 audit bucket request cost; actual request count unmeasured. Monthly usage in this scenario follows ADR-0014 demo assumptions."
+              }
+            },
+            {
+              "item_id": "aws-audit-read_requests",
+              "billing_dimension": "read_requests",
+              "attributes": {
+                "usage_type": "APN2-Requests-Tier2"
+              },
+              "quantity": 1,
+              "unit": "request",
+              "cost_type": "variable",
+              "monthly_usage": {
+                "min": "1000",
+                "max": "1000"
+              },
+              "incremental_usage": null,
+              "source": {
+                "path": "docs/adr/0014-demo-cost-assumptions.md",
+                "ref": "ADR-0014",
+                "note": "Shared bootstrap S3 audit bucket request cost; actual request count unmeasured. Monthly usage in this scenario follows ADR-0014 demo assumptions."
+              }
+            }
+          ]
+        },
+        {
+          "resource_id": "aws-metrics-disk",
+          "resource_kind": "ebs",
+          "shared": true,
+          "environments": [
+            "test",
+            "prod"
+          ],
+          "items": [
+            {
+              "item_id": "aws-metrics-disk-storage",
+              "billing_dimension": "storage",
+              "attributes": {
+                "usage_type": "APN2-EBS:VolumeUsage.gp3",
+                "volume_api_name": "gp3"
+              },
+              "quantity": 1,
+              "unit": "gb_month",
+              "cost_type": "fixed",
+              "monthly_usage": {
+                "min": "5",
+                "max": "5"
+              },
+              "incremental_usage": null,
+              "source": {
+                "path": "docs/adr/0014-demo-cost-assumptions.md",
+                "ref": "ADR-0014",
+                "note": "5GB gp3 observability PVC attached to an EKS node; counted separately from three 20GB root disks. Monthly usage in this scenario follows ADR-0014 demo assumptions."
+              }
+            }
+          ]
+        }
+      ],
+      "excluded_resources": {
+        "aws_metrics": {
+          "path": "docs/adr/0014-demo-cost-assumptions.md",
+          "ref": "ADR-0014",
+          "note": "Paid custom metric ingestion outside this demo quote; Prometheus node/disk costs remain. Not proof that account custom metrics are absent."
+        }
+      },
+      "traffic": {
+        "scenario": "final",
+        "source": {
+          "path": "docs/adr/0014-demo-cost-assumptions.md",
+          "ref": "ADR-0014",
+          "note": "Explicit hackathon forecast; not measured operating usage."
+        },
+        "workloads": [
+          {
+            "name": "demo-app-be",
+            "replicas": 1,
+            "environments": [
+              "test",
+              "prod"
+            ],
+            "blue_green_multiplier": 2,
+            "cpu_millicores": 100,
+            "memory_mib": "128"
+          },
+          {
+            "name": "demo-app-fe",
+            "replicas": 1,
+            "environments": [
+              "test",
+              "prod"
+            ],
+            "blue_green_multiplier": 2,
+            "cpu_millicores": 50,
+            "memory_mib": "32"
+          }
+        ]
+      },
+      "capacity": {
+        "node_count": 3,
+        "per_node": {
+          "cpu_millicores": 1900,
+          "memory_mib": "3072",
+          "pod_slots": 17
+        },
+        "reserved": {
+          "cpu_millicores": 1000,
+          "memory_mib": "2048",
+          "pod_slots": 25
+        },
+        "source": {
+          "path": "docs/adr/0014-demo-cost-assumptions.md",
+          "ref": "ADR-0014",
+          "note": "Demo aggregate capacity assumption only, not measured allocatable or placement verification."
+        }
+      },
+      "operating_costs": {}
+    },
+    {
+      "candidate_id": "demo-gcp",
+      "target": "gcp",
+      "region": "asia-northeast3",
+      "configuration_status": "assumed",
+      "assumptions": [
+        "Configuration snapshot only; live state and runtime overrides have not been queried. Catalog selectors and unmeasured usage remain unconfirmed.",
+        "Referenced node disk is 30 GB; SQL tier db-g1-small and initial storage 20 GB are confirmed configuration defaults, not live usage.",
+        "Live validation uses current configured resources. Unmeasured monthly usage and unsupported additional charges remain unknown; no zero-cost replacement is applied.",
+        "Explicit E2 SKUs use Google public v2beta latest prices; price effective time is not supplied by that API and remains null.",
+        "Catalog mapping snapshot only. Optional AWS custom metrics and GCP custom audit retention are conditional, not proven active; unknown usage is retained.",
+        "GCP internet data transfer selector models Seoul-to-South-Korea Premium traffic only; other destinations require separate items.",
+        "ADR-0014: monthly demo forecast, not actual billing or observed monthly usage; original API query time preserved.",
+        "Extra audit retention is conditional; DNS, backups and additional network telemetry outside this inventory need separate review."
+      ],
+      "values": {
+        "nodes": {
+          "module_default": {
+            "value": {
+              "min": 3,
+              "desired": 3,
+              "max": 3
+            },
+            "source": {
+              "path": "modules/cluster/gcp/variables.tf",
+              "ref": "v1.16.0",
+              "note": "TOTAL nodes across zones; do not multiply by zone count."
+            }
+          }
+        },
+        "node_types": {
+          "module_default": {
+            "value": [
+              "e2-standard-2"
+            ],
+            "source": {
+              "path": "modules/cluster/gcp/variables.tf",
+              "ref": "v1.16.0",
+              "note": "Referenced GKE default machine type."
+            }
+          }
+        },
+        "node_disk_gb": {
+          "module_default": {
+            "value": 30,
+            "source": {
+              "path": "modules/cluster/gcp/main.tf",
+              "ref": "v1.16.0",
+              "note": "pd-standard disk_size_gb=30 per node."
+            }
+          }
+        },
+        "db_class": {
+          "module_default": {
+            "value": "db-g1-small",
+            "source": {
+              "path": "modules/database/gcp/variables.tf",
+              "ref": "v1.16.0",
+              "note": "Shared-core SQL tier: use instance-hours, not assumed dedicated CPU/RAM pricing."
+            }
+          }
+        },
+        "db_storage_gb": {
+          "module_default": {
+            "value": 20,
+            "source": {
+              "path": "modules/database/gcp/variables.tf",
+              "ref": "v1.16.0",
+              "note": "SQL PD_SSD initial disk is 20 GB; billing unit conversion must be checked."
+            }
+          }
+        },
+        "db_count": {
+          "root": {
+            "value": 1,
+            "source": {
+              "path": "demo-app/infra/envs/gcp/main.tf",
+              "ref": "7893547913b57705d7f2e366f375b15beadcbba4",
+              "note": "Single database module outside test/prod service-base loop."
+            }
+          }
+        },
+        "cpu_usage": {
+          "assumption": {
+            "value": {
+              "min": "1460",
+              "max": "1460"
+            },
+            "source": {
+              "path": "documented-assumption",
+              "ref": null,
+              "note": "2 vCPU x 730 hours per e2-standard-2 node; confirm resource specification with selected SKU."
+            }
+          }
+        },
+        "memory_usage": {
+          "assumption": {
+            "value": {
+              "min": "5840",
+              "max": "5840"
+            },
+            "source": {
+              "path": "documented-assumption",
+              "ref": null,
+              "note": "8 GiB x 730 hours per e2-standard-2 node; confirm resource specification with selected SKU."
+            }
+          }
+        },
+        "disk_usage": {
+          "assumption": {
+            "value": {
+              "min": "30",
+              "max": "30"
+            },
+            "source": {
+              "path": "docs/adr/0014-demo-cost-assumptions.md",
+              "ref": "ADR-0014",
+              "note": "Initial disk size modeled as GiB-month; actual billing and automatic disk growth unverified."
+            }
+          }
+        },
+        "sql_disk_usage": {
+          "assumption": {
+            "value": {
+              "min": "20",
+              "max": "20"
+            },
+            "source": {
+              "path": "docs/adr/0014-demo-cost-assumptions.md",
+              "ref": "ADR-0014",
+              "note": "Initial disk size modeled as GiB-month; actual billing and automatic disk growth unverified."
+            }
+          }
+        },
+        "ingress_per_env": {
+          "assumption": {
+            "value": 2,
+            "source": {
+              "path": "documented-assumption",
+              "ref": null,
+              "note": "Active and preview GCE ingresses per namespace; live forwarding rules and fees need verification."
+            }
+          }
+        },
+        "repositories": {
+          "root": {
+            "value": 2,
+            "source": {
+              "path": "demo-app/infra/envs/gcp/main.tf",
+              "ref": "7893547913b57705d7f2e366f375b15beadcbba4",
+              "note": "BE/FE repositories, shared across test/prod."
+            }
+          }
+        }
+      },
+      "resources": [
+        {
+          "resource_id": "gcp-cluster",
+          "resource_kind": "gke",
+          "shared": true,
+          "environments": [
+            "test",
+            "prod"
+          ],
+          "items": [
+            {
+              "item_id": "gcp-cluster-cluster_hours",
+              "billing_dimension": "cluster_hours",
+              "attributes": {
+                "catalog_api": "v2beta",
+                "sku_id": "B561-BFBD-1264",
+                "description": "Regional Kubernetes Clusters",
+                "service_id": "CCD8-9BF1-090E",
+                "resource_family": "Anthos",
+                "resource_group": "GKE"
+              },
+              "quantity": 1,
+              "unit": "hour",
+              "cost_type": "fixed",
+              "monthly_usage": {
+                "min": "730",
+                "max": "730"
+              },
+              "incremental_usage": null,
+              "source": {
+                "path": "docs/adr/0014-demo-cost-assumptions.md",
+                "ref": "ADR-0014",
+                "note": "Catalog selector or usage must be confirmed before a complete quote. Exact public SKU metadata verified. Conditional topology, monthly usage and allowance eligibility must be supplied separately. Monthly usage in this scenario follows ADR-0014 demo assumptions."
+              }
+            }
+          ]
+        },
+        {
+          "resource_id": "gcp-nodes",
+          "resource_kind": "gke_node",
+          "shared": true,
+          "environments": [
+            "test",
+            "prod"
+          ],
+          "items": [
+            {
+              "item_id": "gcp-nodes-cpu_hours",
+              "billing_dimension": "cpu_hours",
+              "attributes": {
+                "resource_family": "Compute",
+                "resource_group": "E2",
+                "sku_id": "9304-94C4-2117",
+                "description": "E2 Instance Core running in Seoul",
+                "catalog_api": "v2beta"
+              },
+              "quantity": {
+                "value_from": "nodes",
+                "member": "desired"
+              },
+              "unit": "vcpu_hour",
+              "cost_type": "fixed",
+              "monthly_usage": {
+                "value_from": "cpu_usage"
+              },
+              "incremental_usage": null,
+              "source": {
+                "path": "docs/adr/0014-demo-cost-assumptions.md",
+                "ref": "ADR-0014",
+                "note": "Exact public On-Demand E2 SKU verified with official SKU catalog and authenticated Google Pricing metadata/price APIs. Monthly usage in this scenario follows ADR-0014 demo assumptions."
+              }
+            },
+            {
+              "item_id": "gcp-nodes-memory_hours",
+              "billing_dimension": "memory_hours",
+              "attributes": {
+                "resource_family": "Compute",
+                "resource_group": "E2",
+                "sku_id": "D715-4E57-BAFB",
+                "description": "E2 Instance Ram running in Seoul",
+                "catalog_api": "v2beta"
+              },
+              "quantity": {
+                "value_from": "nodes",
+                "member": "desired"
+              },
+              "unit": "gib_hour",
+              "cost_type": "fixed",
+              "monthly_usage": {
+                "value_from": "memory_usage"
+              },
+              "incremental_usage": null,
+              "source": {
+                "path": "docs/adr/0014-demo-cost-assumptions.md",
+                "ref": "ADR-0014",
+                "note": "Exact public On-Demand E2 SKU verified with official SKU catalog and authenticated Google Pricing metadata/price APIs. Monthly usage in this scenario follows ADR-0014 demo assumptions."
+              }
+            }
+          ]
+        },
+        {
+          "resource_id": "gcp-node-disks",
+          "resource_kind": "gcp_disk",
+          "shared": true,
+          "environments": [
+            "test",
+            "prod"
+          ],
+          "items": [
+            {
+              "item_id": "gcp-node-disks-storage",
+              "billing_dimension": "storage",
+              "attributes": {
+                "catalog_api": "v2beta",
+                "sku_id": "0306-B164-A7B7",
+                "description": "Storage PD Capacity in Seoul",
+                "service_id": "6F81-5844-456A",
+                "resource_family": "Compute",
+                "resource_group": "Persistent Disk"
+              },
+              "quantity": {
+                "value_from": "nodes",
+                "member": "desired"
+              },
+              "unit": "gib_month",
+              "cost_type": "fixed",
+              "monthly_usage": {
+                "value_from": "disk_usage"
+              },
+              "incremental_usage": null,
+              "source": {
+                "path": "docs/adr/0014-demo-cost-assumptions.md",
+                "ref": "ADR-0014",
+                "note": "30GB pd-standard per node is known; monthly billing quantity is unconfirmed. Declared size: 30 GB. Exact public SKU metadata verified. Conditional topology, monthly usage and allowance eligibility must be supplied separately. Monthly usage in this scenario follows ADR-0014 demo assumptions."
+              }
+            }
+          ]
+        },
+        {
+          "resource_id": "gcp-nat",
+          "resource_kind": "cloud_nat",
+          "shared": true,
+          "environments": [
+            "test",
+            "prod"
+          ],
+          "items": [
+            {
+              "item_id": "gcp-nat-gateway_hours",
+              "billing_dimension": "gateway_hours",
+              "attributes": {
+                "catalog_api": "v2beta",
+                "sku_id": "32E2-4EFC-EF9F",
+                "description": "Networking Cloud Nat Gateway Uptime",
+                "service_id": "E505-1604-58F8",
+                "resource_family": "Network",
+                "resource_group": "Network Other",
+                "nat_billing_basis": "assigned_vm_hours"
+              },
+              "quantity": {
+                "value_from": "nodes",
+                "member": "desired"
+              },
+              "unit": "hour",
+              "cost_type": "fixed",
+              "monthly_usage": {
+                "min": "730",
+                "max": "730"
+              },
+              "incremental_usage": null,
+              "source": {
+                "path": "docs/adr/0014-demo-cost-assumptions.md",
+                "ref": "ADR-0014",
+                "note": "Public NAT uptime is billed per assigned VM-hour, not per router. Node count models potential assigned VMs; actual monthly VM-hours remain unknown. More than 32 assigned VMs require the capped pricing model. Monthly usage in this scenario follows ADR-0014 demo assumptions."
+              }
+            },
+            {
+              "item_id": "gcp-nat-processed_data",
+              "billing_dimension": "processed_data",
+              "attributes": {
+                "catalog_api": "v2beta",
+                "sku_id": "015F-5732-FFF0",
+                "description": "Networking Cloud Nat Data Processing",
+                "service_id": "E505-1604-58F8",
+                "resource_family": "Network",
+                "resource_group": "Network Other"
+              },
+              "quantity": 1,
+              "unit": "gib",
+              "cost_type": "variable",
+              "monthly_usage": {
+                "min": "4.656612873077392578125",
+                "max": "9.313225746154785156250"
+              },
+              "incremental_usage": null,
+              "source": {
+                "path": "docs/adr/0014-demo-cost-assumptions.md",
+                "ref": "ADR-0014",
+                "note": "Catalog selector or usage must be confirmed before a complete quote. Exact public SKU metadata verified. Conditional topology, monthly usage and allowance eligibility must be supplied separately. Monthly usage in this scenario follows ADR-0014 demo assumptions."
+              }
+            }
+          ]
+        },
+        {
+          "resource_id": "gcp-ingress-test",
+          "resource_kind": "gcp_load_balancer",
+          "shared": false,
+          "environments": [
+            "test"
+          ],
+          "items": [
+            {
+              "item_id": "gcp-ingress-test-load_balancer_hours",
+              "billing_dimension": "load_balancer_hours",
+              "attributes": {
+                "catalog_api": "v2beta",
+                "sku_id": "DEE3-C42E-3E4D",
+                "description": "Cloud Load Balancer Forwarding Rule Minimum Global",
+                "service_id": "E505-1604-58F8",
+                "resource_family": "Network",
+                "resource_group": "Cloud LB"
+              },
+              "quantity": {
+                "value_from": "ingress_per_env"
+              },
+              "unit": "hour",
+              "cost_type": "fixed",
+              "monthly_usage": {
+                "min": "730",
+                "max": "730"
+              },
+              "incremental_usage": null,
+              "source": {
+                "path": "docs/adr/0014-demo-cost-assumptions.md",
+                "ref": "ADR-0014",
+                "note": "Catalog selector or usage must be confirmed before a complete quote. Exact public SKU metadata verified. Conditional topology, monthly usage and allowance eligibility must be supplied separately. Monthly usage in this scenario follows ADR-0014 demo assumptions."
+              }
+            },
+            {
+              "item_id": "gcp-ingress-test-processed_data",
+              "billing_dimension": "processed_data",
+              "attributes": {
+                "catalog_api": "v2beta",
+                "sku_id": "147E-ED36-67D1",
+                "description": "Global External Application Load Balancer Inbound Data Processing for Seoul (asia-northeast3)",
+                "service_id": "E505-1604-58F8",
+                "resource_family": "Network",
+                "resource_group": "Cloud LB"
+              },
+              "quantity": {
+                "value_from": "ingress_per_env"
+              },
+              "unit": "gib",
+              "cost_type": "variable",
+              "monthly_usage": {
+                "min": "2.3283064365386962890625",
+                "max": "4.656612873077392578125"
+              },
+              "incremental_usage": null,
+              "source": {
+                "path": "docs/adr/0014-demo-cost-assumptions.md",
+                "ref": "ADR-0014",
+                "note": "Catalog selector or usage must be confirmed before a complete quote. Exact public SKU metadata verified. Conditional topology, monthly usage and allowance eligibility must be supplied separately. Monthly usage in this scenario follows ADR-0014 demo assumptions."
+              }
+            },
+            {
+              "item_id": "gcp-ingress-test-outbound-data",
+              "billing_dimension": "outbound_processed_data",
+              "attributes": {
+                "catalog_api": "v2beta",
+                "sku_id": "3C98-FAA0-7935",
+                "description": "Global External Application Load Balancer Outbound Data Processing for Seoul (asia-northeast3)",
+                "service_id": "E505-1604-58F8",
+                "resource_family": "Network",
+                "resource_group": "Cloud LB"
+              },
+              "quantity": {
+                "value_from": "ingress_per_env"
+              },
+              "unit": "gib",
+              "cost_type": "variable",
+              "monthly_usage": {
+                "min": "2.3283064365386962890625",
+                "max": "4.656612873077392578125"
+              },
+              "incremental_usage": null,
+              "source": {
+                "path": "docs/adr/0014-demo-cost-assumptions.md",
+                "ref": "ADR-0014",
+                "note": "Global external application load balancer outbound data processing; independent from inbound data, unmeasured. Monthly usage in this scenario follows ADR-0014 demo assumptions."
+              }
+            }
+          ]
+        },
+        {
+          "resource_id": "gcp-ingress-prod",
+          "resource_kind": "gcp_load_balancer",
+          "shared": false,
+          "environments": [
+            "prod"
+          ],
+          "items": [
+            {
+              "item_id": "gcp-ingress-prod-load_balancer_hours",
+              "billing_dimension": "load_balancer_hours",
+              "attributes": {
+                "catalog_api": "v2beta",
+                "sku_id": "DEE3-C42E-3E4D",
+                "description": "Cloud Load Balancer Forwarding Rule Minimum Global",
+                "service_id": "E505-1604-58F8",
+                "resource_family": "Network",
+                "resource_group": "Cloud LB"
+              },
+              "quantity": {
+                "value_from": "ingress_per_env"
+              },
+              "unit": "hour",
+              "cost_type": "fixed",
+              "monthly_usage": {
+                "min": "730",
+                "max": "730"
+              },
+              "incremental_usage": null,
+              "source": {
+                "path": "docs/adr/0014-demo-cost-assumptions.md",
+                "ref": "ADR-0014",
+                "note": "Catalog selector or usage must be confirmed before a complete quote. Exact public SKU metadata verified. Conditional topology, monthly usage and allowance eligibility must be supplied separately. Monthly usage in this scenario follows ADR-0014 demo assumptions."
+              }
+            },
+            {
+              "item_id": "gcp-ingress-prod-processed_data",
+              "billing_dimension": "processed_data",
+              "attributes": {
+                "catalog_api": "v2beta",
+                "sku_id": "147E-ED36-67D1",
+                "description": "Global External Application Load Balancer Inbound Data Processing for Seoul (asia-northeast3)",
+                "service_id": "E505-1604-58F8",
+                "resource_family": "Network",
+                "resource_group": "Cloud LB"
+              },
+              "quantity": {
+                "value_from": "ingress_per_env"
+              },
+              "unit": "gib",
+              "cost_type": "variable",
+              "monthly_usage": {
+                "min": "2.3283064365386962890625",
+                "max": "4.656612873077392578125"
+              },
+              "incremental_usage": null,
+              "source": {
+                "path": "docs/adr/0014-demo-cost-assumptions.md",
+                "ref": "ADR-0014",
+                "note": "Catalog selector or usage must be confirmed before a complete quote. Exact public SKU metadata verified. Conditional topology, monthly usage and allowance eligibility must be supplied separately. Monthly usage in this scenario follows ADR-0014 demo assumptions."
+              }
+            },
+            {
+              "item_id": "gcp-ingress-prod-outbound-data",
+              "billing_dimension": "outbound_processed_data",
+              "attributes": {
+                "catalog_api": "v2beta",
+                "sku_id": "3C98-FAA0-7935",
+                "description": "Global External Application Load Balancer Outbound Data Processing for Seoul (asia-northeast3)",
+                "service_id": "E505-1604-58F8",
+                "resource_family": "Network",
+                "resource_group": "Cloud LB"
+              },
+              "quantity": {
+                "value_from": "ingress_per_env"
+              },
+              "unit": "gib",
+              "cost_type": "variable",
+              "monthly_usage": {
+                "min": "2.3283064365386962890625",
+                "max": "4.656612873077392578125"
+              },
+              "incremental_usage": null,
+              "source": {
+                "path": "docs/adr/0014-demo-cost-assumptions.md",
+                "ref": "ADR-0014",
+                "note": "Global external application load balancer outbound data processing; independent from inbound data, unmeasured. Monthly usage in this scenario follows ADR-0014 demo assumptions."
+              }
+            }
+          ]
+        },
+        {
+          "resource_id": "gcp-db",
+          "resource_kind": "cloud_sql",
+          "shared": true,
+          "environments": [
+            "test",
+            "prod"
+          ],
+          "items": [
+            {
+              "item_id": "gcp-db-instance_hours",
+              "billing_dimension": "instance_hours",
+              "attributes": {
+                "catalog_api": "v2beta",
+                "sku_id": "28C7-7317-B255",
+                "description": "Cloud SQL for PostgreSQL: Zonal - Small instance in Seoul",
+                "service_id": "9662-B51E-5089",
+                "resource_family": "Databases",
+                "resource_group": "Cloud SQL"
+              },
+              "quantity": {
+                "value_from": "db_count"
+              },
+              "unit": "hour",
+              "cost_type": "fixed",
+              "monthly_usage": {
+                "min": "730",
+                "max": "730"
+              },
+              "incremental_usage": null,
+              "source": {
+                "path": "docs/adr/0014-demo-cost-assumptions.md",
+                "ref": "ADR-0014",
+                "note": "db-g1-small defaults; exact SQL shared-core catalog selector still unconfirmed. Exact public SKU metadata verified. Conditional topology, monthly usage and allowance eligibility must be supplied separately. Monthly usage in this scenario follows ADR-0014 demo assumptions."
+              }
+            },
+            {
+              "item_id": "gcp-db-storage",
+              "billing_dimension": "storage",
+              "attributes": {
+                "catalog_api": "v2beta",
+                "sku_id": "B160-DAEA-03EE",
+                "description": "Cloud SQL for PostgreSQL: Zonal - Standard storage in Seoul",
+                "service_id": "9662-B51E-5089",
+                "resource_family": "Databases",
+                "resource_group": "Cloud SQL"
+              },
+              "quantity": {
+                "value_from": "db_count"
+              },
+              "unit": "gib_month",
+              "cost_type": "fixed",
+              "monthly_usage": {
+                "value_from": "sql_disk_usage"
+              },
+              "incremental_usage": null,
+              "source": {
+                "path": "docs/adr/0014-demo-cost-assumptions.md",
+                "ref": "ADR-0014",
+                "note": "Catalog selector or usage must be confirmed before a complete quote. Exact public SKU metadata verified. Conditional topology, monthly usage and allowance eligibility must be supplied separately. Monthly usage in this scenario follows ADR-0014 demo assumptions."
+              }
+            }
+          ]
+        },
+        {
+          "resource_id": "gcp-registry",
+          "resource_kind": "artifact_registry",
+          "shared": true,
+          "environments": [
+            "test",
+            "prod"
+          ],
+          "items": [
+            {
+              "item_id": "gcp-registry-storage",
+              "billing_dimension": "storage",
+              "attributes": {
+                "catalog_api": "v2beta",
+                "sku_id": "8502-299A-ABAF",
+                "description": "Artifact Registry Storage",
+                "service_id": "149C-F9EC-3994",
+                "resource_family": "Other",
+                "resource_group": "Artifact Registry"
+              },
+              "quantity": {
+                "value_from": "repositories"
+              },
+              "unit": "gib_month",
+              "cost_type": "variable",
+              "monthly_usage": {
+                "min": "0.4656612873077392578125",
+                "max": "0.931322574615478515625"
+              },
+              "incremental_usage": null,
+              "source": {
+                "path": "docs/adr/0014-demo-cost-assumptions.md",
+                "ref": "ADR-0014",
+                "note": "Catalog selector or usage must be confirmed before a complete quote. Exact public SKU metadata verified. Conditional topology, monthly usage and allowance eligibility must be supplied separately. Monthly usage in this scenario follows ADR-0014 demo assumptions."
+              }
+            }
+          ]
+        },
+        {
+          "resource_id": "gcp-observability",
+          "resource_kind": "gcp_logs",
+          "shared": true,
+          "environments": [
+            "test",
+            "prod"
+          ],
+          "items": [
+            {
+              "item_id": "gcp-observability-ingestion",
+              "billing_dimension": "ingestion",
+              "attributes": {
+                "catalog_api": "v2beta",
+                "sku_id": "143F-A1B0-E0BE",
+                "description": "Log Storage cost",
+                "service_id": "5490-F7B7-8DF6",
+                "resource_family": "Ops Tools",
+                "resource_group": "Cloud Logging"
+              },
+              "quantity": 1,
+              "unit": "gib",
+              "cost_type": "variable",
+              "monthly_usage": {
+                "min": "1.862645149230957031250",
+                "max": "4.656612873077392578125"
+              },
+              "incremental_usage": null,
+              "source": {
+                "path": "docs/adr/0014-demo-cost-assumptions.md",
+                "ref": "ADR-0014",
+                "note": "Catalog selector or usage must be confirmed before a complete quote. Exact public SKU metadata verified. Conditional topology, monthly usage and allowance eligibility must be supplied separately. Monthly usage in this scenario follows ADR-0014 demo assumptions."
+              }
+            },
+            {
+              "item_id": "gcp-observability-storage",
+              "billing_dimension": "storage",
+              "attributes": {
+                "catalog_api": "v2beta",
+                "sku_id": "F4AE-5A52-ACE3",
+                "description": "Log Retention cost",
+                "service_id": "5490-F7B7-8DF6",
+                "resource_family": "Ops Tools",
+                "resource_group": "Cloud Logging"
+              },
+              "quantity": 1,
+              "unit": "gib_month",
+              "cost_type": "variable",
+              "monthly_usage": {
+                "min": "0.931322574615478515625",
+                "max": "1.862645149230957031250"
+              },
+              "incremental_usage": null,
+              "source": {
+                "path": "docs/adr/0014-demo-cost-assumptions.md",
+                "ref": "ADR-0014",
+                "note": "Only GiB-month retained beyond the included 30 days; ordinary monthly stored log volume must not be used as extra retention. Usage remains unknown. Monthly usage in this scenario follows ADR-0014 demo assumptions."
+              }
+            }
+          ]
+        },
+        {
+          "resource_id": "gcp-egress",
+          "resource_kind": "gcp_internet_egress",
+          "shared": true,
+          "environments": [
+            "test",
+            "prod"
+          ],
+          "items": [
+            {
+              "item_id": "gcp-egress-transfer",
+              "billing_dimension": "transfer",
+              "attributes": {
+                "catalog_api": "v2beta",
+                "sku_id": "70A1-9E75-5BB1",
+                "description": "Network Internet Data Transfer Out from Seoul to South Korea",
+                "service_id": "6F81-5844-456A",
+                "resource_family": "Network",
+                "resource_group": "Egress"
+              },
+              "quantity": 1,
+              "unit": "gib",
+              "cost_type": "variable",
+              "monthly_usage": {
+                "min": "4.656612873077392578125",
+                "max": "9.313225746154785156250"
+              },
+              "incremental_usage": null,
+              "source": {
+                "path": "docs/adr/0014-demo-cost-assumptions.md",
+                "ref": "ADR-0014",
+                "note": "Catalog selector or usage must be confirmed before a complete quote. Exact public SKU metadata verified. Conditional topology, monthly usage and allowance eligibility must be supplied separately. Monthly usage in this scenario follows ADR-0014 demo assumptions."
+              }
+            }
+          ]
+        },
+        {
+          "resource_id": "gcp-addresses",
+          "resource_kind": "gcp_public_ipv4",
+          "shared": true,
+          "environments": [
+            "test",
+            "prod"
+          ],
+          "items": [
+            {
+              "item_id": "gcp-addresses-address_hours",
+              "billing_dimension": "address_hours",
+              "attributes": {
+                "catalog_api": "v2beta",
+                "sku_id": "8515-9425-D2CE",
+                "description": "Networking Cloud NAT IP Usage",
+                "service_id": "E505-1604-58F8",
+                "resource_family": "Network",
+                "resource_group": "Network Other"
+              },
+              "quantity": 1,
+              "unit": "hour",
+              "cost_type": "variable",
+              "monthly_usage": {
+                "min": "730",
+                "max": "730"
+              },
+              "incremental_usage": null,
+              "source": {
+                "path": "docs/adr/0014-demo-cost-assumptions.md",
+                "ref": "ADR-0014",
+                "note": "Public NAT external IP usage SKU; readonly metadata confirms one NAT address. Forwarding-rule IPs are not included in this paid address item. Monthly address-hours remain unmeasured. Monthly usage in this scenario follows ADR-0014 demo assumptions."
+              }
+            }
+          ]
+        },
+        {
+          "resource_id": "gcp-metrics",
+          "resource_kind": "gcp_metrics",
+          "shared": true,
+          "environments": [
+            "test",
+            "prod"
+          ],
+          "items": [
+            {
+              "item_id": "gcp-metrics-metrics",
+              "billing_dimension": "metrics",
+              "attributes": {
+                "catalog_api": "v2beta",
+                "sku_id": "A4E4-DF03-CDB6",
+                "description": "Prometheus Samples Ingested",
+                "service_id": "58CD-E7C3-72CA",
+                "resource_family": "Ops Tools",
+                "resource_group": "Cloud Monitoring"
+              },
+              "quantity": 1,
+              "unit": "sample",
+              "cost_type": "variable",
+              "monthly_usage": {
+                "min": "17520000",
+                "max": "17520000"
+              },
+              "incremental_usage": null,
+              "source": {
+                "path": "docs/adr/0014-demo-cost-assumptions.md",
+                "ref": "ADR-0014",
+                "note": "Catalog selector or usage must be confirmed before a complete quote. Exact public SKU metadata verified. Conditional topology, monthly usage and allowance eligibility must be supplied separately. Monthly usage in this scenario follows ADR-0014 demo assumptions."
+              }
+            }
+          ]
+        },
+        {
+          "resource_id": "gcp-secrets",
+          "resource_kind": "gcp_secrets",
+          "shared": true,
+          "environments": [
+            "test",
+            "prod"
+          ],
+          "items": [
+            {
+              "item_id": "gcp-secrets-storage",
+              "billing_dimension": "storage",
+              "attributes": {
+                "catalog_api": "v2beta",
+                "sku_id": "7756-ADEF-84F4",
+                "description": "Secret version replica storage",
+                "service_id": "EE82-7A5E-871C",
+                "resource_family": "Cloud Security",
+                "resource_group": "Cloud Security - Other"
+              },
+              "quantity": 1,
+              "unit": "secret_month",
+              "cost_type": "variable",
+              "monthly_usage": {
+                "min": "1",
+                "max": "1"
+              },
+              "incremental_usage": null,
+              "source": {
+                "path": "docs/adr/0014-demo-cost-assumptions.md",
+                "ref": "ADR-0014",
+                "note": "Catalog selector or usage must be confirmed before a complete quote. Exact public SKU metadata verified. Conditional topology, monthly usage and allowance eligibility must be supplied separately. Monthly usage in this scenario follows ADR-0014 demo assumptions."
+              }
+            },
+            {
+              "item_id": "gcp-secrets-access",
+              "billing_dimension": "access_requests",
+              "attributes": {
+                "catalog_api": "v2beta",
+                "sku_id": "EBA7-264F-2D2C",
+                "description": "Secret access operations",
+                "service_id": "EE82-7A5E-871C",
+                "resource_family": "Cloud Security",
+                "resource_group": "Cloud Security - Other"
+              },
+              "quantity": 1,
+              "unit": "request",
+              "cost_type": "variable",
+              "monthly_usage": {
+                "min": "10000",
+                "max": "10000"
+              },
+              "incremental_usage": null,
+              "source": {
+                "path": "docs/adr/0014-demo-cost-assumptions.md",
+                "ref": "ADR-0014",
+                "note": "Secret access operations are separate from active secret/version storage; monthly access count unmeasured. Monthly usage in this scenario follows ADR-0014 demo assumptions."
+              }
+            }
+          ]
+        },
+        {
+          "resource_id": "gcp-audit",
+          "resource_kind": "gcp_audit_storage",
+          "shared": true,
+          "environments": [
+            "test",
+            "prod"
+          ],
+          "items": [
+            {
+              "item_id": "gcp-audit-storage",
+              "billing_dimension": "storage",
+              "attributes": {
+                "catalog_api": "v2beta",
+                "sku_id": "F4AE-5A52-ACE3",
+                "description": "Log Retention cost",
+                "service_id": "5490-F7B7-8DF6",
+                "resource_family": "Ops Tools",
+                "resource_group": "Cloud Logging"
+              },
+              "quantity": 1,
+              "unit": "gib_month",
+              "cost_type": "variable",
+              "monthly_usage": {
+                "min": "0.931322574615478515625",
+                "max": "1.862645149230957031250"
+              },
+              "incremental_usage": null,
+              "source": {
+                "path": "docs/adr/0014-demo-cost-assumptions.md",
+                "ref": "ADR-0014",
+                "note": "Conditional extra audit-log retention beyond the included period; custom sink/retention not confirmed. Required-bucket and ordinary ingestion are not charged again here. Usage remains unknown. Monthly usage in this scenario follows ADR-0014 demo assumptions."
+              }
+            }
+          ]
+        }
+      ],
+      "excluded_resources": {},
+      "traffic": {
+        "scenario": "final",
+        "source": {
+          "path": "docs/adr/0014-demo-cost-assumptions.md",
+          "ref": "ADR-0014",
+          "note": "Explicit hackathon forecast; not measured operating usage."
+        },
+        "workloads": [
+          {
+            "name": "demo-app-be",
+            "replicas": 1,
+            "environments": [
+              "test",
+              "prod"
+            ],
+            "blue_green_multiplier": 2,
+            "cpu_millicores": 100,
+            "memory_mib": "128"
+          },
+          {
+            "name": "demo-app-fe",
+            "replicas": 1,
+            "environments": [
+              "test",
+              "prod"
+            ],
+            "blue_green_multiplier": 2,
+            "cpu_millicores": 50,
+            "memory_mib": "32"
+          }
+        ]
+      },
+      "capacity": {
+        "node_count": 3,
+        "per_node": {
+          "cpu_millicores": 1900,
+          "memory_mib": "3072",
+          "pod_slots": 110
+        },
+        "reserved": {
+          "cpu_millicores": 1000,
+          "memory_mib": "2048",
+          "pod_slots": 25
+        },
+        "source": {
+          "path": "docs/adr/0014-demo-cost-assumptions.md",
+          "ref": "ADR-0014",
+          "note": "Demo aggregate capacity assumption only, not measured allocatable or placement verification."
+        }
+      },
+      "operating_costs": {}
+    },
+    {
+      "candidate_id": "demo-onprem",
+      "target": "onprem",
+      "region": null,
+      "configuration_status": "confirmed",
+      "assumptions": [
+        "Existing k3d hardware. Onprem PostgreSQL is separate for test and prod. Cloud fee zero is not total operating cost zero.",
+        "Live validation uses current configured resources. Unmeasured monthly usage and unsupported additional charges remain unknown; no zero-cost replacement is applied."
+      ],
+      "values": {},
+      "resources": [],
+      "excluded_resources": {},
+      "traffic": {
+        "scenario": "final",
+        "source": {
+          "path": "demo-app/deploy/onprem/values.yaml",
+          "ref": "18673c9f3b40baa02e9cb8e79cb74aa3c8b465e7",
+          "note": "Requests from deploy values; test/prod and simultaneous Blue-Green are counted as an upper scenario."
+        },
+        "workloads": [
+          {
+            "name": "demo-app-be",
+            "replicas": 1,
+            "environments": [
+              "test",
+              "prod"
+            ],
+            "blue_green_multiplier": 2,
+            "cpu_millicores": 100,
+            "memory_mib": "128"
+          },
+          {
+            "name": "demo-app-fe",
+            "replicas": 1,
+            "environments": [
+              "test",
+              "prod"
+            ],
+            "blue_green_multiplier": 2,
+            "cpu_millicores": 50,
+            "memory_mib": "32"
+          }
+        ]
+      },
+      "capacity": null,
+      "operating_costs": {
+        "power": {
+          "monthly_krw": null,
+          "source": {
+            "path": "user-input",
+            "ref": null,
+            "note": "No monthly power cost supplied."
+          }
+        },
+        "hardware": {
+          "monthly_krw": null,
+          "source": {
+            "path": "user-input",
+            "ref": null,
+            "note": "No monthly hardware cost supplied."
+          }
+        },
+        "labor": {
+          "monthly_krw": null,
+          "source": {
+            "path": "user-input",
+            "ref": null,
+            "note": "No monthly labor cost supplied."
+          }
+        }
+      }
+    }
+  ]
+}

@@ -32,6 +32,7 @@ python <skill-dir>/scripts/price.py calculate --input <app-root>/.deploy/analysi
 - `validate`: 네트워크 없이 입력만 검사하며 파일을 쓰지 않는다.
 - `lookup`: 입력과 공급자 응답을 검증하고 단가 결과를 저장한다. 비용 계산은 하지 않는다.
 - `calculate`: 저장된 입력과 단가를 사용하며 네트워크나 클라우드 변경을 수행하지 않는다.
+- `reuse-prices`: 원본 입력·가격표와 새 입력의 가격 조건을 대조해 사용량 변경 시나리오에 가격을 재사용한다. 새 API 조회가 아니며 원본 조회 시각을 보존하고 별도 근거 JSON을 쓴다.
 - 인증값을 CLI 인자나 JSON에 넣는 옵션은 제공하지 않는다.
 - 표준 출력은 `status`, `output`(파일을 쓰지 않으면 null), `issues`를 담은 JSON 객체 한 개다. 상세 결과는 지정한 출력 파일에 저장한다. 진단 메시지는 표준 오류에 쓰며 인증 헤더 · 비밀값 · 원본 SDK 예외 전체를 출력하지 않는다.
 - CLI의 입력 오류 issue는 code: invalid_input, 파일 · 내부 오류는 code: io_error 또는 internal_error를 사용한다. 형식은 조회 issue와 같고 후보 · 항목을 특정할 수 없으면 해당 ID는 null이다.
@@ -45,6 +46,19 @@ python <skill-dir>/scripts/price.py calculate --input <app-root>/.deploy/analysi
 | 1 | 파일 접근 · 저장 실패 또는 예상하지 못한 내부 오류다. | 새 결과를 사용 가능한 것으로 보고하지 않는다. |
 
 예산 초과는 실행 실패가 아니다. 완전한 계산 결과가 예산을 넘더라도 종료 코드는 0이며 `budget.status`로 표시한다. 예산이나 환율 미정만으로 USD 계산 자체를 partial로 만들지는 않는다.
+
+## 사용량 시나리오의 가격표 재사용
+
+```sh
+python <skill-dir>/scripts/price.py reuse-prices \
+  --input <new-input.json> --source-input <original-input.json> \
+  --prices <original-prices.json> --output <scenario-prices.json> \
+  --evidence <price-reuse.json>
+```
+
+원본 입력·가격표의 해시와 Money 근거를 먼저 검증한다. 후보 ID·대상·리전·자원 ID·종류·과금 차원·단위·공유 여부·고정/변동 분류·가격 선택 attributes는 같아야 한다. 기존 자원 수량·사용량·예산·환율·출처·문서화한 가정은 바꿀 수 있다. `tier_baseline_usage`와 `free_tier_policy`는 계산 조건으로 구분한다. 새 항목·리전·SKU·규격·단위 또는 NAT 상한 모델이 필요하면 거부하고 새 lookup을 요구한다.
+
+원본 `queried_at`과 가격·적용일을 그대로 보존한다. 근거 JSON에 원본 입력·가격 해시, 새 입력·결과 해시, 재사용 시각을 기록한다. 결과·근거는 서로 다른 파일이며 저장 실패 시 성공으로 보고하지 않는다. 새 조회가 필요한데 실패했다는 이유로 이 명령을 우회 수단으로 쓰지 않는다. 예시는 [ADR-0014](../../../docs/adr/0014-demo-cost-assumptions.md)와 [데모 검증](../../../docs/validation/T16-demo-completion.md)을 따른다.
 
 ## C4 자원 목록 매핑
 

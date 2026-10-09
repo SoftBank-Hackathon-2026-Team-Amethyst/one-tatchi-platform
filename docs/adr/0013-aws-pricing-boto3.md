@@ -1,4 +1,4 @@
-# [ADR-0012] AWS 가격 조회에 boto3 사용
+# [ADR-0013] AWS 가격 조회에 boto3 사용
 
 * **상태 (Status):** 채택됨(Accepted)
 * **날짜 (Date):** 2026-10-09

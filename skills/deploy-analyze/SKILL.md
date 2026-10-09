@@ -63,7 +63,7 @@ description: 웹앱 배포 전에 사용자 수, 예산, 데이터 취급, 배�
 ### 비용 근거 확인과 보고서 갱신
 
 1. 예산 분석기의 [도구 실행 순서](references/analyzers/budget.md)를 따라 pricing-inventory.json → pricing-input.json · resource-assessment.json → prices.json → costs.json을 생성한다. report로 budget.md와 cost-summary.md를 같은 계산 결과에서 만든다.
-2. 종합 결과의 target · services 크기 · DB · 공유 환경과 계산 구성을 대조한다. 최종 추천 크기가 바뀌면 자원 목록을 갱신하고 map → lookup → calculate → report를 다시 실행한다. replicas 변화만으로 노드를 늘리거나 줄이지 않는다.
+2. 종합 결과의 target · services 크기 · DB · 공유 환경과 계산 구성을 대조한다. 최종 추천 크기가 바뀌면 자원 목록을 갱신하고 map → lookup → calculate → report를 다시 실행한다. 가격 조건·단위가 같고 사용량·수량만 바뀌는 경우에는 가격 계약의 reuse-prices로 원본 입력·단가를 대조하고 재사용 근거를 남길 수 있다. 원래 조회 시각을 보존하며 새 조회처럼 표시하지 않는다. replicas 변화만으로 노드를 늘리거나 줄이지 않는다.
 3. report.md를 위 형식으로 작성한 뒤 추천 candidate_id를 지정해 report 명령에 --report 경로를 전달한다. 그 비용 블록은 도구가 갱신하며 종합 단계에서 다른 금액을 만들어 넣지 않는다.
 4. 예산 초과·초과 가능·판정 미정, 부분 소계, 환율·조회 시각과 미산정 사유를 리뷰 지점 1에서 함께 설명한다. 별도 대안 견적이 없으면 절감액 미산정 사유를 남긴다. 도구 실패를 성공이나 최신 단가로 바꾸지 않는다.
 5. .deploy/config.yaml은 브리프 분류와 template_version의 기존 소유 규칙을 따른다. 비용 도구와 종합 단계는 이 파일을 수정하지 않는다.

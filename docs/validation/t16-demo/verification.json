@@ -1,0 +1,39 @@
+{
+  "commands": [
+    {
+      "command": "map",
+      "exit": 3
+    },
+    {
+      "command": "reuse-prices",
+      "exit": 0
+    },
+    {
+      "command": "calculate",
+      "exit": 3
+    },
+    {
+      "command": "map",
+      "exit": 3
+    },
+    {
+      "command": "reuse-prices",
+      "exit": 0
+    },
+    {
+      "command": "calculate",
+      "exit": 3
+    },
+    {
+      "command": "compare",
+      "exit": 3
+    },
+    {
+      "command": "report",
+      "exit": 3
+    }
+  ],
+  "config_preserved_sha256": "d85d44bb6309c702a8bb9a3aab1351f3cdef9d697390337663aa4acf3d5b9ba6",
+  "price_provenance": "Verified usage-only reuse of real API prices; original queried_at retained. No new API request or deployment.",
+  "adr": "ADR-0014"
+}
