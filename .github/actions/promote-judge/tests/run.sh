@@ -267,6 +267,13 @@ act manualabort veto manual
 [ -z "$(calls manualpromote)$(calls manualabort)" ] || fail "manual인데 kubectl을 실행했다"
 grep -q '^executed=$' "$tmp/a-manualabort/github_output" || fail "manual의 executed가 비어 있지 않다"
 
+echo "== act 명령 실패 → executed 비움, 실패 (감사 로그에 남기지 않음)"
+act actfail promote auto FAKE_ACT_FAIL=1
+[ "$act_status" = 1 ] && grep -q '^executed=$' "$tmp/a-actfail/github_output" || fail "promote 명령이 실패했는데 executed가 남았다"
+act abortfail veto auto FAKE_ACT_FAIL=1
+[ "$act_status" = 1 ] && grep -q '^executed=$' "$tmp/a-abortfail/github_output" || fail "abort 명령이 실패했는데 executed가 남았다"
+grep -q '^executed=abort$' "$tmp/a-autoabort/github_output" || fail "abort 성공인데 executed가 abort가 아니다"
+
 echo "== act 판단 파일 없음 + auto → abort 실행, 실패"
 act nojudgment none auto
 [ "$act_status" = 1 ] && [ "$(calls nojudgment)" = "abort demo-app-be -n test" ] || fail "판단 파일이 없을 때 abort하지 않았다"
@@ -299,5 +306,44 @@ flow normal ok promote
 echo "== 전체 흐름: 500 green + AI promote → 규칙 거부권으로 abort 실행 (완료 기준)"
 flow fault fail promote
 [ "$flow_status" = 1 ] && [ "$(cat "$tmp/f-fault/calls")" = "abort demo-app-be -n test" ] || fail "500 흐름이 abort되지 않았다: $(cat "$tmp/f-fault/log")"
+
+# ---------- group.sh (서비스 묶음, ADR 0005) ----------
+# grp <이름> <가짜 Claude 모드> [환경변수...] → $tmp/g-<이름>, 종료 코드는 $grp_status
+grp() {
+  local name="$1" claude="$2"; shift 2
+  local w="$tmp/g-$name"
+  start_claude "$claude"
+  mkdir -p "$w"; : > "$w/calls"; : > "$w/judge_output"; : > "$w/act_output"
+  local common=(WORK_ROOT="$w" RELEASES="demo-app-be demo-app-fe" NAMESPACE=test KUBECTL="$here/fake-kubectl"
+    FAKE_CALLS_FILE="$w/calls" GITHUB_STEP_SUMMARY="$w/summary" "$@")
+  local started=$SECONDS
+  env "${common[@]}" SMOKE_FILE="$tmp/smoke.json" WINDOW_SECONDS=2 REQUEST_TIMEOUT_SECONDS=1 bash "$action/group.sh" smoke > "$w/log" 2>&1
+  grp_smoke_seconds=$((SECONDS - started))
+  env "${common[@]}" MAX_ERROR_RATE=0 MAX_P95_MS=2000 MAX_RESTARTS=0 bash "$action/group.sh" metrics >> "$w/log" 2>&1
+  env "${common[@]}" MODEL=claude-sonnet-5-5 ANTHROPIC_API_KEY=test-key ANTHROPIC_BASE_URL="$CLAUDE_URL" \
+    API_TIMEOUT_SECONDS=2 GITHUB_OUTPUT="$w/judge_output" bash "$action/group.sh" judge >> "$w/log" 2>&1
+  grp_status=0
+  env "${common[@]}" TARGET=onprem ENVIRONMENT=test MODE=auto PROMOTE_WAIT_SECONDS=5 GITHUB_OUTPUT="$w/act_output" \
+    bash "$action/group.sh" act >> "$w/log" 2>&1 || grp_status=$?
+}
+g() { jq -r "$2" "$tmp/g-$1/$3"; }
+
+echo "== group 모두 정상 → 묶음 promote, BE · FE 순서대로 promote, smoke는 동시에"
+grp allok promote
+[ "$(g allok .decision judgment.json)" = promote ] || fail "묶음 promote가 아니다: $(cat "$tmp/g-allok/log")"
+[ "$grp_status" = 0 ] || fail "모두 정상인데 실패로 끝났다"
+[ "$(grep -E '^(promote|abort) ' "$tmp/g-allok/calls")" = "$(printf 'promote demo-app-be -n test\npromote demo-app-fe -n test')" ] || fail "promote 순서 · 대상이 틀렸다: $(cat "$tmp/g-allok/calls")"
+grep -q '^decision=promote$' "$tmp/g-allok/judge_output" && grep -q '^executed=promote$' "$tmp/g-allok/act_output" || fail "묶음 출력이 틀렸다"
+[ "$grp_smoke_seconds" -lt 4 ] || fail "smoke가 동시에 돌지 않았다 (${grp_smoke_seconds}초, 창 2초 × 2)"
+grep -q '서비스 2개 묶음' "$tmp/g-allok/summary" || fail "묶음 Job Summary가 없다"
+
+echo "== group BE만 500 + AI promote → 묶음 abort, FE도 함께 abort (source group)"
+grp onefail promote FAKE_FAIL_RELEASE=demo-app-be
+[ "$(g onefail .decision judgment.json)" = abort ] || fail "묶음 abort가 아니다"
+[ "$(g onefail '.decision + " " + .source' demo-app-be/judgment.json)" = "abort rule" ] || fail "BE가 규칙으로 abort되지 않았다"
+[ "$(g onefail '.decision + " " + .source + " " + .ai_decision_alone' demo-app-fe/judgment.json)" = "abort group promote" ] || fail "FE가 묶음으로 abort되지 않았다: $(cat "$tmp/g-onefail/demo-app-fe/judgment.json")"
+g onefail .reason judgment.json | grep -q '^demo-app-be: ' || fail "묶음 근거에 BE 원인이 없다"
+[ "$(grep -E '^(promote|abort) ' "$tmp/g-onefail/calls")" = "$(printf 'abort demo-app-be -n test\nabort demo-app-fe -n test')" ] || fail "abort 대상이 틀렸다"
+[ "$grp_status" = 1 ] && grep -q '^executed=abort$' "$tmp/g-onefail/act_output" || fail "묶음 abort 결과가 틀렸다"
 
 echo "통과"

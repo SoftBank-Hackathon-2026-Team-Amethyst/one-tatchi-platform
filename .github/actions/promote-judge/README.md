@@ -5,23 +5,35 @@ Blue-Green 배포에서 green(새 버전)을 승격할지 버릴지 정한다 (T
 
 ## 흐름
 
-`deploy.yml`이 green을 띄우고 Rollout이 `Paused`가 된 뒤 같은 job에서 부른다.
+`deploy.yml`이 서비스들을 배포하고 green이 `Paused`가 된 서비스들(`releases`)을 같은 job에서 한 번에 넘긴다. 대상 레포는 호출부에서 모드와 키만 넘긴다.
 
-| 단계 | 스크립트 | 하는 일 | 결과 파일 (`$WORK_DIR`) |
+```yaml
+  test:
+    uses: <org>/one-tatchi-platform/.github/workflows/deploy.yml@vX.Y.Z
+    with:
+      promote-mode: auto            # yolo. janto는 생략(manual)
+      promote-window-seconds: "30"  # 선택
+    secrets: inherit                # ANTHROPIC_API_KEY · SLACK_BOT_TOKEN
+```
+
+각 단계는 `group.sh`가 서비스마다 아래 스크립트를 돌린다. 서비스별 결과는 `$RUNNER_TEMP/promote-judge/<release>/`.
+
+| 단계 | 스크립트 | 하는 일 | 결과 파일 (서비스별) |
 |---|---|---|---|
-| 1 | `smoke.sh` | `<release>-preview`에 port-forward로 붙어 관찰 창 동안 smoke 요청을 반복한다 | `smoke-results.jsonl` |
+| 1 | `smoke.sh` | `<release>-preview`에 port-forward로 붙어 관찰 창 동안 smoke 요청을 반복한다. **서비스들을 동시에** 관찰한다 | `smoke-results.jsonl` |
 | 2 | `metrics.sh` | 에러율 · p95 계산, green 파드 재시작 수 · Ready 조회, 기준값과 비교 | `metrics.json` |
-| 3 | `judge.sh` | 지표와 규칙 판정을 Claude에 보내 `{decision, reason}`을 받는다 | `judgment.json` |
+| 3 | `judge.sh` | 지표와 규칙 판정을 Claude에 보내 `{decision, reason}`을 받는다. 그다음 **묶음 결정**: 모두 promote면 promote, 하나라도 abort면 전체 abort | `judgment.json` (+ 묶음 `promote-judge/judgment.json`) |
 | 4 | `act.sh` | auto면 `kubectl argo rollouts promote · abort`, manual이면 실행하지 않는다. Job Summary에 근거를 남긴다 | Job Summary |
 
 - 규칙 판정이 fail이면 AI 답과 관계없이 abort다 ([ADR 0004](../../../docs/adr/0004-promotion-judge-rule-veto.md)).
+- 서비스는 함께 승격 · 취소한다. 한 서비스라도 abort면 promote로 판단한 서비스도 abort하고 `source: group`으로 남긴다 ([ADR 0005](../../../docs/adr/0005-promotion-judge-group.md)).
 - 1 · 2단계가 실패하거나, API 키가 없거나, Claude 호출이 실패 · 시간 초과 · 거절 · 형식 오류면 재시도 없이 abort다.
 
 ## 입력
 
 | 입력 | 기본값 | 설명 |
 |---|---|---|
-| `release` | (필수) | 서비스(Rollout) 이름. green은 Service `<release>-preview` |
+| `releases` | (필수) | 서비스(Rollout) 이름들, 공백 구분. green은 Service `<release>-preview` |
 | `namespace` | (필수) | `test` \| `prod` |
 | `target` | (필수) | `aws` \| `gcp` \| `onprem`. 알림 · 감사 로그 표기용 |
 | `environment` | (필수) | `test` \| `prod`. 알림 · 감사 로그 표기용 |
@@ -41,10 +53,10 @@ Blue-Green 배포에서 green(새 버전)을 승격할지 버릴지 정한다 (T
 
 | 출력 | 설명 |
 |---|---|
-| `decision` | `promote` \| `abort` |
-| `reason` | 판단 근거 한두 문장 |
-| `report` | 지표 · 규칙 판정 · AI 판단 JSON 파일 경로 |
-| `executed` | auto에서 실제로 실행한 조작(`promote` \| `abort`). manual이면 빈 값 |
+| `decision` | 묶음 결정 `promote` \| `abort` |
+| `reason` | 판단 근거. abort면 abort한 서비스들의 근거, promote면 서비스별 근거 (`<release>: …`를 ` / `로 이음) |
+| `report` | 묶음 결정 JSON 경로. 서비스별 지표 · 판단은 같은 폴더의 `<release>/` |
+| `executed` | auto에서 실제로 성공한 조작(`promote` \| `abort`). manual이거나 명령이 실패하면 빈 값 |
 
 ## smoke 파일
 
@@ -107,7 +119,7 @@ Blue-Green 배포에서 green(새 버전)을 승격할지 버릴지 정한다 (T
 - 구조화 출력(`output_config.format`, JSON schema)으로 `{"decision": "promote" | "abort", "reason": "..."}`만 받는다. thinking 블록은 건너뛰고 text 블록을 읽는다.
 - 규칙이 fail이어도 호출한다. 결정은 abort로 고정하고, AI가 쓴 원인 설명을 근거로 남긴다.
 - `fallbacks: "default"`(헤더 `anthropic-beta: server-side-fallback-2026-07-01`): 안전 분류기가 거절하면 서버가 다른 모델로 다시 시도한다. 그래도 거절이면 abort다.
-- 결정 출처 `source`: `ai`(규칙 pass, AI 결정) · `rule`(규칙 fail, 거부권) · `fallback`(AI 판단 없음 → abort)
+- 결정 출처 `source`: `ai`(규칙 pass, AI 결정) · `rule`(규칙 fail, 거부권) · `fallback`(AI 판단 없음 → abort) · `group`(이 서비스는 promote였지만 다른 서비스가 abort라 함께 abort, `ai_decision_alone`에 원래 판단)
 
 ```json
 {"decision": "promote", "source": "ai", "reason": "에러율 0%, p95 38ms로 기준 안이고 green 파드 2개 모두 Ready라 승격한다.",

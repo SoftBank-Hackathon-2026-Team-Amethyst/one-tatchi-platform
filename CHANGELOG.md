@@ -8,6 +8,11 @@
 
 릴리스 방법: 이 파일에 항목을 추가하고 main에 머지한 뒤 `git tag vX.Y.Z && git push origin vX.Y.Z`. `release.yml`이 차트를 GHCR에 올리고 메이저 태그(`v1`)를 옮긴 뒤, 대상 레포(demo-app)에 알려 버전 업데이트 PR이 열리게 한다. 버전 항목 제목은 `## vX.Y.Z` 형식을 지킨다(PR 본문에 그 구간이 붙는다).
 
+## Unreleased
+
+- `deploy.yml`: Paused인 서비스들을 묶어 AI 승격 판단(`promote-judge`)을 거친다. 입력 `promote-mode`(기본 `manual` → 실행은 지금처럼 버튼으로 사람이), `promote-window-seconds`(기본 30, 서비스 동시 관찰), 시크릿 `ANTHROPIC_API_KEY`(선택). Slack 알림에 AI 판단 · 근거, auto 실행은 감사 로그(`requested-by: ai-judge`), 판단 근거는 artifact `promote-judgment-<환경>`. auto로 promote한 뒤에는 버튼이 `undo`만 남는다 (T7)
+- `promote-judge`: 입력 `release` → `releases`(공백 구분). 서비스마다 판단하고 하나라도 abort면 전체 abort (ADR 0005). `executed`는 명령이 성공했을 때만 남긴다 (T7)
+
 ## v1.8.0
 
 - `deploy.yml`: 입력 `host` 추가 (aws). 서비스 도메인으로 HTTPS(ACM) + 80→443 리다이렉트, 주소도 `https://<host>/`로 알린다. 비우면 지금처럼 ALB 주소로 HTTP (T2)

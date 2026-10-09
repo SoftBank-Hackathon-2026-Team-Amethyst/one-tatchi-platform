@@ -1,7 +1,9 @@
 name: deploy
 
 # 재사용 워크플로: 이미지를 빌드하고 App Chart(OCI)로 test 또는 prod에 Blue-Green 배포한다.
-# green이 뜨면 Paused(승격 대기)에서 멈춘다. 승격 판단은 별도 단계(T7)가 맡는다.
+# green이 뜨면 Paused(승격 대기)에서 멈추고, AI 승격 판단(promote-judge, T7)이 서비스를 묶어 promote · abort를 정한다.
+#   promote-mode auto: 판단대로 바로 실행 (yolo). abort면 job이 실패해 다음 단계로 가지 않는다
+#   promote-mode manual(기본): 실행하지 않고 판단 근거를 알림에 남긴다. 사람이 Slack 버튼으로 결정한다 (janto)
 # 배포 대상(target)마다 다른 부분은 공통 액션 kube-access(클러스터 접속) · image-push(레지스트리)와
 # 아래 "주소" 단계에만 있다. 나머지 단계와 App Chart는 모든 대상에서 같다.
 on:
@@ -57,8 +59,19 @@ on:
         description: 공통 액션을 가져올 이 레포의 ref
         type: string
         default: v1
+      promote-mode:
+        description: "AI 승격 판단 결과를 실행할지: auto (yolo) | manual (janto, 사람이 버튼으로 실행)"
+        type: string
+        default: manual
+      promote-window-seconds:
+        description: AI 승격 판단 전에 green에 smoke 요청을 보내는 관찰 창(초). 서비스들은 동시에 관찰한다
+        type: string
+        default: "30"
     secrets:
       SLACK_BOT_TOKEN:
+        required: false
+      ANTHROPIC_API_KEY:
+        description: AI 승격 판단용 Claude API 키. 없으면 판단은 abort이고, manual이면 지금처럼 버튼으로 사람이 결정한다
         required: false
 
 jobs:
@@ -145,7 +158,10 @@ jobs:
               phase="$(kubectl get rollout "$1" -n "$NAMESPACE" -o jsonpath='{.status.phase}')"
               echo "phase=$phase"
               case "$phase" in
-                Paused|Healthy) kubectl argo rollouts get rollout "$1" -n "$NAMESPACE"; return 0 ;;
+                Paused|Healthy)
+                  # 승격을 기다리는 green(Paused)만 AI 승격 판단 대상이다. 첫 배포처럼 바로 Healthy면 대상이 아니다.
+                  [ "$phase" = Paused ] && paused+="$1 "
+                  kubectl argo rollouts get rollout "$1" -n "$NAMESPACE"; return 0 ;;
                 Degraded) kubectl argo rollouts get rollout "$1" -n "$NAMESPACE"; return 1 ;;
               esac
               sleep 10
@@ -184,7 +200,7 @@ jobs:
             esac
           }
 
-          first_active="" slack=""
+          first_active="" slack="" paused=""
           echo "### \`${TAG::7}\` → $TARGET / $ENVIRONMENT" >> "$GITHUB_STEP_SUMMARY"
           count="$(jq length <<<"$SERVICES")"
           for idx in $(seq 0 $((count - 1))); do
@@ -223,8 +239,28 @@ jobs:
           {
             echo "active=$first_active"
             echo "names=$(jq -r 'map(.name) | join(" ")' <<<"$SERVICES")"
+            echo "paused=${paused% }"
             echo "slack<<END"; printf '%s' "$slack"; echo "END"
           } >> "$GITHUB_OUTPUT"
+      # AI 승격 판단 (T7, ADR 0002~0005). Paused인 서비스들을 묶어 판단한다.
+      - id: judge
+        if: steps.deploy.outputs.paused != ''
+        uses: ./.platform/.github/actions/promote-judge
+        with:
+          releases: ${{ steps.deploy.outputs.paused }}
+          namespace: ${{ inputs.namespace }}
+          target: ${{ inputs.target }}
+          environment: ${{ inputs.environment }}
+          mode: ${{ inputs.promote-mode }}
+          window-seconds: ${{ inputs.promote-window-seconds }}
+          anthropic-api-key: ${{ secrets.ANTHROPIC_API_KEY }}
+      # 판단 근거(지표 · 규칙 판정 · AI 답)는 T10 yolo 배포 리포트가 읽는다.
+      - if: always() && steps.judge.outcome != 'skipped'
+        uses: actions/upload-artifact@v7
+        with:
+          name: promote-judgment-${{ inputs.environment }}
+          path: ${{ runner.temp }}/promote-judge/
+          if-no-files-found: ignore
       # 감사 로그는 모든 대상이 같은 S3 버킷(Object Lock)에 남긴다. aws는 kube-access에서 이미 로그인했다.
       - if: always() && inputs.target != 'aws'
         uses: aws-actions/configure-aws-credentials@v6
@@ -238,6 +274,43 @@ jobs:
           target: all@${{ inputs.target }}.${{ inputs.environment }}
           result: ${{ job.status }}
           bucket: ${{ vars.AUDIT_LOG_BUCKET }}
+      # auto에서 AI가 실제로 promote · abort했으면 그 조작도 남긴다. abort는 의도한 결과라 success로 적는다.
+      - if: always() && steps.judge.outputs.executed != ''
+        uses: ./.platform/.github/actions/audit-log
+        with:
+          action: ${{ steps.judge.outputs.executed }}
+          target: all@${{ inputs.target }}.${{ inputs.environment }}
+          result: ${{ (steps.judge.outputs.executed == 'abort' || steps.judge.outcome == 'success') && 'success' || 'failure' }}
+          requested-by: ai-judge
+          bucket: ${{ vars.AUDIT_LOG_BUCKET }}
+      - id: notify
+        if: always()
+        name: 알림 내용 (AI 판단 · 버튼)
+        env:
+          STATUS: ${{ job.status }}
+          MODE: ${{ inputs.promote-mode }}
+          URLS: ${{ steps.deploy.outputs.slack }}
+          DECISION: ${{ steps.judge.outputs.decision }}
+          REASON: ${{ steps.judge.outputs.reason }}
+          EXECUTED: ${{ steps.judge.outputs.executed }}
+        run: |
+          # 버튼: manual이면 사람이 고를 promote · abort, auto로 promote했으면 되돌리기(undo)만
+          buttons=""
+          if [ "$STATUS" = success ]; then
+            if [ "$MODE" = auto ]; then
+              [ "$EXECUTED" = promote ] && buttons=undo
+            else
+              buttons="promote abort"
+            fi
+          fi
+          if [ -n "$EXECUTED" ]; then how="$EXECUTED 실행함"; else how="실행 안 함"; fi
+          {
+            echo "buttons=$buttons"
+            echo "details<<__DETAILS__"
+            [ -z "$URLS" ] || printf '%s\n' "$URLS"
+            [ -z "$DECISION" ] || echo "AI 판단: *$DECISION* ($MODE, $how) — $REASON"
+            echo "__DETAILS__"
+          } >> "$GITHUB_OUTPUT"
       - if: always()
         uses: ./.platform/.github/actions/slack-notify
         with:
@@ -247,5 +320,5 @@ jobs:
           target: ${{ steps.deploy.outputs.names || 'all' }}@${{ inputs.target }}.${{ inputs.environment }}
           service: all@${{ inputs.target }}.${{ inputs.environment }}
           result: ${{ job.status }}
-          details: ${{ steps.deploy.outputs.slack }}
-          buttons: ${{ job.status == 'success' && 'promote abort' || '' }}
+          details: ${{ steps.notify.outputs.details }}
+          buttons: ${{ steps.notify.outputs.buttons }}
