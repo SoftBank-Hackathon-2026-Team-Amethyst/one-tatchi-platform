@@ -34,6 +34,7 @@ jobs:
       db-init: @@DB_INIT@@
       image-dirs: '@@IMAGE_DIRS@@'
       iac-path: infra
+    secrets: inherit
 
   test:
     needs: checks
