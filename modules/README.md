@@ -1,18 +1,26 @@
 # Terraform 모듈 계약
 
-환경 루트는 `modules/<기능>/<대상>`을 고정 태그 `vX.Y.Z`로 참조한다. 공통 출력 이름과 AWS에서의 의미는 다음과 같다.
+환경 루트는 `modules/<기능>/<대상>`을 고정 태그 `vX.Y.Z`로 참조한다. 공통 출력 이름과 대상별 의미는 다음과 같다. GCP 열은 T4 구현 기준이며, 구현 완료를 뜻하지 않는다.
 
-| 기능 | 공통 출력 | AWS에서 연결하는 대상 |
-|---|---|---|
-| network | `network_id`, `network_cidr`, `private_subnet_ids`, `public_subnet_ids` | VPC와 서브넷 |
-| cluster | `cluster_name`, `endpoint`, `ca_certificate` | EKS와 Helm/Kubernetes provider. CA는 base64 인코딩 |
-| cluster_addons | `secret_store_name`, `ingress_class` | ClusterSecretStore와 IngressClass |
-| registry | `repository_urls` | 저장소 이름 → 이미지 push 주소 |
-| database | `host`, `port`, `database_name`, `credentials_secret_id` | RDS와 username/password JSON 시크릿 식별자 |
-| observability | `dashboard_path` | Ingress 주소에 붙일 Grafana 경로 |
-| ci_identity | `plan_identity`, `deploy_identity` | plan/apply가 사용할 IAM 역할 ARN |
+| 기능 | 공통 출력 | AWS에서 연결하는 대상 | GCP에서 연결하는 대상 (구현 예정) |
+|---|---|---|---|
+| network | `network_id`, `network_cidr`, `private_subnet_ids`, `public_subnet_ids` | VPC와 서브넷 | VPC와 노드 서브넷. `public_subnet_ids`는 `[]` |
+| cluster | `cluster_name`, `endpoint`, `ca_certificate` | EKS와 Helm/Kubernetes provider. CA는 base64 인코딩 | GKE와 Helm/Kubernetes provider. endpoint는 HTTPS URL, CA는 base64 인코딩 |
+| cluster_addons | `secret_store_name`, `ingress_class` | ClusterSecretStore와 IngressClass | ClusterSecretStore와 Ingress 설정. 클래스 값은 노출 방식 결정 후 확정 |
+| registry | `repository_urls` | 저장소 이름 → 이미지 push 주소 | 저장소 이름 → Artifact Registry 이미지 push 주소 |
+| database | `host`, `port`, `database_name`, `credentials_secret_id` | RDS와 username/password JSON 시크릿 식별자 | Cloud SQL과 username/password JSON을 담은 Secret Manager 시크릿 식별자 |
+| observability | `dashboard_path` | Ingress 주소에 붙일 Grafana 경로 | 대시보드 경로. 관측 방식 결정 후 확정 |
+| ci_identity | `plan_identity`, `deploy_identity` | plan/apply가 사용할 IAM 역할 ARN | plan/apply가 사용할 서비스 계정 이메일 |
 
 AWS의 `node_security_group_id`, onprem의 `kube_context` 등은 벤더별 연결에 쓰는 추가 출력이다. `ci_identity/aws`의 기존 `plan_role_arn`, `deploy_role_arn`은 bootstrap 호환성을 위해 유지한다. GCP는 구현 중이며 입력까지 모두 통일된 상태는 아니다.
+
+## GCP 입력 · 출력 규칙 (T4)
+
+- 공통 출력 이름과 역할은 유지한다. 값의 형식이 대상에 따라 다른 식별자는 해당 대상의 provider · 인증 액션에 연결한다.
+- GCP에는 AWS 전용 `node_security_group_id`, `plan_role_arn`, `deploy_role_arn`을 만들지 않는다.
+- GCP 전용 출력으로 `node_service_account`, `pods_range_name`, `services_range_name`, `workload_identity_provider`를 추가한다.
+- 입력은 의미가 같으면 기존 이름을 유지한다. AWS 전용 개념은 GCP에 필요한 이름으로 별도 대응한다. 구체적인 입력 목록은 각 모듈 구현 시 문서화한다.
+- 기존 AWS · onprem 계약과 호출부는 유지한다. 공통 계약 자체를 바꿔야 하는 예외는 담당자와 공유 · 합의한다.
 
 ## AWS 루트의 연결 순서
 
