@@ -35,6 +35,34 @@ jobs:
           git tag -f "$major"
           git push -f origin "$major"
 
+  # Slack 봇(T26) 이미지. 대상 레포의 인프라가 같은 버전 태그로 띄운다. EKS(amd64) · 맥북 k3d(arm64) 둘 다.
+  slack-bot:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: docker/setup-qemu-action@v3
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - id: image
+        env:
+          VERSION: ${{ github.ref_name }}
+        run: |
+          owner="$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')"
+          echo "tags=ghcr.io/$owner/slack-bot:${VERSION#v}" >> "$GITHUB_OUTPUT"
+      - uses: docker/build-push-action@v6
+        with:
+          context: slack-bot
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ${{ steps.image.outputs.tags }}
+          labels: org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+          cache-from: type=gha,scope=slack-bot
+          cache-to: type=gha,mode=max,scope=slack-bot
+
   # 대상 레포에 새 버전을 알린다. 대상 레포의 template-update 워크플로가 업데이트 PR을 연다(T22).
   # 메이저 태그(v1)를 옮긴 뒤에 보내야 대상 레포가 @v1로 새 template-update를 쓴다.
   notify:
