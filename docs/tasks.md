@@ -400,7 +400,7 @@ Claude Code는 `/todo-task`, Codex는 `$todo-task`로 이 순서를 따르는 �
 - [ ] 재사용 `deploy.yml`에 대상 · 환경 입력, prod job에 environment 연결
 - [ ] test에서 검증한 같은 이미지를 prod에 사용(rebase 머지 또는 PR head SHA 조회)
 - [ ] 환경별 `concurrency`, 테스트 슬롯 1개
-- [ ] 온프레미스 runner에서 GHCR 차트·이미지를 받아 test 배포하는 경로 확인
+- [x] 온프레미스 runner에서 GHCR 차트·이미지를 받아 test 배포하는 경로 확인
 
 **완료 기준** yolo push는 test만, main 머지는 test → prod로 간다.
 
