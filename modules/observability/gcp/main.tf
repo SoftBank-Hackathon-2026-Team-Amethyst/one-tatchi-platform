@@ -3,7 +3,8 @@ resource "google_monitoring_dashboard" "this" {
   dashboard_json = jsonencode({
     displayName = "${var.cluster_name} deployment overview"
     gridLayout = {
-      columns = 2
+      # Monitoring API serializes this int64 field as a JSON string.
+      columns = "2"
       widgets = concat([
         for item in [
           { title = "Container CPU", metric = "kubernetes.io/container/cpu/core_usage_time", aligner = "ALIGN_RATE", label = "CPU cores" },
