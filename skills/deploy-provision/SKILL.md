@@ -1,6 +1,6 @@
 ---
 name: deploy-provision
-description: 분석 결과(.deploy/config.yaml, .deploy/report.md)로 대상 레포에 배포 산출물을 만든다. Dockerfile, App Chart 값 파일, infra/envs/<대상> Terraform 루트(원격 모듈 태그 참조), .deploy/smoke.json, 재사용 워크플로 호출부, CODEOWNERS. 아무것도 apply하지 않는다. janto-deploy / yolo-deploy의 산출물 단계이거나, 설정이 바뀐 뒤 산출물을 다시 맞출 때 쓴다.
+description: 분석 결과(.deploy/plan.yaml, .deploy/report.md)로 대상 레포에 배포 산출물을 만든다. Dockerfile, App Chart 값 파일, infra/envs/<대상> Terraform 루트(원격 모듈 태그 참조), .deploy/smoke.json, 재사용 워크플로 호출부, CODEOWNERS. 아무것도 apply하지 않는다. janto-deploy / yolo-deploy의 산출물 단계이거나, 설정이 바뀐 뒤 산출물을 다시 맞출 때 쓴다.
 ---
 
 # deploy-provision
