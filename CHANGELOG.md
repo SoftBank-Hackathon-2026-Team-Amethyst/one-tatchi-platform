@@ -10,6 +10,10 @@
 
 ## Unreleased
 
+## v1.11.0
+
+- 재사용 워크플로 `pr-ready.yml` (T26): janto PR의 검사가 통과하면 Slack에 "PR 준비" 알림과 머지 버튼. draft · `yolo/**` · fork PR은 제외
+
 - `skills/`: 에이전트 스킬 추가 (T13). `/janto-deploy`(기능 브랜치 + main PR), `/yolo-deploy`(`yolo/<기능>` push, 검사 실패 수정 루프 규칙), `deploy-analyze`(T15 브리프 + 분석기 5개 + 보고서 · `config.yaml`의 `target` · `services`), `deploy-provision`(산출물 템플릿 · `render.sh` · `check-artifacts.sh`), `deploy-release` · `deploy-rollback`(`rollout.yml` 요청). 스킬은 apply하지 않고 템플릿을 태그로만 참조한다. 설치는 `scripts/install-skills.sh`
 
 ## v1.10.0
