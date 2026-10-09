@@ -8,7 +8,7 @@ yolo의 main 반영은 로컬 스킬이 종료돼도 이어져야 한다. 재사
 stable ReplicaSet의 이미지 SHA를 확인한다. 확인 실패·abort·manual 배포에는 PR을 만들지 않는다.
 
 별도 `yolo-pr` job은 GitHub App(`BOT_CLIENT_ID`, `BOT_PRIVATE_KEY`)으로 PR을 생성하거나
-기존 PR의 자동 보고서 영역을 갱신한다. App은 Contents/Pull requests/Issues 쓰기,
+기존 PR의 자동 보고서 영역을 갱신한다. App은 Contents/Pull requests 쓰기,
 Actions 읽기 권한이 필요하고 워크플로 변경이 포함된 PR은 Workflows 쓰기도 필요하다.
 기본 GITHUB_TOKEN으로 만든 PR은 후속 CI가 시작되지 않으므로 쓰지 않는다.
 
