@@ -10,6 +10,10 @@
 
 ## Unreleased
 
+## v1.10.0
+
+- Slack 운영 승인 · 거절 버튼 (T26): `deploy.yml` gate가 regulated 운영 배포마다 승인 대기 알림과 버튼을 올리고, 봇이 prod environment의 custom deployment protection rule을 승인 · 거절한다. `slack-notify` 버튼 `approve` · `reject`와 입력 `approval`, 결과 `waiting` 아이콘 추가
+
 ## v1.9.0
 
 - `release.yml`: Slack 봇 이미지 `ghcr.io/<org>/slack-bot:<버전>`(amd64 · arm64)을 함께 올린다. 대상 레포 인프라가 같은 버전으로 띄운다 (T26)

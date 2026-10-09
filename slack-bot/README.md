@@ -61,8 +61,16 @@ uv run python -m app.main
 |---|---|---|
 | 승격 · 취소 · 되돌리기 | `rollout_promote`, `rollout_abort`, `rollout_undo` | `<서비스|all>@<대상>.<환경>` (예 `demo-app-be@aws.test`). 알림의 `target`과 같다 |
 | 머지 | `pr_merge` | 대상 레포의 PR 번호 |
+| 운영 승인 · 거절 | `deploy_approve`, `deploy_reject` | `<워크플로 실행 ID>@<GitHub environment>` (예 `123456@prod`). `deploy.yml`의 gate가 regulated 운영 배포마다 올린다 |
 
 명령: `/rollout <promote|abort|undo> <서비스|all>@<대상>.<환경>` (예 `/rollout promote all@aws.test`)
+
+## 운영 승인 버튼 설정 (한 번만)
+
+봇은 GitHub App이라 environment의 required reviewers가 될 수 없습니다. 대신 대상 레포 `prod` environment의 **custom deployment protection rule**로 등록하고, 버튼을 누르면 그 규칙을 승인 · 거절합니다. 누른 사람은 승인 코멘트(`slack:<이름>(<ID>)`)로 남습니다.
+
+1. GitHub App 권한: Repository **Deployments** 읽기 · 쓰기, 이벤트 **Deployment protection rule** 구독(웹후크를 켜야 고를 수 있다. 봇은 웹후크를 받지 않으니 주소는 아무 곳이어도 된다)
+2. 대상 레포 Settings → Environments → `prod` → Deployment protection rules에서 앱을 켠다. Slack만으로 승인하려면 required reviewers는 끈다(둘 다 켜면 둘 다 필요). 관리자는 긴급할 때 화면에서 우회할 수 있다
 
 ## 대상 레포 호출 예시
 

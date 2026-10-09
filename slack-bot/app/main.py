@@ -7,6 +7,7 @@ import httpx
 from slack_bolt import App
 from slack_bolt.adapter.socket_mode import SocketModeHandler
 
+from app.approvals import Approvals, NotWaitingError
 from app.config import Settings
 from app.github import AppToken, GitHub
 from app.pulls import Merges
@@ -21,6 +22,8 @@ def attempt(call: Callable[[], None], failure: str) -> str | None:
         call()
     except NotAllowedError:
         return "이 조작을 실행할 권한이 없어요."
+    except NotWaitingError:
+        return "승인 대기 중인 배포가 없어요. 이미 처리됐거나 아직 대기 전이에요."
     except httpx.HTTPError:
         logger.exception(failure)
         return f"{failure}. 잠시 후 다시 시도해 주세요."
@@ -35,7 +38,7 @@ def close_buttons(body: dict, respond, text: str) -> None:
     respond(text=message.get("text", text), blocks=blocks, replace_original=True)
 
 
-def build_app(token: str, rollouts: Rollouts, merges: Merges) -> App:
+def build_app(token: str, rollouts: Rollouts, merges: Merges, approvals: Approvals) -> App:
     app = App(token=token)
 
     def rollout(request: RolloutRequest, user_id: str, user_name: str) -> tuple[bool, str]:
@@ -98,6 +101,34 @@ def build_app(token: str, rollouts: Rollouts, merges: Merges) -> App:
             f"<@{user['id']}> 님이 <{merges.github.pull_url(number)}|PR #{number}>을 머지했어요.",
         )
 
+    # 운영 승인 · 거절. action_id는 deploy_<approve|reject>, value는 <실행 ID>@<environment>입니다.
+    @app.action(re.compile(r"^deploy_(approve|reject)$"))
+    def on_approval_button(ack, action, body, respond):
+        ack()
+        user = body["user"]
+        decision = action["action_id"].removeprefix("deploy_")
+        try:
+            run_id, environment = Approvals.parse(action["value"])
+        except ValueError:
+            respond("버튼 값이 올바르지 않아요.", response_type="ephemeral", replace_original=False)
+            return
+        error = attempt(
+            lambda: approvals.request(
+                decision, action["value"], user["id"], user.get("username", user["id"])
+            ),
+            "운영 배포를 승인 · 거절하지 못했어요",
+        )
+        if error:
+            respond(error, response_type="ephemeral", replace_original=False)
+            return
+        verb = "승인" if decision == "approve" else "거절"
+        close_buttons(
+            body,
+            respond,
+            f"<@{user['id']}> 님이 `{environment}` 배포를 {verb}했어요. "
+            f"<{approvals.github.run_url(run_id)}|실행 보기>",
+        )
+
     return app
 
 
@@ -129,6 +160,7 @@ def main() -> None:
         settings.slack_bot_token,
         Rollouts(github, settings.allowed_user_ids),
         Merges(github, settings.allowed_user_ids, settings.merge_method),
+        Approvals(github, settings.allowed_user_ids),
     )
 
     # Socket Mode는 봇이 Slack으로 연결을 거는 방식이라 공개 엔드포인트가 필요 없습니다.
