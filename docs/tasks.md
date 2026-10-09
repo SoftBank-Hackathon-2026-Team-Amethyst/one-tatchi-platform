@@ -290,8 +290,8 @@ Claude Code는 `/todo-task`, Codex는 `$todo-task`로 이 순서를 따르는 �
 **할 일**
 - [ ] 잠자기 방지(`caffeinate` 또는 `pmset`), 전원 연결, Docker Desktop 로그인 시 자동 시작
 - [ ] 재부팅 후 자동 복구 확인: k3d 노드 · self-hosted runner(launchd) · cloudflared가 다시 뜨고, 바뀐 터널 주소를 확인하는 방법을 README에
-- [ ] onprem 배포에서 터널 주소를 못 찾으면 실패로 끝낸다 (지금은 주소 `/`로 성공 처리)
-- [ ] 검사한 이미지를 그대로 배포: `linux/amd64` + `linux/arm64` 멀티 아키텍처로 한 번 빌드하고 checks · deploy가 같은 이미지를 쓴다
+- [ ] onprem 배포에서 터널 주소를 못 찾으면 실패로 끝낸다 (지금은 주소 `/`로 성공 처리) → `deploy.yml` service_urls에서 주소가 비면 실패 (T5 PR)
+- [ ] 검사한 이미지를 그대로 배포: `linux/amd64` + `linux/arm64` 멀티 아키텍처로 한 번 빌드하고 checks · deploy가 같은 이미지를 쓴다 (1차: `image-push`가 빌드 직후 배포 이미지를 Trivy로 검사해 "검사한 이미지 = 배포 이미지"는 해소. 단일 빌드 · 멀티아치는 남음)
 - [ ] 비밀값이 로컬 Terraform state에 평문으로 남지 않게 한다 (DB 비밀번호 · k3d 관리자 인증서, NFR-2)
 - [ ] database: 할 일에 적힌 Helm Postgres로 바꿀지 결정 (지금 StatefulSet)
 - [ ] (시간이 남으면) 리눅스 머신에서 같은 절차 확인

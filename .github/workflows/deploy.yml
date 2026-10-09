@@ -4,6 +4,7 @@ name: deploy
 # green이 뜨면 Paused(승격 대기)에서 멈추고, AI 승격 판단(promote-judge, T7)이 서비스를 묶어 promote · abort를 정한다.
 #   promote-mode auto: 판단대로 바로 실행 (yolo). abort면 job이 실패해 다음 단계로 가지 않는다
 #   promote-mode manual(기본): 실행하지 않고 판단 근거를 알림에 남긴다. 사람이 Slack 버튼으로 결정한다 (janto)
+#   prod 배포는 같은 이미지가 test에서 승격(stable)된 뒤에만 진행한다 (require-test-promotion). 이미지는 빌드 직후 Trivy로 검사한 것만 push한다.
 # 배포 대상(target)마다 다른 부분은 공통 액션 kube-access(클러스터 접속) · image-push(레지스트리)와
 # 아래 "주소" 단계에만 있다. 나머지 단계와 App Chart는 모든 대상에서 같다.
 on:
@@ -67,6 +68,20 @@ on:
         description: AI 승격 판단 전에 green에 smoke 요청을 보내는 관찰 창(초). 서비스들은 동시에 관찰한다
         type: string
         default: "30"
+      require-test-promotion:
+        description: >-
+          prod 배포 전에 같은 커밋(이미지 태그)이 test에서 승격(stable)됐는지 확인한다. 승격 전이면 기다리고,
+          promotion-wait-seconds 안에 승격되지 않으면 실패한다 (리뷰 지점 3을 건너뛰고 운영으로 가는 것을 막는다)
+        type: string
+        default: "true"
+      test-namespace:
+        description: require-test-promotion이 확인할 test 네임스페이스
+        type: string
+        default: test
+      promotion-wait-seconds:
+        description: test 승격을 기다리는 최대 시간(초)
+        type: string
+        default: "600"
     secrets:
       SLACK_BOT_TOKEN:
         required: false
@@ -157,6 +172,45 @@ jobs:
           cluster: ${{ inputs.cluster }}
           role-arn: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
           region: ${{ vars.AWS_REGION }}
+      # 운영에는 test에서 승격(stable)된 같은 이미지만 올린다 (설계 6.2, 리뷰 지점 3).
+      # test의 각 Rollout에서 stable ReplicaSet의 이미지 태그가 이 커밋과 같아질 때까지 기다린다.
+      - if: inputs.environment == 'prod' && inputs.require-test-promotion == 'true'
+        name: test 승격 확인 (같은 이미지가 test에서 stable인지)
+        env:
+          TEST_NS: ${{ inputs.test-namespace }}
+          WAIT: ${{ inputs.promotion-wait-seconds }}
+        run: |
+          names="$(jq -r 'map(.name) | join(" ")' <<<"$SERVICES")"
+          stable_tag() {
+            local rs
+            rs="$(kubectl get rollout "$1" -n "$TEST_NS" -o jsonpath='{.status.stableRS}' 2>/dev/null)" || return 1
+            [ -n "$rs" ] || return 1
+            kubectl get rs -n "$TEST_NS" -l "rollouts-pod-template-hash=$rs" \
+              -o jsonpath='{.items[0].spec.template.spec.containers[0].image}' | sed 's/.*://'
+          }
+          deadline=$((SECONDS + WAIT))
+          while :; do
+            pending=""
+            for r in $names; do
+              if ! kubectl get rollout "$r" -n "$TEST_NS" >/dev/null 2>&1; then
+                echo "::error::$TEST_NS 네임스페이스에 Rollout $r 이 없다. 이 커밋을 test에 먼저 배포한다"; exit 1
+              fi
+              tag="$(stable_tag "$r" || true)"
+              if [ "$tag" = "$TAG" ]; then echo "$r: test stable = ${TAG::7} ✓"; else echo "$r: test stable = ${tag:-(없음)} (기다리는 중: ${TAG::7})"; pending+="$r "; fi
+            done
+            [ -z "$pending" ] && break
+            if [ "$SECONDS" -ge "$deadline" ]; then
+              echo "::error::test에서 승격되지 않은 서비스: $pending— test의 green을 promote(Slack 버튼 · rollout.yml)한 뒤 다시 실행한다 (workflow_dispatch)"
+              exit 1
+            fi
+            sleep 20
+          done
+          echo "### test 승격 확인: \`${TAG::7}\` 이 $TEST_NS 에서 stable" >> "$GITHUB_STEP_SUMMARY"
+      # 배포 직전 이미지 검사용 (push.sh가 빌드한 이미지를 push 전에 검사한다)
+      - uses: aquasecurity/setup-trivy@v0.3.1
+        with:
+          version: v0.75.0
+          cache: true
       - id: ecr
         if: inputs.target == 'aws'
         uses: aws-actions/amazon-ecr-login@v2
@@ -214,7 +268,12 @@ jobs:
                 tunnel="cloudflared-$NAMESPACE"
                 kubectl -n cloudflared get deploy "$tunnel" >/dev/null 2>&1 || tunnel=cloudflared
                 if kubectl -n cloudflared get deploy "$tunnel" -o jsonpath='{.spec.template.spec.containers[0].args}' | grep -q "//$release\.$NAMESPACE\."; then
-                  active="$(kubectl -n cloudflared logs "deploy/$tunnel" | grep -o 'https://[a-z0-9-]*\.trycloudflare\.com' | tail -1)/"
+                  url="$(kubectl -n cloudflared logs "deploy/$tunnel" | grep -o 'https://[a-z0-9-]*\.trycloudflare\.com' | tail -1)"
+                  if [ -z "$url" ]; then
+                    echo "::error::$tunnel 터널의 외부 주소를 로그에서 찾지 못했다 (cloudflared가 아직 연결 전이거나 재시작 중). 배포는 됐지만 접속 주소가 없어 실패로 끝낸다"
+                    return 1
+                  fi
+                  active="$url/"
                 fi
                 preview="kubectl -n $NAMESPACE port-forward svc/$release-preview 8080:$(kubectl get svc "$release-preview" -n "$NAMESPACE" -o jsonpath='{.spec.ports[0].port}')" ;;
             esac
