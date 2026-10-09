@@ -330,9 +330,9 @@ Claude Code는 `/todo-task`, Codex는 `$todo-task`로 이 순서를 따르는 �
 
 **할 일**
 - [x] GCP 프로젝트와 결제 연결
-- [ ] platform의 `ci_identity/gcp`(Workload Identity Federation, demo-app 신뢰)
-- [ ] network · cluster(GKE) · registry(Artifact Registry) · database(Cloud SQL) · secrets · observability 구현
-- [ ] 출력값 이름이 aws 구현체와 같은지 확인
+- [x] platform의 `ci_identity/gcp`(Workload Identity Federation, demo-app 신뢰)
+- [x] network · cluster(GKE) · registry(Artifact Registry) · database(Cloud SQL) · secrets · observability 구현
+- [x] 출력값 이름이 aws 구현체와 같은지 확인
 - [ ] demo-app에 `infra/envs/gcp` 루트 추가, 배포 확인
 
 **완료 기준** AWS와 같은 App Chart · 같은 값 파일로 GCP 배포가 성공한다.
@@ -588,10 +588,10 @@ Claude Code는 `/todo-task`, Codex는 `$todo-task`로 이 순서를 따르는 �
 **목표** test 승격 후 사람 개입 없이 `main`에 머지된다.
 
 **할 일**
-- [ ] GitHub Actions가 test 실제 승격 확인 뒤 main PR을 생성한다 (ADR 0010)
-- [ ] GHA라면 GitHub App 토큰(기본 토큰으로 만든 PR은 워크플로를 실행하지 않음)
+- [x] GitHub Actions가 test 실제 승격 확인 뒤 main PR을 생성한다 (ADR 0010)
+- [x] GHA라면 GitHub App 토큰(기본 토큰으로 만든 PR은 워크플로를 실행하지 않음)
 - [ ] `gh pr create` + `gh pr merge --auto --rebase`
-- [ ] PR 본문에 yolo 배포 리포트, 라벨 `yolo`
+- [x] PR 본문에 yolo 배포 리포트, 라벨 `yolo`
 
 **완료 기준** yolo 배포가 test 승격 후 자동으로 main에 머지된다.
 
