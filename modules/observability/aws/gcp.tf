@@ -6,7 +6,9 @@ resource "helm_release" "gcp_credentials" {
   chart            = "${path.module}/../../../charts/grafana-wif"
   values = [yamlencode({
     credentials = {
-      type                              = "external_account"
+      type = "external_account"
+      # Grafana's GCE/ADC project lookup reads this instead of defaultProject.
+      project_id                        = var.gcp_monitoring.project_id
       audience                          = "//iam.googleapis.com/${var.gcp_monitoring.workload_provider}"
       subject_token_type                = "urn:ietf:params:oauth:token-type:jwt"
       token_url                         = "https://sts.googleapis.com/v1/token"

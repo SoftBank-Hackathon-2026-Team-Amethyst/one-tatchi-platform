@@ -57,6 +57,7 @@
           },
           "queryType": "promQL",
           "hide": ${gcp_hidden},
+          "timeSeriesList": {},
           "promQLQuery": {
             "projectName": "${gcp_project}",
             "expr": "sum by (target,cluster,environment,service) (rate(app_http_response_count_total{target=~\"$${target:regex}\",environment=~\"$${environment:regex}\",cluster=~\"$cluster\",service=~\"$service\"}[5m]))",
@@ -117,6 +118,7 @@
           },
           "queryType": "promQL",
           "hide": ${gcp_hidden},
+          "timeSeriesList": {},
           "promQLQuery": {
             "projectName": "${gcp_project}",
             "expr": "100 * (sum by (target,cluster,environment,service) (rate(app_http_response_count_total{target=~\"$${target:regex}\",environment=~\"$${environment:regex}\",cluster=~\"$cluster\",service=~\"$service\",status=~\"5..\"}[5m])) or (sum by (target,cluster,environment,service) (rate(app_http_response_count_total{target=~\"$${target:regex}\",environment=~\"$${environment:regex}\",cluster=~\"$cluster\",service=~\"$service\"}[5m])) * 0)) / (sum by (target,cluster,environment,service) (rate(app_http_response_count_total{target=~\"$${target:regex}\",environment=~\"$${environment:regex}\",cluster=~\"$cluster\",service=~\"$service\"}[5m])) > 0)",
@@ -177,6 +179,7 @@
           },
           "queryType": "promQL",
           "hide": ${gcp_hidden},
+          "timeSeriesList": {},
           "promQLQuery": {
             "projectName": "${gcp_project}",
             "expr": "histogram_quantile(0.95, sum by (le,target,cluster,environment,service) (rate(app_http_response_time_seconds_hist_bucket{target=~\"$${target:regex}\",environment=~\"$${environment:regex}\",cluster=~\"$cluster\",service=~\"$service\"}[5m]))) * 1000",
@@ -580,6 +583,7 @@
           },
           "queryType": "promQL",
           "hide": ${gcp_hidden},
+          "timeSeriesList": {},
           "promQLQuery": {
             "projectName": "${gcp_project}",
             "expr": "sum by(cluster_name,namespace_name,pod_name) (rate({\"kubernetes.io/container/cpu/core_usage_time\",monitored_resource=\"k8s_container\",namespace_name=~\"$${environment:regex}\",cluster_name=~\"$cluster\",pod_name=~\"($${service:raw})-.*\",container_name=\"app\"}[5m]))",
@@ -631,6 +635,7 @@
           },
           "queryType": "promQL",
           "hide": ${gcp_hidden},
+          "timeSeriesList": {},
           "promQLQuery": {
             "projectName": "${gcp_project}",
             "expr": "sum by(cluster_name,namespace_name,pod_name) ({\"kubernetes.io/container/memory/used_bytes\",monitored_resource=\"k8s_container\",namespace_name=~\"$${environment:regex}\",cluster_name=~\"$cluster\",pod_name=~\"($${service:raw})-.*\",container_name=\"app\"})",
