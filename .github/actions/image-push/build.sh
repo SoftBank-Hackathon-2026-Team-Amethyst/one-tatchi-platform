@@ -7,9 +7,12 @@ key="$(python3 "$here/bundle.py" key "$CONTEXT")"
 bundle="$RUNNER_TEMP/image-bundles/$key"
 mkdir -p "$bundle"
 rm -f "$bundle/verified.json"
+cache_scope="buildx-${CONTEXT//\//-}"
 docker buildx build --platform linux/amd64,linux/arm64 \
   --provenance=false --sbom=false \
   --label "org.opencontainers.image.source=https://github.com/$GITHUB_REPOSITORY" \
+  --cache-from "type=gha,scope=$cache_scope" \
+  --cache-to "type=gha,mode=max,scope=$cache_scope" \
   --tag "checked:$GITHUB_SHA" --output "type=oci,dest=$bundle/image.tar" "$CONTEXT"
 python3 "$here/bundle.py" inspect "$bundle/image.tar" --extract "$bundle/oci" > "$bundle/layout.json"
 ignore=(); [ ! -f .trivyignore ] || ignore=(--ignorefile .trivyignore)
