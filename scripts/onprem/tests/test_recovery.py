@@ -1,4 +1,5 @@
 import json
+import os
 from pathlib import Path
 import subprocess
 import sys
@@ -14,6 +15,16 @@ import reboot_observer
 
 
 class RecoveryTests(unittest.TestCase):
+    def test_installed_status_uses_managed_path_from_plain_terminal(self):
+        with patch.object(sys, "argv", ["onpremctl", "--config", "/tmp/config.json", "status"]), \
+                patch.object(ctl, "load_config", return_value={"path": "/managed/tools:/usr/bin"}), \
+                patch.object(ctl, "status") as status, patch.dict(os.environ, {"PATH": "/usr/bin"}), patch("builtins.print"):
+            def check(config):
+                self.assertEqual(os.environ["PATH"], "/managed/tools:/usr/bin")
+                return {"docker_ready": True, "errors": []}
+            status.side_effect = check
+            self.assertEqual(ctl.main(), 0)
+
     def test_nested_budget_and_queries_cannot_extend_outer_deadline(self):
         with patch.object(deadline.time, "monotonic", return_value=100):
             with deadline.budget(10):
@@ -105,6 +116,15 @@ class ReplacementTests(unittest.TestCase):
 
 
 class ObserverTests(unittest.TestCase):
+    def test_unpowered_baseline_does_not_relax_live_acceptance_or_hide_data_loss(self):
+        power = "AC power is disconnected; continuous operation is not guaranteed"
+        current = {"ac_power": False, "errors": [power, "SQL/public API marker missing: prod"]}
+        errors, pending = reboot_observer.baseline_errors(current, True)
+        self.assertEqual(errors, ["SQL/public API marker missing: prod"])
+        self.assertEqual(pending, [power])
+        self.assertIn(power, reboot_observer.compare({}, current))
+        self.assertIn(power, reboot_observer.baseline_errors(current, False)[0])
+
     def test_http_success_cannot_replace_data_runner_and_boot_evidence(self):
         baseline = {"pvcs": ["uid"], "images": ["digest"], "charts": ["version"], "database": {"test": {"marker_count": 1}}}
         current = dict(baseline, errors=[], boot_id="new", last_restore={"boot_id": "old", "status": "ready"})

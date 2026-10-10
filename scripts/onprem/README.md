@@ -184,6 +184,7 @@ python3 scripts/onprem/server_image.py replace --server "$SERVER" --backup "$BAC
 
 `reboot_observer.py baseline --config … --evidence … --repository OWNER/REPO`로 양쪽 DB 검증 글·PVC UID·앱 digest·차트·인증정보 지문을 고정한다.
 다음 로그인에 같은 인수의 `observe`를 별도 LaunchAgent로 실행한다. 관측기는 서비스 시작·수정·승격을 실행하지 않는다.
+충전기 연결 전에 준비하려면 baseline에만 `--allow-unpowered-baseline`을 사용할 수 있다. 데이터 검사는 모두 통과해야 하며 전원 조건은 `preconditions_pending`으로 남긴다. 실제 observe의 AC·잠자기 방지 기준은 완화하지 않는다.
 현재 부팅이면 관측을 시작하지 않으며, 기존 결과를 덮어쓰거나 launchd 재실행으로 600초 제한을 늘리지 않는다.
 
 로그인 LaunchAgent의 시작을 실제 로그인 시각의 근사치로 사용한다. 600초 안에 현재 부팅의 복구 성공, runner의 새 연결 및 GitHub online,

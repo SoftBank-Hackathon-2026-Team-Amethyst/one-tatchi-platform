@@ -74,3 +74,10 @@ installer에도 실제 runner/work 경로 검사와 BOM이 있는 공식 설정 
 
 실제 맥북 재부팅·로그인 관측은 별도다. 관측 결과가 나오기 전에는 재부팅 이슈 항목을 체크하지 않는다.
 백업·원본 설정·상세 런타임 로그는 공개 저장소에 올리지 않는다.
+
+
+실제 secondary 적용 결과: Docker 이미지 `rancher/k3s:v1.33.6-k3s1`와 Kubernetes `v1.33.6+k3s1` 일치.
+원래 Docker 볼륨 5개, test/prod·Prometheus PVC UID 3개, 앱 digest·차트와 양쪽 DB 검증 글/인증정보를 보존했다.
+노드 인증 Secret이 `k3s.cattle.io/node-password`로 전환된 뒤 exec kubeconfig 인증과 재등록이 정상이다.
+노드 IP 일치, Pod 19개 Ready, ExternalSecret 2개 Ready, 내부/외부 DNS, Metrics Server 및 과거/현재 Prometheus 조회 통과.
+교체 후 fatal 로그와 Docker 반복 종료는 0이었다. 일반 터미널에서 설치본 CLI를 호출할 때도 launchd와 같은 관리 PATH를 쓰도록 보완했다.
