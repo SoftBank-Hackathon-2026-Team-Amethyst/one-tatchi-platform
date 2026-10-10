@@ -28,11 +28,13 @@
 |---|---|
 | `cluster_name` | operator 기기 이름 접두 (`<cluster_name>-operator`) |
 | `tailnet` | tailnet DNS 이름 |
-| `oauth_client_id`, `oauth_client_secret` | ephemeral · sensitive. write-only Secret `tailscale/operator-oauth`로만 전달하고 state에 남지 않는다 |
+| `create_oauth_secret` | 기본 true. false면 `tailscale/operator-oauth`(키 `client_id` · `client_secret`)를 다른 것이 만든다고 본다. CI로 apply하는 클라우드 루트는 service-base의 `secret` 블록(External Secrets)으로 만들고 이 모듈을 `depends_on`으로 뒤에 둔다 |
+| `oauth_client_id`, `oauth_client_secret` | `create_oauth_secret`가 true일 때. ephemeral · sensitive. write-only Secret으로만 전달하고 state에 남지 않는다 |
+| `manage_namespace` | 기본 true. service-base가 `tailscale` 네임스페이스를 만들면 false |
 | `oauth_revision` | OAuth 값을 바꿨을 때 올린다 |
 | `operator_chart_version` | `tailscale-operator` 차트 버전 (예: `1.102.4`) |
 | `publish` | `{ <tailnet 호스트명> = { target, port = 5432, tags = ["tag:db-onprem"] } }`. Service는 `tailscale/publish-<호스트명>`에 생긴다 |
-| `consume` | `{ <Service 이름> = { namespace, fqdn, port = 5432, tags = ["tag:app-aws"] } }` |
+| `consume` | `{ <키> = { namespace, fqdn, name = <키>, port = 5432, tags = ["tag:app-aws"] } }`. Service 이름은 `name`(비우면 키) |
 
 ## 출력
 

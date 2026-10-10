@@ -3,17 +3,26 @@
 # 양쪽 다 같은 모듈이라 방향을 바꿔도(앱=온프레미스, DB=AWS) 입력만 달라진다.
 # 데이터 경로는 WireGuard(P2P)이고 DB 포트는 인터넷에 열리지 않는다. 앱이 보는 것은 보통의 ClusterIP Service 하나다.
 
+locals {
+  namespace = "tailscale"
+}
+
 resource "kubernetes_namespace_v1" "tailscale" {
+  count = var.manage_namespace ? 1 : 0
+
   metadata {
-    name = "tailscale"
+    name = local.namespace
   }
 }
 
 # OAuth 값은 ephemeral 입력 → write-only Secret. 차트에는 값을 넘기지 않고 operator가 이 Secret을 읽는다 (이름 · 키는 차트 규약).
+# create_oauth_secret = false면 External Secrets 등이 같은 이름 · 키로 미리 만들어 둔다.
 resource "kubernetes_secret_v1" "operator_oauth" {
+  count = var.create_oauth_secret ? 1 : 0
+
   metadata {
     name      = "operator-oauth"
-    namespace = kubernetes_namespace_v1.tailscale.metadata[0].name
+    namespace = local.namespace
   }
 
   data_wo = {
@@ -21,11 +30,13 @@ resource "kubernetes_secret_v1" "operator_oauth" {
     client_secret = var.oauth_client_secret
   }
   data_wo_revision = var.oauth_revision
+
+  depends_on = [kubernetes_namespace_v1.tailscale]
 }
 
 resource "helm_release" "operator" {
   name       = "tailscale-operator"
-  namespace  = kubernetes_namespace_v1.tailscale.metadata[0].name
+  namespace  = local.namespace
   repository = "https://pkgs.tailscale.com/helmcharts"
   chart      = "tailscale-operator"
   version    = var.operator_chart_version
@@ -41,7 +52,7 @@ resource "helm_release" "operator" {
     }
   })]
 
-  depends_on = [kubernetes_secret_v1.operator_oauth]
+  depends_on = [kubernetes_namespace_v1.tailscale, kubernetes_secret_v1.operator_oauth]
 }
 
 # publish: ExternalName Service에 expose 어노테이션을 달면 operator가 프록시 파드를 만들어 target을 tailnet에 내보낸다.
@@ -51,7 +62,7 @@ resource "kubernetes_service_v1" "publish" {
 
   metadata {
     name      = "publish-${each.key}"
-    namespace = kubernetes_namespace_v1.tailscale.metadata[0].name
+    namespace = local.namespace
     annotations = {
       "tailscale.com/expose"   = "true"
       "tailscale.com/hostname" = each.key
@@ -77,7 +88,7 @@ resource "kubernetes_service_v1" "consume" {
   for_each = var.consume
 
   metadata {
-    name      = each.key
+    name      = coalesce(each.value.name, each.key)
     namespace = each.value.namespace
     annotations = {
       "tailscale.com/tailnet-fqdn" = each.value.fqdn

@@ -8,18 +8,36 @@ variable "tailnet" {
   type        = string
 }
 
+variable "create_oauth_secret" {
+  description = <<-EOT
+    true면 oauth_client_id · oauth_client_secret을 write-only Secret `tailscale/operator-oauth`로 만든다 (로컬 apply, 온프레미스).
+    false면 그 Secret이 이미 있다고 본다. CI에서 apply하는 클라우드 루트는 값을 Terraform에 주지 않고
+    External Secrets(service-base의 `secret` 블록)로 `operator-oauth`를 만든 뒤 이 모듈을 depends_on으로 뒤에 둔다.
+  EOT
+  type        = bool
+  default     = true
+}
+
 variable "oauth_client_id" {
-  description = "Tailscale OAuth 클라이언트 ID (tag:k8s-operator 소유). write-only Secret으로만 전달하고 state에 남기지 않는다"
+  description = "Tailscale OAuth 클라이언트 ID (tag:k8s-operator 소유). create_oauth_secret가 true일 때만. write-only Secret으로만 전달하고 state에 남기지 않는다"
   type        = string
   sensitive   = true
   ephemeral   = true
+  default     = null
 }
 
 variable "oauth_client_secret" {
-  description = "Tailscale OAuth 클라이언트 secret. write-only Secret으로만 전달하고 state에 남기지 않는다"
+  description = "Tailscale OAuth 클라이언트 secret. create_oauth_secret가 true일 때만. write-only Secret으로만 전달하고 state에 남기지 않는다"
   type        = string
   sensitive   = true
   ephemeral   = true
+  default     = null
+}
+
+variable "manage_namespace" {
+  description = "false면 네임스페이스 `tailscale`을 만들지 않는다 (service-base 등 다른 것이 이미 만들 때)"
+  type        = bool
+  default     = true
 }
 
 variable "oauth_revision" {
@@ -54,6 +72,7 @@ variable "consume" {
   type = map(object({
     namespace = string
     fqdn      = string
+    name      = optional(string) # Service 이름. 비우면 키. 여러 네임스페이스에 같은 이름을 쓰려면 키를 다르게 하고 name을 같게
     port      = optional(number, 5432)
     tags      = optional(list(string), ["tag:app-aws"])
   }))
