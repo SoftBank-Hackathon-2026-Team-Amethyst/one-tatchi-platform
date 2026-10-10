@@ -111,6 +111,15 @@ if [ -f "$plan" ] && command -v yq >/dev/null; then
     if [ -f "$path/Dockerfile" ]; then
       /usr/bin/grep -Eq '^USER[[:space:]]+[0-9]+' "$path/Dockerfile" || fail "$name: Dockerfile에 숫자 UID의 USER 가 없다 (App Chart runAsNonRoot)"
     fi
+    # DB Secret을 받는 서비스는 TLS 설정이 있어야 한다. 클라우드 DB는 TLS 없는 접속을 거부해 앱이 메모리 폴백 등으로 조용히 넘어간다 (T28).
+    values="deploy/values-$short.yaml"; [ -f "$values" ] || values="deploy/values-$name.yaml"
+    if [ -f "$values" ] && yq -r '(.envFromSecrets // [])[]' "$values" 2>/dev/null | /usr/bin/grep -q -- '-db$'; then
+      sslmode="$(yq -r '.env.PGSSL // .env.PGSSLMODE // ""' "$values" 2>/dev/null)"
+      case "$sslmode" in
+        ""|null) fail "$name: $values 가 DB Secret을 받는데 env.PGSSL 이 없다 (클라우드 DB는 TLS 필수, 예: PGSSL: require)" ;;
+        disable|false|0) fail "$name: $values 의 env.PGSSL=$sslmode 는 TLS를 끈다 (클라우드 DB는 접속을 거부한다)" ;;
+      esac
+    fi
   done < <(yq -r '.services[]? | [.name, .path] | @tsv' "$plan" 2>/dev/null)
 else
   skip "yq가 없거나 plan.yaml이 없어 서비스별 Dockerfile 검사"

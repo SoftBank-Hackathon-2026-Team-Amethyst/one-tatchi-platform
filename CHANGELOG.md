@@ -10,6 +10,8 @@
 
 ## Unreleased
 
+- T28: DB Secret을 받는 서비스의 값 파일에 `env.PGSSL: require`를 요구한다(`check-artifacts.sh`, 템플릿 · artifacts.md). 클라우드 DB(RDS · Cloud SQL)는 TLS 없는 접속을 거부해 AWS BE가 메모리 폴백으로 돌았다. 앱 쪽 수정(postgres.js가 `PGSSL`을 읽지 않음)은 demo-app #51.
+
 ## v2.1.2
 
 - T8: 검사한 이미지의 publish job에 test environment를 지정해 yolo 브랜치에서 기존 AWS/GCP OIDC 신뢰 조건으로 인증한다. 운영 deploy job의 승인 관문은 유지한다.
