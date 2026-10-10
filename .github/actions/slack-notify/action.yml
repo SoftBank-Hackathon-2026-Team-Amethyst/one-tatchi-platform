@@ -25,6 +25,18 @@ inputs:
   details:
     description: 본문 아래에 덧붙일 내용 (Slack mrkdwn)
     required: false
+  flow:
+    description: 배포 경로 표시 (Yolo, Janto / 일반 배포, 수동 재배포 등)
+    default: ""
+  environment:
+    description: 배포 환경 (브랜치와 구분)
+    default: ""
+  stage:
+    description: 현재 단계
+    default: ""
+  next-action:
+    description: 이 알림에서 사람이 해야 할 행동
+    default: ""
   buttons:
     description: >-
       붙일 조작 버튼. promote, abort, undo, review, merge, approve, reject 중에서 공백으로 구분합니다.
@@ -48,6 +60,11 @@ runs:
       env:
         TOKEN: ${{ inputs.token }}
         CHANNEL: ${{ inputs.channel }}
+        FLOW: ${{ inputs.flow }}
+        DEPLOY_ENVIRONMENT: ${{ inputs.environment }}
+        STAGE: ${{ inputs.stage }}
+        NEXT_ACTION: ${{ inputs.next-action }}
+        BRANCH: ${{ github.head_ref || github.ref_name }}
         ACTION: ${{ inputs.action }}
         TARGET: ${{ inputs.target }}
         VERSION: ${{ inputs.version }}
@@ -87,6 +104,9 @@ runs:
         fi
         text="$icon $greeting
         *$ACTION* \`$TARGET\` @ \`${VERSION::7}\` ($RESULT)"
+        context="$(bash "$GITHUB_ACTION_PATH/context.sh")"
+        [ -z "$context" ] || text="$text
+        $context"
         meta="${REQUESTED_BY:-$GITHUB_ACTOR} | <$RUN_URL|워크플로 실행 보기>"
         # 버튼의 action_id와 value는 slack-bot/app/main.py와 맞춘 약속입니다 (slack-bot/README.md "버튼 약속").
         #   rollout_<promote|abort|undo>: value = <서비스|all>@<대상>.<환경>
@@ -95,7 +115,7 @@ runs:
         payload="$(jq -n \
           --arg channel "$CHANNEL" --arg text "$text" --arg details "$DETAILS" \
           --arg meta "$meta" --arg buttons "$BUTTONS" --arg service "$SERVICE" --arg pr "$PR" --arg approval "$APPROVAL" '
-          def title: {promote: "승격", abort: "취소", undo: "되돌리기", review: "리뷰 승인", merge: "머지", approve: "승인", reject: "거절"}[.];
+          def title: {promote: "트래픽 승격", abort: "Green 취소", undo: "되돌리기", review: "코드 리뷰 승인", merge: "PR 머지", approve: "운영 배포 승인", reject: "운영 배포 거절"}[.];
           def plain: {type: "plain_text", text: .};
           def button:
             (if . == "merge" then {id: "pr_merge", value: $pr, subject: "PR #\($pr)"}

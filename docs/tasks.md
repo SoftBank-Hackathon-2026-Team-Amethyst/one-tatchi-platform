@@ -29,7 +29,7 @@ Claude Code는 `/todo-task`, Codex는 `$todo-task`로 이 순서를 따르는 �
 
 ## 역할 분담
 
-**원가연** · 플랫폼 코어 (7개, P0 7개)
+**원가연** · 플랫폼 코어 (11개, P0 8개)
 - `T1` 레포 두 개와 bootstrap (P0)
 - `T3` 온프레미스 구현체 (로컬 맥북) (P0)
 - `T5` test / prod 분리와 브랜치 흐름 (P0)
@@ -37,6 +37,10 @@ Claude Code는 `/todo-task`, Codex는 `$todo-task`로 이 순서를 따르는 �
 - `T21` 레포 간 참조 검증 (P0)
 - `T13` janto / yolo 두 경로로 스킬 정리 (P0)
 - `T8` yolo main PR 자동 생성 · 자동 머지 (P0)
+- `T34` test · prod DB와 계정 분리 (P1)
+- `T35` 환경별 값 파일과 prod 장애 주입 차단 (P0)
+- `T36` 장애 훈련 워크플로 (green 확인 · 주입 · 채점) (P1)
+- `T37` 장애 훈련 Slack 명령과 Grafana 기록 (P1)
 
 **이소울** · 파이프라인 (5개, P0 3개)
 - `T6` 규제 여부에 따른 운영 관문 (P0)
@@ -283,7 +287,7 @@ Claude Code는 `/todo-task`, Codex는 `$todo-task`로 이 순서를 따르는 �
 **만들 것** 맥북 자동 시작 설정(Docker Desktop · runner · k3d), 재부팅 복구 절차, onprem 배포 실패 처리, 멀티 아키텍처 이미지, 로컬 state의 비밀값 정리.
 
 - **우선순위** P1 · **영역** 레포 · 인프라 · **담당** 김형래
-- **선행** `T3` · **후속** `T19` · **설계 문서** 6.4
+- **선행** `T3` · **후속** `T19`, `T33` · **설계 문서** 6.4
 
 **목표** 전원·네트워크 연결과 열린 덮개 상태에서 화면 잠금·꺼짐 중에도 test · prod가 계속 동작한다. 재부팅 뒤 로그인 1회 후 자동 복구하며, onprem 배포가 실패를 숨기지 않는다.
 
@@ -660,7 +664,7 @@ Claude Code는 `/todo-task`, Codex는 `$todo-task`로 이 순서를 따르는 �
 **만들 것** AWS BE의 DB TLS 접속 설정, service-base가 만드는 접속 문자열 정리, 스킬 템플릿의 기본값, 그리고 DB가 안 붙은 green을 승격하지 않는 smoke 검사.
 
 - **우선순위** P0 · **영역** 레포 · 인프라 · **담당** 원가연
-- **선행** `T24`, `T7` · **후속** `T19` · **설계 문서** 6.4, FR-9
+- **선행** `T24`, `T7` · **후속** `T19`, `T33` · **설계 문서** 6.4, FR-9
 
 **목표** 세 배포 대상 모두 같은 값 파일로 BE가 DB에 붙고, DB가 안 붙은 상태는 파이프라인이 잡아낸다.
 
@@ -681,7 +685,7 @@ Claude Code는 `/todo-task`, Codex는 `$todo-task`로 이 순서를 따르는 �
 
 **만들 것** App Chart의 이중화 템플릿(PDB · topologySpread · 선택적 HPA), 가용성 답변 → `replicas` · `multi_az` 매핑(스킬), AWS 노드 용량 재산정, demo-app 값 갱신, DB 다중화 결정.
 
-- **우선순위** P1 · **영역** 레포 · 인프라 · **담당** 미정
+- **우선순위** P1 · **영역** 레포 · 인프라 · **담당** 배준범
 - **선행** `T24`, `T3` · **후속** `T19` · **설계 문서** 6.4, FR-6
 
 **목표** 가용성 답변대로 파드가 2개 이상 서로 다른 노드에 떠 있고, 파드 하나가 죽어도 요청이 실패하지 않는다.
@@ -701,7 +705,7 @@ Claude Code는 `/todo-task`, Codex는 `$todo-task`로 이 순서를 따르는 �
 
 **만들 것** 내부 preview Service, localhost 검증 경로, 접근 격리와 마이그레이션 검증.
 
-- **우선순위** P0 · **영역** 레포 · 인프라 · **담당** 원가연
+- **우선순위** P0 · **영역** 레포 · 인프라 · **담당** 이소울, 원가연
 - **선행** `T3`, `T5`, `T7` · **후속** `T19` · **설계 문서** FR-6, FR-7
 
 **목표**
@@ -716,6 +720,83 @@ Claude Code는 `/todo-task`, Codex는 `$todo-task`로 이 순서를 따르는 �
 
 **완료 기준**
 AWS/GCP/onprem에서 승격 전 공개 preview 경로 없음. 인증된 pipeline smoke 성공, 비인가 내부 워크로드 접근 차단, 승격 후 active 정상. 관리자·노드 권한은 신뢰 경계 예외임을 명시. 기존 설치의 마이그레이션까지 확인하고 완료 처리한다.
+
+
+### [T33] 온프레미스 DB 비공개 연결 통로와 자격증명
+
+**어디에 필요** T32(AWS 앱 · 온프레미스 DB)의 기술적으로 가장 불확실한 부분. EKS 파드가 맥북 k3d의 Postgres에 인터넷 노출 없이 붙어야 하고, 그 접속 정보가 AWS 쪽 Secret으로 흘러야 계층별 배포가 성립한다. 통로가 붙기 전에는 T32의 자동화를 실제로 검증할 수 없다.
+
+**만들 것** AWS BE → 온프레미스 PostgreSQL 비공개 연결(Cloudflare Tunnel TCP + Access 또는 Tailscale subnet router · operator 중 선택)과 그 ADR, 주소 유지 · DNS · TLS · 접근 제한, 온프레미스 DB 자격증명을 AWS Secrets Manager → External Secrets로 전달하는 경로, 끊김 · 재연결 · 무단 접근 검증과 한계 문서. **T32와의 접점**: AWS 클러스터의 `<앱>-db` Secret에 `DATABASE_URL` · `PG_URL`(`sslmode=require`)이 들어오면 앱 · 차트 · 워크플로는 아무것도 몰라도 된다.
+
+- **우선순위** P1 · **영역** 레포 · 인프라 · **담당** 원가연
+- **선행** `T3`, `T27`, `T28` · **후속** `T32` · **설계 문서** 6.4, FR-9, NFR-2
+
+**목표** EKS test 네임스페이스의 BE가 맥북 Postgres에 TLS로 붙고, DB 포트는 인터넷에 열리지 않으며, 접속 정보는 AWS Secret으로만 전달된다.
+
+**할 일**
+- [ ] AWS BE → 온프레미스 DB의 VPN 등 비공개 연결 방식, 주소 유지, 라우팅, DNS, 암호화와 접근 제한을 설계하고 테스트 환경에서 검증한다. DB 포트를 인터넷에 공개하지 않는다. 후보 비교(Cloudflare Tunnel TCP · Tailscale)와 결정을 ADR에
+- [ ] 맥북 재부팅 · 잠금 뒤에도 통로가 다시 서고 주소가 유지되는지 확인한다 (T27 자동 복구와 맞춤). 안 되면 복구 절차를 README에
+- [ ] 온프레미스 PostgreSQL의 데이터·자격증명을 유지하며 AWS 앱에서 사용할 접속 Secret을 구성한다. 비밀번호를 Git·Terraform state·로그에 평문으로 기록하지 않고 test·prod의 DB 데이터와 자격증명을 분리한다. `DATABASE_URL` · `PG_URL` 키와 `sslmode=require`는 service-base와 같게
+- [ ] BE 파드만 DB에 닿도록 제한한다 (보안 그룹 · NetworkPolicy · Access 정책 중 통로에 맞는 것). 다른 네임스페이스 · 외부에서의 접속이 거부되는지 확인
+- [ ] 연결 끊김·재연결, 권한 없는 접근 차단, 비밀값 노출 여부를 검증한다. 끊긴 동안 BE가 메모리 폴백으로 조용히 넘어가지 않고 `/health`가 503을 내는지 확인. 연결·배포·정리 절차, 지원 조합, 온프레미스 DB 장애가 기존 앱에도 영향을 준다는 한계를 문서화하고 관련 Terraform·Helm·워크플로 검사를 통과한다
+
+**완료 기준** EKS test의 BE 파드가 맥북 Postgres에 TLS로 붙어 `/api/info`가 `dbConnected: true`를 돌려주고, DB 포트는 외부에서 닿지 않는다. 접속 정보는 AWS Secret으로만 들어오고 Git · state · 로그에 평문이 없다. 통로를 끊으면 `/health`가 503이 되고 다시 이으면 복구된다.
+
+### [T32] 계층별 배포 위치 분리 (AWS 앱 · 온프레미스 DB)
+
+**어디에 필요** 현재 배포 대상 단위의 구성을 FE·BE·DB 계층별 배포 위치 선택으로 확장한다. 같은 앱 정의로 클라우드 앱이 온프레미스 DB를 사용하게 해 대회 주제의 이식성을 검증한다. 연결 통로와 자격증명은 `T33`이 만든다.
+
+**만들 것** 계층별 대상 설정 계약, 분석·산출물 생성·워크플로 연결, demo-app의 통합 검증 기록과 ADR. 첫 지원 조합은 FE·BE=AWS / DB=onprem이다. FE=GCP / BE=AWS / DB=onprem과 다른 조합은 후속 확장으로 두며 이번 완료 조건에 포함하지 않는다. **T33과의 접점**: AWS 클러스터의 `<앱>-db` Secret에 `DATABASE_URL` · `PG_URL`이 들어온다고 전제하고, 통로가 붙기 전에는 계약 · 검사 · 템플릿 뼈대를 먼저 만든다.
+
+- **우선순위** P1 · **영역** 레포 · 인프라 · **담당** 배규태
+- **선행** `T3`, `T24`, `T28`, `T13`, `T33` · **후속** 없음 · **설계 문서** 6.3, 6.4, FR-9
+
+**목표** 계층별 배포 위치를 명시하고, FE·BE는 AWS에, DB는 온프레미스에 배포한다. 클라우드 앱에서 작성한 게시글이 온프레미스 DB에 저장되고 다시 조회된다.
+
+**할 일**
+- [ ] 배포 설정의 FE·BE·DB 대상 계약과 기존 단일 target의 호환 규칙을 정의한다. 첫 지원 조합만 허용하고 미지원 조합은 인프라 변경 전에 명확한 오류로 중단한다(`check-artifacts.sh`). 역할 분담과 후속 확장 범위를 ADR에 기록한다
+- [ ] deploy-analyze·deploy-provision과 재사용 워크플로를 계층별 대상에 연결한다. 온프레미스 DB를 선택하면 AWS RDS를 새로 생성하지 않고(`infra/envs/aws`에서 `module.database` 대신 외부 DB 입력) 기존 리소스 삭제·데이터 이전은 명시적인 절차로 분리한다. 기존 단일 대상 호출의 동작을 유지한다(`tests/run.sh`)
+- [ ] demo-app test에서 클라우드 FE·BE와 온프레미스 DB의 게시글 생성·조회·수정·삭제, 마이그레이션 실행, BE 재배포 후 데이터 보존을 검증한다. DB 연결 실패 시 승격 차단과 기존 버전의 영향을 확인하고 결과를 기록한다
+
+**완료 기준** 지원 조합을 설정하면 수작업으로 앱 접속 정보를 고치지 않고 AWS FE·BE가 온프레미스 DB에 연결된다. CRUD·데이터 보존·연결 실패 시 승격 차단이 test에서 검증되고 기존 단일 대상 배포의 회귀가 없다. DB의 비공개 노출 · 접근 제한은 `T33`의 완료 기준이다. 운영 데이터의 무중단 이전·DB 이중화·모든 배포 조합 자동 지원은 별도 작업이다.
+
+### [T34] test · prod DB와 계정 분리
+
+**어디에 필요** AWS · GCP는 test와 prod가 같은 DB 인스턴스 · 같은 DB · 같은 Secret을 쓴다(demo-app `infra/envs/aws/main.tf`, `infra/envs/gcp/main.tf`). AWS는 그 Secret이 RDS 마스터 계정이다. 그래서 승인 없이 도는 yolo test 배포의 마이그레이션(`db/init.sql`)이 prod 데이터에 닿고, 장애 훈련(T36)을 test에서 해도 prod 데이터가 영향을 받는다. 온프레미스는 이미 환경별로 DB가 따로다.
+
+**만들 것** 같은 인스턴스 안에서 환경별 DB와 앱 전용 계정, 환경별 `<앱>-db` Secret, 마스터 계정을 앱 경로에서 빼기.
+
+- **우선순위** P1 · **영역** 레포 · 인프라 · **담당** 원가연
+- **선행** `T28` · **후속** `T36` · **설계 문서** 6.4, `docs/chaos-drill.md`
+
+**목표** test 계정으로는 prod DB에 아무것도 할 수 없고, 앱 · 마이그레이션은 마스터 계정을 쓰지 않는다.
+
+**할 일**
+- [ ] database 모듈(aws · gcp)에 환경별 DB · 앱 계정 입력 추가. 비밀번호는 Secrets Manager · Secret Manager에만 두고 state · 로그에 평문을 남기지 않는다
+- [ ] service-base가 환경별 Secret을 만들고, demo-app `infra/envs/aws` · `gcp`가 test · prod에 서로 다른 Secret을 넘긴다
+- [ ] 기존 데이터 이전 절차(prod 데이터는 prod DB로, test는 새로 시드)를 README에 적고 aws · gcp에 적용
+- [ ] 확인: test 계정으로 prod DB 접속 · 조회가 거부되고, 두 환경 모두 `/api/info`의 `dbConnected: true`
+
+**완료 기준** aws · gcp에서 test · prod가 서로 다른 DB와 계정을 쓰고, test 계정으로 prod DB에 접근이 거부된다. 앱 경로의 Secret에 마스터 계정이 없다.
+
+### [T35] 환경별 값 파일과 prod 장애 주입 차단
+
+**어디에 필요** demo-app의 `POST /api/chaos`(인증 없는 장애 주입)는 `CHAOS_ENABLED=true`일 때만 열리지만, test와 prod가 같은 `deploy/values-be.yaml`을 써서 prod에서도 열려 있다. 누구나 운영 앱의 에러율을 100%로 만들 수 있다. 지금 구조로는 환경마다 값을 다르게 줄 방법이 없다.
+
+**만들 것** 재사용 `deploy.yml`의 환경별 덧붙임 값 파일, demo-app의 test 전용 값 파일, 스킬 · 산출물 검사.
+
+- **우선순위** P0 · **영역** 파이프라인 (platform 재사용 워크플로) · **담당** 원가연
+- **선행** `T5`, `T13` · **후속** `T36` · **설계 문서** 6.3, `docs/chaos-drill.md`
+
+**목표** prod에는 장애 주입 변경 경로가 없고, 대상 레포가 환경별로 값을 다르게 줄 수 있다.
+
+**할 일**
+- [ ] `deploy.yml`: 서비스 값 파일이 `deploy/values-be.yaml`이면 `deploy/values-be.<environment>.yaml`이 있을 때 뒤에 덧붙인다(`deploy/<target>/values.yaml` 덧붙임과 같은 방식). 덧붙임 순서를 문서와 테스트로 고정
+- [ ] demo-app: `deploy/values-be.yaml`에서 `CHAOS_ENABLED`를 빼고 `deploy/values-be.test.yaml`에만 둔다
+- [ ] deploy-provision 템플릿 · `check-artifacts.sh`: 장애 주입 · 디버그 플래그는 기본 값 파일에 두지 못하고 test 덧붙임 파일에만 허용
+- [ ] 릴리스 후 demo-app 적용: prod `POST /api/chaos` → 404, test는 그대로 동작
+
+**완료 기준** aws · gcp · onprem prod에서 `POST /api/chaos`가 404이고 test에서는 동작한다. 덧붙임 파일이 없는 기존 대상 레포는 동작이 바뀌지 않는다.
 
 
 ## 9단계
@@ -734,16 +815,78 @@ AWS/GCP/onprem에서 승격 전 공개 preview 경로 없음. 인증된 pipeline
 **목표** yolo 배포마다 누가·언제·어떤 문제를 안고 배포했는지 남고, 문제가 있으면 이슈가 열린다.
 
 **할 일**
-- [ ] 리포트 JSON 스키마, 공통 액션 `yolo-report` · `deploy.yml` 연결
-- [ ] 수집: 실행자, 시각, SHA, 대상, compliance, template_version, 자동 수정 이력, 비차단 경고, AI 판단 근거, 승인 생략 여부
-- [ ] 저장: 감사 로그(S3), 실행 요약. 문제가 있으면 demo-app에 `yolo-debt` 이슈
+- [x] 리포트 JSON 스키마, 공통 액션 `yolo-report` · `deploy.yml` 연결
+- [x] 수집: 실행자, 시각, SHA, 대상, compliance, template_version, 자동 수정 이력, 비차단 경고, AI 판단 근거, 승인 생략 여부
+- [x] 저장: 감사 로그(S3), 실행 요약. 문제가 있으면 demo-app에 `yolo-debt` 이슈
 
 **완료 기준** 경고가 있는 yolo 배포 후 `yolo-debt` 이슈가 열린다.
+
+### [T31] 승인자용 green 미리보기 (Identity Center SSO)
+
+**어디에 필요** regulated 대상은 사람이 승격하는데, T30 이후 승인자가 green을 열어 볼 방법이 없다. 설계 문서 FR-6(승격 전 미리보기 주소)을 인증된 경로로 되살린다.
+
+**만들 것** Identity Center(SAML) → Cognito(OIDC) → 차트 안 oauth2-proxy로 인증을 강제하는 `green.<host>` 미리보기, 배포 알림의 green 링크 (ADR 0015).
+
+- **우선순위** P1 · **영역** 레포 · 인프라 · **담당** 이소울
+- **선행** `T2`, `T23`, `T30` · **후속** 없음 · **설계 문서** FR-6
+
+**목표** 승인자가 Slack 알림의 링크로 green을 열고, Identity Center 승인자 그룹이 아닌 사람과 인증되지 않은 요청은 green에 닿지 않는다.
+
+**할 일**
+- [ ] ADR 0015 합의(T30 담당자), 합의되면 ADR 0011(private-green-access)에 보완 문단 추가
+- [x] `modules/preview_auth/aws`: Cognito User Pool · 도메인 · 앱 클라이언트 · SAML IdP. `terraform validate` · 테스트
+- [ ] `org/`: Identity Center 고객 관리형 SAML 앱과 승인자 그룹 할당. API로 안 되는 설정은 `org/README.md` 콘솔 설정 표에 기록
+- [x] App Chart: `preview.auth` 입력과 oauth2-proxy Deployment · Service · Ingress. 인증 설정 없이는 preview Ingress를 렌더하지 않는 T30 회귀 테스트 유지, 인증 조합 테스트 추가
+- [ ] `deploy.yml`: preview 인증을 켠 릴리스는 Slack 알림 · 실행 요약에 green 링크 표시, green FE가 active BE를 호출한다는 한계 문구 포함
+- [ ] demo-app aws 적용: green 호스트 DNS · 인증서 · 시크릿 주입. 승인자 로그인 성공, 비할당 사용자 · 비인증 요청 차단 확인
+- [ ] onprem(Named Tunnel 호스트) · gcp 적용과 같은 확인
+
+**완료 기준** aws · onprem · gcp에서 regulated 배포 알림의 green 링크를 승인자가 SSO로 열 수 있고, 비인증 요청은 green에 닿지 않는다. promote-judge smoke는 지금처럼 port-forward로 성공한다.
+
+### [T36] 장애 훈련 워크플로 (green 확인 · 주입 · 채점)
+
+**어디에 필요** AI 승격 판단 · 규칙 거부권 · Blue-Green은 "문제가 생기면 막는" 장치인데, 평소 배포는 대부분 성공해서 막는 장면을 확인할 일이 없다. test에 일부러 장애를 내고 가드레일이 실제로 막는지 매번 확인한다.
+
+**만들 것** platform 재사용 워크플로 `chaos.yml`과 시나리오 목록, demo-app 호출부. 단계: green 확인 → green 준비 → 장애 주입 → promote-judge(manual) → blue 확인 → 정리(항상) → 채점. 설계는 `docs/chaos-drill.md`.
+
+- **우선순위** P1 · **영역** 파이프라인 (platform 재사용 워크플로) · **담당** 원가연
+- **선행** `T7`, `T30`, `T34`, `T35` · **후속** `T37`, `T19` · **설계 문서** FR-6, FR-7, `docs/chaos-drill.md`
+
+**목표** 명령 하나로 test의 green에 장애를 넣고, 기대한 판단(대부분 abort)이 나오는지, blue가 멀쩡한지 확인한 뒤 원래 상태로 돌려놓는다.
+
+**할 일**
+- [ ] green 확인: Rollout `phase` · `pauseConditions` · `activeSelector` · `previewSelector`로 대기 중인 green이 있는지 판단. 없으면 거절(`new-green`이면 훈련용 green), 배포 진행 중 · `Degraded`면 거절하고 이유를 남긴다. 서비스 묶음 단위, 확인한 preview 해시를 주입 · 정리 직전에 다시 비교
+- [ ] green 준비 · 주입: 훈련용 green은 파드 템플릿 annotation으로 revision만 바꿔 띄운다. 앱 장애는 green **파드마다** port-forward로 `POST /api/chaos`, 파드 장애는 green 파드 삭제. blue에는 경로가 없다
+- [ ] 판단 · 확인: 기존 `promote-judge`를 `mode: manual`로 호출, active 서비스에도 smoke를 보내 blue 에러율을 남긴다
+- [ ] 정리(`if: always()`): 장애 해제와 해제 확인, 훈련용 green이면 abort · annotation 복구 · `Healthy` 확인, 대기 중이던 green은 `Paused`로 남긴다. 해제를 확인하지 못하면 실패로 남긴다
+- [ ] 시나리오 목록(`error-burst` · `slow-response` · `db-down` · `flaky`)과 기대 결과로 채점. namespace는 `test` 고정(입력 없음), test 배포 · `rollout.yml`과 같은 concurrency group, `timeout-minutes`
+- [ ] 감사 로그(`audit-log`)에 시나리오 · 기대 · 실제 · 요청자. 워크플로 테스트(가짜 kubectl)와 demo-app `chaos.yml` 호출부, aws · onprem에서 시나리오 4개 통과 확인
+
+**완료 기준** aws · onprem test에서 시나리오 4개가 모두 기대대로(abort) 채점되고, 훈련 중 blue 에러율이 0%이며, 끝난 뒤 Rollout이 원래 상태(`Healthy` 또는 `Paused`)로 돌아온다. green이 없거나 배포 중이면 아무것도 바꾸지 않고 거절한다.
+
+### [T37] 장애 훈련 Slack 명령과 Grafana 기록
+
+**어디에 필요** 장애 훈련(T36)을 원터치로 시작하고, 결과를 팀과 심사위원이 보는 곳(Slack · Grafana)에 남긴다.
+
+**만들 것** Slack `/chaos` 명령과 janto 승격 대기 알림의 `[🧪 장애 훈련]` 버튼, 훈련 결과 메시지, `publish-metrics`의 훈련 기록과 `deploy-overview` 대시보드 패널.
+
+- **우선순위** P1 · **영역** 파이프라인 (platform 재사용 워크플로) · **담당** 원가연
+- **선행** `T36`, `T26`, `T17` · **후속** `T19` · **설계 문서** FR-12, `docs/chaos-drill.md`
+
+**목표** Slack에서 한 번에 훈련을 시작하고, 통과 · 실패와 근거가 Slack 메시지와 Grafana에 남는다.
+
+**할 일**
+- [ ] slack-bot: `/chaos <시나리오> <대상> [new-green]`, `/chaos list`. `/rollout`과 같은 구조로 `ALLOWED_USER_IDS` 확인 후 `workflow_dispatch`. 환경 입력은 받지 않는다(test 고정). 테스트 추가
+- [ ] janto 승격 대기 알림(`slack-notify`)에 `[🧪 장애 훈련]` 버튼과 시나리오 선택. 누르면 그 대상 · 환경으로 dispatch
+- [ ] 시작 · 거절 · 결과 메시지: 기대 vs 실제 판단, AI 근거, blue 수치, 정리 결과, 실행 · Grafana 링크. 해제를 확인하지 못했으면 승격 금지 경고와 abort 버튼
+- [ ] `publish-metrics`에 `kind: drill` 레코드, `deploy-overview`에 훈련 목록 · 시나리오별 통과율 · 마지막 훈련 시각 패널
+
+**완료 기준** Slack `/chaos error-burst aws new-green` 한 번으로 훈련이 돌고, 결과 메시지와 Grafana 패널에 같은 실행이 보인다. 허용되지 않은 사용자의 요청은 거절된다.
 
 ---
 
 ## GitHub Project 등록 현황
 
 - 이슈는 `one-tatchi-platform` 레포, 보드는 조직 프로젝트 **Softbank 2026 project**
-- 등록된 이슈: T1~T25 (#1~#25), T26 (#35), T27 (#82)
+- 등록된 이슈: T1~T25 (#1~#25), T26 (#35), T27 (#82), T28 (#130), T29 (#131), T32 (#155)
 - 라벨: `P0`/`P1`/`P2`, `area:infra`/`area:pipeline`/`area:skill`/`area:docs`, `stage:N`

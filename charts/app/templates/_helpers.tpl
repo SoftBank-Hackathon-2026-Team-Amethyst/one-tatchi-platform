@@ -21,6 +21,17 @@ app.kubernetes.io/name: {{ include "app.name" . }}
 {{- fail (printf "deployStrategy %q is not supported (supported: %s)" .Values.deployStrategy (join ", " $supported)) -}}
 {{- end -}}
 {{- $_ := required "image.repository is required" .Values.image.repository -}}
+{{- if .Values.autoscaling.enabled -}}
+{{- if lt (int .Values.autoscaling.minReplicas) 2 -}}
+{{- fail "autoscaling.minReplicas must be at least 2" -}}
+{{- end -}}
+{{- if lt (int .Values.autoscaling.maxReplicas) (int .Values.autoscaling.minReplicas) -}}
+{{- fail "autoscaling.maxReplicas must be greater than or equal to autoscaling.minReplicas" -}}
+{{- end -}}
+{{- if not .Values.resources.requests.cpu -}}
+{{- fail "resources.requests.cpu is required when autoscaling is enabled" -}}
+{{- end -}}
+{{- end -}}
 {{- if .Values.image.digest -}}
 {{- if not (regexMatch "^sha256:[0-9a-f]{64}$" .Values.image.digest) -}}
 {{- fail "image.digest must be sha256:<64 lowercase hex characters>" -}}
@@ -36,4 +47,28 @@ readOnlyRootFilesystem: true
 runAsNonRoot: true
 capabilities:
   drop: ["ALL"]
+{{- end -}}
+
+{{/* ALB/Ingress annotations shared by the active and authenticated preview Ingresses. */}}
+{{- define "app.ingressAnnotations" -}}
+{{- $root := .root -}}
+{{- if eq $root.Values.ingress.className "alb" }}
+alb.ingress.kubernetes.io/scheme: internet-facing
+alb.ingress.kubernetes.io/target-type: ip
+alb.ingress.kubernetes.io/group.name: {{ required "ingress.group is required" $root.Values.ingress.group }}
+alb.ingress.kubernetes.io/group.order: {{ $root.Values.ingress.order | quote }}
+{{- if not $.host }}
+alb.ingress.kubernetes.io/listen-ports: {{ printf "[{\"HTTP\": %v}]" 80 | squote }}
+{{- else }}
+alb.ingress.kubernetes.io/listen-ports: '[{"HTTP": 80}, {"HTTPS": 443}]'
+alb.ingress.kubernetes.io/ssl-redirect: "443"
+{{- end }}
+{{- if $.host }}
+alb.ingress.kubernetes.io/ssl-policy: {{ $root.Values.ingress.sslPolicy }}
+{{- end }}
+alb.ingress.kubernetes.io/healthcheck-path: {{ $.healthcheckPath }}
+{{- end }}
+{{- with $root.Values.ingress.annotations }}
+{{ toYaml . }}
+{{- end }}
 {{- end -}}

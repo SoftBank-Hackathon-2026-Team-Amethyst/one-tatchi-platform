@@ -15,7 +15,8 @@ import sys
 import tempfile
 
 LABEL = "yolo-debt"
-DEADLINE = "다음 janto 배포 전까지 해소 (docs/tasks.md 0단계의 현재 가정)"
+# 기한은 docs/tasks.md 0단계의 현재 가정(yolo-debt 이슈 처리 기한)을 따른다.
+DEADLINE = "다음 정석(janto) 배포 전까지"
 SOURCE_NAMES = {"vulnerability": "취약점", "misconfiguration": "IaC 설정", "license": "라이선스",
                 "scan_exception": "검사 예외"}
 APPROVAL_NAMES = {"required": "필요", "skipped": "생략 예정", "not_reached": "해당 없음"}
@@ -137,9 +138,15 @@ def issue_body(report, location):
     debt = report["debt"]
     return "\n\n".join([
         marker(report),
-        "yolo 배포가 아래 문제를 안고 test에 반영됐다. 리뷰 없이 들어온 빚이라 확인 후 갚고 이 이슈를 닫는다.",
-        "**이유**\n" + "\n".join(f"- {r}" for r in debt["reasons"]),
-        f"**기한** {DEADLINE}",
+        "**이 yolo 배포는 사람 리뷰 없이 test에 반영됐고, 아래 문제가 확인됐습니다.**\n"
+        "배포를 막을 정도는 아니었지만 누군가 확인해야 하는 항목입니다.",
+        "**확인된 문제**\n" + "\n".join(f"- {r}" for r in debt["reasons"]),
+        "**담당자가 할 일**\n"
+        "- 각 항목을 고치거나(예: 패키지 업데이트, 검사 예외 제거, AI가 고친 코드 검토), "
+        "문제없다고 판단한 이유를 코멘트로 남깁니다.\n"
+        "- 다 처리했으면 이 이슈를 닫습니다.",
+        f"**기한:** {DEADLINE}",
+        "`yolo-debt`는 \"리뷰 없이 들어와서 나중에 처리해야 하는 문제(기술 부채)\"라는 뜻의 라벨입니다.",
         overview(report, location),
         details(report),
     ]).rstrip() + "\n"

@@ -56,6 +56,12 @@ on:
           비우면 ALB 주소로 HTTP만 연다
         type: string
         default: ""
+      preview-host:
+        description: >-
+          승인자용 green 미리보기 호스트 (ADR 0015, 예: prod green.onetatchi.soulee.dev).
+          서비스 values의 previewAuth.enabled가 true인 서비스에만 previewAuth.host로 넘긴다. 비우면 values의 값을 쓴다
+        type: string
+        default: ""
       chart-version:
         description: App Chart 버전 (template_version과 같게)
         type: string
@@ -129,6 +135,7 @@ jobs:
     outputs:
       environment: ${{ steps.gate.outputs.environment }}
       mode: ${{ steps.mode.outputs.mode }}
+      flow: ${{ steps.context.outputs.flow }}
     steps:
       - if: inputs.verify-observability
         name: T17 요청 제한 확인
@@ -185,11 +192,40 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           MODE: ${{ inputs.verify-observability && 'manual' || inputs.promote-mode }}
         run: bash .platform/.github/actions/yolo-pr/mode.sh
+      - id: context
+        name: 알림용 배포 경로
+        env:
+          EVENT: ${{ github.event_name }}
+          MODE: ${{ steps.mode.outputs.mode }}
+          STRATEGY: ${{ inputs.promote-mode }}
+        run: |
+          if [ "$EVENT" = workflow_dispatch ]; then flow="수동 재배포"
+          elif [ "$STRATEGY" = branch ] && [ "$MODE" = auto ]; then flow="Yolo"
+          elif [ "$MODE" = auto ]; then flow="자동 승격 배포"
+          else flow="Janto / 일반 배포"; fi
+          echo "flow=$flow" >> "$GITHUB_OUTPUT"
+      - if: inputs.environment == 'test'
+        uses: ./.platform/.github/actions/slack-notify
+        with:
+          token: ${{ secrets.SLACK_BOT_TOKEN }}
+          channel: ${{ vars.SLACK_CHANNEL_ID }}
+          action: 배포 시작
+          target: all@${{ inputs.target-label || inputs.target }}.test
+          result: waiting
+          flow: ${{ steps.context.outputs.flow }}
+          environment: test
+          stage: test 배포 준비 (Green 생성 전)
+          next-action: 지금은 버튼을 누를 필요가 없어요. 이미지 발행과 Green 배포 결과를 기다려 주세요.
+          details: main 실행은 main에 반영된 코드를, yolo/* 실행은 해당 브랜치 코드를 test 환경에 배포해요. 수동 실행은 선택한 커밋의 재배포이며 새 머지를 의미하지 않아요.
       - if: steps.gate.outputs.environment == 'prod'
         uses: ./.platform/.github/actions/slack-notify
         with:
           token: ${{ secrets.SLACK_BOT_TOKEN }}
           channel: ${{ vars.SLACK_CHANNEL_ID }}
+          flow: ${{ steps.context.outputs.flow }}
+          environment: prod
+          stage: 운영 배포 시작 승인 요청 (prod Green 생성 전)
+          next-action: 운영 배포 승인을 누르면 prod 배포를 허용해요. PR 머지나 트래픽 승격 승인이 아니에요.
           action: 운영 승인 대기
           target: all@${{ inputs.target-label || inputs.target }}.prod
           result: waiting
@@ -322,6 +358,7 @@ jobs:
           SOURCE: ${{ github.server_url }}/${{ github.repository }}
           INGRESS_GROUP: ${{ inputs.ingress-group }}
           HOST: ${{ inputs.host }}
+          PREVIEW_HOST: ${{ inputs.preview-host }}
           CHART: ${{ inputs.chart-repo }}/app
           CHART_VERSION: ${{ inputs.chart-version }}
           ENVIRONMENT: ${{ inputs.environment }}
@@ -346,8 +383,11 @@ jobs:
 
           # 서비스의 외부 주소. 없으면 active는 빈 값이다.
           service_urls() {
-            local release="$1" values="$2" host=""
+            local release="$1" values="$2" host="" green=""
             active="" preview="(비공개: 인증된 Kubernetes port-forward로 검증)"
+            # 승인자용 미리보기를 켠 서비스는 SSO 로그인 뒤에서만 열리는 green 주소를 알린다.
+            green="$(helm get values "$release" -n "$NAMESPACE" -a -o json | jq -r '.previewAuth | select(.enabled == true) | .host // empty')"
+            if [ -n "$green" ]; then preview="https://$green/ (SSO 로그인 필요)"; fi
             case "$TARGET" in
               aws)
                 # Ingress가 없는 서비스(예: FE가 클러스터 안에서 프록시하는 BE)는 외부 주소가 없다.
@@ -401,6 +441,14 @@ jobs:
             fi
             if [ "$TARGET" = aws ] && [ -n "$INGRESS_GROUP" ]; then extra+=(--set ingress.group="$INGRESS_GROUP"); fi
             if [ "$TARGET" = aws ] && [ -n "$HOST" ]; then extra+=(--set ingress.host="$HOST"); fi
+            if [ -n "$PREVIEW_HOST" ]; then
+              files=("$(jq -r .values <<<"$svc")")
+              if [ -f "deploy/$TARGET/values.yaml" ]; then files+=("deploy/$TARGET/values.yaml"); fi
+              # 뒤 파일이 앞 파일을 덮어쓰는 Helm 순서대로 합쳐 본다.
+              if [ "$(yq eval-all -r '. as $v ireduce ({}; . * $v) | .previewAuth.enabled // false' "${files[@]}")" = true ]; then
+                extra+=(--set previewAuth.host="$PREVIEW_HOST")
+              fi
+            fi
             # Helm 4 기본 server-side apply는 Argo Rollouts가 바꾼 Service selector와 충돌해 두 번째 배포부터 실패한다.
             helm upgrade --install "$release" "$CHART" \
               --version "$CHART_VERSION" \
@@ -526,6 +574,10 @@ jobs:
       - if: always()
         uses: ./.platform/.github/actions/audit-log
         with:
+          flow: ${{ needs.gate.outputs.flow }}
+          environment: ${{ inputs.environment }}
+          stage: Green 배포·검사 결과
+          next-action: ${{ job.status != 'success' && '실행 로그를 확인해 주세요. 성공이나 승격 완료 상태가 아니에요.' || (steps.judge.outputs.executed == 'promote' && '자동 트래픽 승격을 실행했어요. 이상이 있으면 되돌리기를 요청하세요.' || (steps.judge.outputs.executed == 'abort' && 'Green을 취소했어요. 실패 근거를 확인해 주세요.' || '검사·AI 판단 근거를 확인하고 트래픽 승격 또는 Green 취소를 선택하세요. 승격 완료 알림이 아니에요.')) }}
           action: deploy
           target: all@${{ inputs.target-label || inputs.target }}.${{ inputs.environment }}
           result: ${{ job.status }}

@@ -1,0 +1,138 @@
+{{- with .Values.previewAuth }}
+{{- if .enabled }}
+{{- $root := $ -}}
+{{- $name := printf "%s-preview-auth" (include "app.name" $root) -}}
+{{- if not (include "app.isBlueGreen" $root) }}{{ fail "previewAuth requires deployStrategy=blueGreen" }}{{ end -}}
+{{- $host := required "previewAuth.host is required" .host -}}
+{{- if eq $host $root.Values.ingress.host }}{{ fail "previewAuth.host must differ from ingress.host" }}{{ end -}}
+{{- $issuer := required "previewAuth.issuerUrl is required" .issuerUrl -}}
+{{- $remoteKey := required "previewAuth.remoteKey is required" .remoteKey -}}
+{{- $labels := dict "app.kubernetes.io/name" $name "app.kubernetes.io/managed-by" $root.Release.Service -}}
+{{- /* Green is public only behind OIDC login. The proxy forwards authenticated requests to the preview Service.
+       onprem routes its tunnel to the <release>-preview-auth Service, so the Ingress is rendered only when ingress.enabled. */}}
+---
+apiVersion: external-secrets.io/v1
+kind: ExternalSecret
+metadata:
+  name: {{ $name }}
+  labels:
+    {{- toYaml $labels | nindent 4 }}
+spec:
+  refreshInterval: 1h
+  secretStoreRef:
+    kind: ClusterSecretStore
+    name: {{ .secretStore }}
+  target:
+    name: {{ $name }}
+  dataFrom:
+    - extract:
+        key: {{ $remoteKey }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ $name }}
+  labels:
+    {{- toYaml $labels | nindent 4 }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: {{ $name }}
+  template:
+    metadata:
+      labels:
+        {{- toYaml $labels | nindent 8 }}
+    spec:
+      automountServiceAccountToken: false
+      securityContext:
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: oauth2-proxy
+          image: {{ .image }}
+          args:
+            - --provider=oidc
+            - --oidc-issuer-url={{ $issuer }}
+            - --upstream=http://{{ include "app.name" $root }}-preview.{{ $root.Release.Namespace }}.svc.cluster.local:{{ $root.Values.service.port }}/
+            - --http-address=0.0.0.0:4180
+            - --redirect-url=https://{{ $host }}/oauth2/callback
+            - --reverse-proxy=true
+            - --cookie-secure=true
+            - --cookie-name=_green_auth
+            - --skip-provider-button=true
+            - --code-challenge-method=S256
+            - --scope=openid email
+            {{- range .emailDomains }}
+            - --email-domain={{ . }}
+            {{- end }}
+            {{- if .allowUnverifiedEmail }}
+            - --insecure-oidc-allow-unverified-email=true
+            {{- end }}
+          envFrom:
+            - secretRef:
+                name: {{ $name }}
+          ports:
+            - name: http
+              containerPort: 4180
+          readinessProbe:
+            httpGet:
+              path: /ready
+              port: http
+          livenessProbe:
+            httpGet:
+              path: /ping
+              port: http
+          resources:
+            {{- toYaml .resources | nindent 12 }}
+          securityContext:
+            {{- include "app.securityContext" $root | nindent 12 }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ $name }}
+  labels:
+    {{- toYaml $labels | nindent 4 }}
+  {{- with $root.Values.service.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: {{ $name }}
+  ports:
+    - name: http
+      port: 80
+      targetPort: http
+{{- if $root.Values.ingress.enabled }}
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ $name }}
+  labels:
+    {{- toYaml $labels | nindent 4 }}
+  {{- with include "app.ingressAnnotations" (dict "root" $root "host" $host "healthcheckPath" "/ping") | trim }}
+  annotations:
+    {{- . | nindent 4 }}
+  {{- end }}
+spec:
+  {{- if $root.Values.ingress.className }}
+  ingressClassName: {{ $root.Values.ingress.className }}
+  {{- end }}
+  rules:
+    - host: {{ $host | quote }}
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: {{ $name }}
+                port:
+                  name: http
+{{- end }}
+{{- end }}
+{{- end }}

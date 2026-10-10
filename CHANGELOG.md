@@ -10,12 +10,21 @@
 
 ## Unreleased
 
+## v2.3.0
+
 - T17: 선택형 `verify-observability`로 main 수동 test 배포의 새 private green만 실측한다. AI 60초 관찰·원본 CloudWatch/Grafana 대조, 정상/500/300ms 지연·원본 counter/histogram 대조, 실행별 artifact와 소유권을 확인하는 green 정리를 추가한다. 기존 배포는 기본값 false로 유지한다.
 - T17: GCP 컨테이너 CPU·메모리 패널에 서비스별 파드 필터를 적용한다. AWS v1 호환 패치에도 같은 대시보드 수정을 포함한다.
 - T17: Grafana의 선택형 HTTPS 호스트·대시보드 URL 출력을 추가하고 운영 ALB의 `/grafana` 경로 연결을 지원한다. 기존 host 없는 호출은 유지한다.
 - T17: 기존 GCP state의 Helm release를 같은 CI identity로 조회하는 선택형 preflight를 추가한다. 조회 실패를 신규 생성 계획으로 오인하지 않도록 plan/apply 전에 중단한다.
 - T17: 관리되는 맥북의 기존 state를 보존하는 수동 remote-write 설정 workflow를 추가한다. 관측 release 외 변경을 거부하고 인증 Secret은 Terraform 밖에서 전달한다.
 
+## v2.2.1
+
+- T31: `modules/preview_auth/aws`에 입력 `secret_reader_arns`를 추가한다. ReadOnlyAccess만 가진 PR plan 역할이 oauth2-proxy 시크릿 버전을 refresh하지 못해 plan이 실패하던 문제를 고친다. 넣은 역할에만 이 시크릿의 읽기 resource policy를 붙인다.
+
+## v2.2.0
+
+- T31: 승인자용 green 미리보기(ADR 0015). App Chart에 `previewAuth`를 추가한다. 켜면 oauth2-proxy가 OIDC 로그인을 강제하고 인증된 요청만 `<release>-preview`로 넘긴다. Ingress는 `previewAuth.host`에 oauth2-proxy로만 연결하며, 인증 설정이 빠지면 렌더가 실패한다. 기본값은 꺼져 있어 기존 호출부는 바뀌지 않는다. 새 모듈 `modules/preview_auth/aws`(Cognito User Pool · SAML IdP · oauth2-proxy 시크릿). 재사용 `deploy.yml`에 새 입력 `preview-host`를 두고, 미리보기를 켠 서비스는 알림 · 실행 요약에 green 주소를 표시한다. App Chart의 Ingress annotation은 공통 헬퍼로 옮겼고, annotation이 하나도 없을 때 빈 `annotations:` 키를 만들지 않는다.
 - T10: yolo 배포 리포트. yolo push의 test 배포가 끝나면(승격 · abort 모두) 재사용 `deploy.yml`의 새 `yolo-report` job이 실행자 · 커밋 · 대상 · compliance · AI 자동 수정 · 배포를 막지 않은 경고 · AI 승격 판단 근거 · 운영 승인 여부를 리포트 JSON으로 만들어 감사 로그 버킷(`reports/yolo/…`)에 저장하고, 실행 요약에 표를 남긴다. yolo 브랜치가 새로 들여온 경고 · AI 수정 · 수집 실패가 있으면 대상 레포에 `yolo-debt` 이슈를 연다(브랜치당 1개). 리포트가 실패하면 `yolo-pr`(main 자동 머지)로 가지 않는다. `yolo-auto-merge: true`인 호출부에서만 돌며 호출부 수정은 필요 없다. 봇 App에 Issues 쓰기 권한이 필요하다. 새 입력 `report-scan-path`(기본 `.`) · `report-iac-path`(기본 `infra`). 공통 액션 `.github/actions/yolo-report`.
 
 ## v2.1.5
