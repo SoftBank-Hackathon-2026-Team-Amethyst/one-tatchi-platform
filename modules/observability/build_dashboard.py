@@ -77,7 +77,8 @@ for i, (title, metric, unit, rate) in enumerate([
     ("GCP 컨테이너 CPU", "kubernetes.io/container/cpu/core_usage_time", "cores", True),
     ("GCP 컨테이너 메모리", "kubernetes.io/container/memory/used_bytes", "bytes", False),
 ]):
-    expr = '{"' + metric + '",monitored_resource="k8s_container",namespace_name=~"${environment:regex}",cluster_name=~"$cluster",container_name="app"}'
+    # service is a textbox containing a regex (default demo-app-.*), not a multi-select.
+    expr = '{"' + metric + '",monitored_resource="k8s_container",namespace_name=~"${environment:regex}",cluster_name=~"$cluster",pod_name=~"(${service:raw})-.*",container_name="app"}'
     if rate:
         expr = f'rate({expr}[5m])'
     panel(title, [gcp(f'sum by(cluster_name,namespace_name,pod_name) ({expr})')], unit, x=i*12, width=12)
@@ -117,4 +118,5 @@ dashboard = {"uid": "deploy-overview", "title": "Deploy Overview", "schemaVersio
 Path(__file__).with_name("aws").joinpath("dashboards/deploy-overview.json.tftpl").write_text(
     json.dumps(dashboard, ensure_ascii=False, indent=2).replace('${target:regex}', '$${target:regex}')
     .replace('${environment:regex}', '$${environment:regex}').replace('${__value.raw}', '$${__value.raw}')
+    .replace('${service:raw}', '$${service:raw}')
     .replace('"__GCP_HIDE__"', '${gcp_hidden}') + "\n")
