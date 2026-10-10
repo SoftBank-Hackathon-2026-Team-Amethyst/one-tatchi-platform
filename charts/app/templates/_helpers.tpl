@@ -21,6 +21,17 @@ app.kubernetes.io/name: {{ include "app.name" . }}
 {{- fail (printf "deployStrategy %q is not supported (supported: %s)" .Values.deployStrategy (join ", " $supported)) -}}
 {{- end -}}
 {{- $_ := required "image.repository is required" .Values.image.repository -}}
+{{- if .Values.autoscaling.enabled -}}
+{{- if lt (int .Values.autoscaling.minReplicas) 2 -}}
+{{- fail "autoscaling.minReplicas must be at least 2" -}}
+{{- end -}}
+{{- if lt (int .Values.autoscaling.maxReplicas) (int .Values.autoscaling.minReplicas) -}}
+{{- fail "autoscaling.maxReplicas must be greater than or equal to autoscaling.minReplicas" -}}
+{{- end -}}
+{{- if not .Values.resources.requests.cpu -}}
+{{- fail "resources.requests.cpu is required when autoscaling is enabled" -}}
+{{- end -}}
+{{- end -}}
 {{- if .Values.image.digest -}}
 {{- if not (regexMatch "^sha256:[0-9a-f]{64}$" .Values.image.digest) -}}
 {{- fail "image.digest must be sha256:<64 lowercase hex characters>" -}}
