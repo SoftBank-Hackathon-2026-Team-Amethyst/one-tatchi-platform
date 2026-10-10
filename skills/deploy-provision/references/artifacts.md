@@ -30,6 +30,25 @@
 | `SERVICE`, `PORT`, `HEALTH` | 서비스별 값 파일용 | `demo-app-be`, `8000`, `/health` |
 | `ACCOUNT_ID`, `REGION`, `DOMAIN` | aws tfvars | `993371732872`, `ap-northeast-2`, `onetatchi.soulee.dev` |
 | `DB_NAME` | DB 이름 | `demo` |
+| `TAILNET` | 하이브리드만. 팀 Tailscale tailnet DNS 이름 | `tailb7ed7e.ts.net` |
+| `DB_LINK_HCL` | 하이브리드만. 온프레미스 DB를 쓸 환경 맵(HCL). 키는 `database_scope`의 환경(생략하면 `test` · `prod`), `fqdn`은 `<앱>-db-<환경>.<TAILNET>`, `secret_name`은 `<앱>-db-onprem-<환경>` | 아래 |
+
+### 조건부 블록
+
+템플릿의 `# [if FLAG]` · `# [if !FLAG]` ~ `# [end]` 사이는 렌더할 때 FLAG(`FLAG=true`)에 따라 남거나 빠진다. 주지 않은 FLAG는 false라서 기존 호출은 결과가 바뀌지 않는다. 빠진 블록 안의 자리표시자는 값을 요구하지 않는다.
+
+| FLAG | 언제 | 효과 (AWS 루트) |
+|---|---|---|
+| `DB_LINK` | `plan.yaml`의 `layers.db: onprem` | `db_link` 연결(kubernetes provider · Tailscale operator · consume Service · Secrets Manager 조회)을 넣고, `service-base`가 환경별로 온프레미스 DB 또는 RDS를 고른다 |
+| `NO_RDS` | `DB_LINK`이면서 `database_scope`를 생략(모든 환경) | RDS(`module "database"`)와 그 출력을 뺀다 |
+
+`DB_LINK_HCL` 예 (`database_scope: [test]`):
+
+```hcl
+{
+  test = { fqdn = "demo-app-db-test.tailb7ed7e.ts.net", secret_name = "demo-app-db-onprem-test" }
+}
+```
 
 `SERVICES_JSON` 예:
 
@@ -96,6 +115,8 @@ App Chart(`charts/app/values.yaml`)가 받는 키만. 모든 배포 대상 공�
 platform 모듈을 `?ref=@@TEMPLATE_VERSION@@`로 참조하는 Terraform 루트. 모듈 본문을 복사하지 않는다.
 
 - `aws`: S3 backend(bucket은 워크플로가 `-backend-config`로 넣는다, key `<앱>/aws.tfstate`), network · cluster · registry · database(RDS) · cluster_addons · observability, 환경마다 `service-base` 차트. 값은 `terraform.tfvars`(계정 · 리전 · 도메인 · 서비스 이름). `region`은 서울로 고정(팀 SCP).
+  - 계층별 배포 위치(`layers.db: onprem`, ADR 0018): `DB_LINK=true`로 렌더해 `db_link`(ADR 0017)로 온프레미스 DB를 쓴다. `database_scope` 밖의 환경은 RDS를 계속 쓴다. `database_scope`를 생략하면 `NO_RDS=true`로 RDS를 만들지 않는다. `check-artifacts.sh`는 렌더가 `plan.yaml`과 맞는지(scope가 있는데 RDS가 없음, scope 생략인데 RDS가 남음, `db_link` 환경 불일치)를 잡는다. 운영 데이터가 있는 앱이 scope를 생략하는 실수 자체는 검사로 알 수 없으므로, `deploy-analyze`가 기존 RDS를 보고 `[test]`로 시작하고, `infra.yml`의 PR plan 코멘트에서 RDS 삭제(`destroy`)가 없는지 사람이 확인한다. 리소스 주소는 demo-app에 먼저 넣은 연결과 같아 다시 렌더해도 재생성되지 않는다.
+  - 온프레미스 쪽(DB를 tailnet에 publish)은 기존 온프레미스 루트에 둔다. 템플릿화는 T33이 demo-app 온프레미스 루트로 옮긴 뒤 맞춘다(현재는 `modules/db_link/tailscale/README.md` 절차).
 - `onprem`: 로컬 backend(state는 그 기기에만, `.gitignore`), k3d cluster · cluster_addons(환경마다 Quick Tunnel) · registry(GHCR 주소) · 환경마다 database(StatefulSet) · `service-base`.
 - `README.md`: 사람이 실행할 명령(aws는 SSO 로그인 → plan만, apply는 CI; onprem은 기기에서 apply).
 - `.terraform.lock.hcl`은 `terraform init -backend=false` 뒤 커밋한다.
@@ -103,7 +124,7 @@ platform 모듈을 `?ref=@@TEMPLATE_VERSION@@`로 참조하는 Terraform 루트.
 ### `.deploy/config.yaml`, `.deploy/plan.yaml`
 
 `config.yaml`: `template_version`(처음 한 번), `compliance`(`write_brief.py`만). 파이프라인이 읽고 CODEOWNERS 리뷰 대상이라 **스킬은 그 밖의 키를 넣지 않는다**(넣으면 janto PR마다 오너 리뷰가 붙는다). `config-guard`가 형식을 검사한다.
-`plan.yaml`: `target` · `services`(`deploy-analyze`가 쓴다). 형식은 `deploy-analyze/references/report-format.md`.
+`plan.yaml`: `target` · `services`, 선택 `layers` · `database_scope`(`deploy-analyze`가 쓴다). 형식은 `deploy-analyze/references/report-format.md`.
 
 ### `.deploy/smoke.json`
 

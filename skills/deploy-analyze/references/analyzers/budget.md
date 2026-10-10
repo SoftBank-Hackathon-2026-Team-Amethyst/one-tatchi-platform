@@ -1,6 +1,6 @@
 # 예산 분석기
 
-후보별 월 비용을 실제 가격 조회 도구와 계산 결과로 비교한다. 입력은 앱 레포와 `.deploy/brief.md`, 트래픽 결과이며 산출물은 `.deploy/analysis/budget.md`와 `cost-summary.md`다. 단일 배포 대상 AWS · GCP · 온프레미스를 비교한다.
+후보별 월 비용을 실제 가격 조회 도구와 계산 결과로 비교한다. 입력은 앱 레포와 `.deploy/brief.md`, 트래픽 결과이며 산출물은 `.deploy/analysis/budget.md`와 `cost-summary.md`다. 단일 배포 대상 AWS · GCP · 온프레미스를 비교한다. 계층별 배포 위치(하이브리드, `plan.yaml`의 `layers`)는 계산하지 않고 "미산정"으로 표시한다(ADR 0018).
 
 ## 확인할 입력
 
