@@ -10,6 +10,8 @@
 
 ## Unreleased
 
+- T17 (`v1.16.1` 준비): AWS 관측 모듈의 선택형 HTTPS Grafana 호스트와 `dashboard_url` 출력을 추가하고 GCP CPU·메모리 패널이 서비스 선택을 따르도록 수정한다. v1.16.0의 다른 모듈·차트·봇은 유지한다. 이 패치는 v2 main에 병합하지 않고 v1 호환 릴리스에서 별도 검증한다.
+
 ## v1.16.0
 
 - `slack-bot` · `deploy.yml` (T26): 운영 승인 · 거절 버튼을 누른 사람을 배포 커밋에 표지 코멘트로 남기고, 운영 배포 감사 로그의 `requested_by`에 기록한다. 표지가 없으면 지금처럼 actor로 남는다. 봇 `deploy/values.yaml`에 `ALLOWED_USER_IDS`(팀원 5명)를 넣는다.

@@ -77,6 +77,13 @@ run "integrated_dashboard_and_keyless_auth" {
     error_message = "Terraform must render valid dashboard JSON with the existing stable UID."
   }
   assert {
+    condition = alltrue([for panel in jsondecode(local.dashboard_json).panels :
+      strcontains(panel.targets[0].promQLQuery.expr, "pod_name=~\"($${service:raw})-.*\"")
+      if startswith(panel.title, "GCP 컨테이너")
+    ])
+    error_message = "GCP resource panels must honor the selected service, including All regex."
+  }
+  assert {
     condition     = yamldecode(helm_release.gcp_credentials[0].values[0]).credentials.type == "external_account"
     error_message = "GCP authentication must use projected identity, never a service account private key."
   }
