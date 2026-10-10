@@ -10,6 +10,8 @@
 
 ## Unreleased
 
+## v2.11.0
+
 - T33: `db_link/tailscale` consume에 `allow_from`(네임스페이스 · 파드 라벨)을 적으면 egress 프록시에 NetworkPolicy를 걸어 그 파드만 DB 포트에 닿는다. `cluster/aws`의 VPC CNI에 `enableNetworkPolicy`를 켠다(정책이 없으면 전처럼 모두 허용, T30 · T33).
 
 ## v2.10.0
