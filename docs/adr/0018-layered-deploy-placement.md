@@ -1,8 +1,8 @@
-# [ADR-0016] 계층별 배포 위치: `plan.yaml`의 `layers`와 `database_scope`
+# [ADR-0018] 계층별 배포 위치: `plan.yaml`의 `layers`와 `database_scope`
 
 * **상태 (Status):** 승인됨(Accepted). 계약만 정했다. 검사(`check-artifacts.sh`) · 템플릿 · 실제 연결 검증은 T32의 다음 작업이다.
 * **날짜 (Date):** 2026-10-10
-* **관련:** T32 (#155), T33 (#160), T28 (#130), 설계 문서 6.3 · 6.4 · FR-9
+* **관련:** T32 (#155), T33 (#160), T28 (#130), [ADR 0016](0016-cloud-db-tls-and-memory-fallback.md)(DB TLS), [ADR 0017](0017-db-link-tailscale.md)(DB 통로 `db_link`), 설계 문서 6.3 · 6.4 · FR-9
 
 ## 1. 배경 및 문제 상황 (Context and Problem Statement)
 
@@ -54,7 +54,7 @@
 **Cons**
 * 계약 키가 하나 는다.
 
-#### 2. AWS Terraform 변수만 (`external_database_environments`)
+#### 2. AWS Terraform 변수만 (예: `db_link` 맵의 키)
 
 **Pros**
 * 계약이 `layers` 하나로 단순하다.
@@ -86,7 +86,8 @@
 * `layers`를 쓰면 세 키를 모두 적고, `fe` · `be`는 `target`과 같다.
 * `layers.db`가 `target`과 다르면 `database: true`인 서비스가 하나 이상 있다.
 * `database_scope`는 `layers.db`가 `target`과 다를 때만 쓴다(`test` · `prod`). 새 앱은 생략하고, 운영 데이터가 있는 앱만 좁힌다. 빠진 환경은 기존 클라우드 DB를 계속 쓰고 스킬은 그 DB를 지우지 않는다.
-* 계약에는 기기를 적지 않는다. `onprem`은 팀이 운영하는 온프레미스 클러스터이고, 기기는 러너 라벨 · 클러스터 이름이, 클라우드에서 DB로 가는 통로 · 주소 · 자격증명은 별도 구성(T33)이 정한다.
+* 계약에는 기기를 적지 않는다. `onprem`은 팀이 운영하는 온프레미스 클러스터이고, 기기는 러너 라벨 · 클러스터 이름이 정한다.
+* 클라우드에서 DB로 가는 통로는 `modules/db_link/tailscale`(ADR 0017)이다. 산출물은 `database_scope`의 환경마다 AWS 루트의 `db_link` 입력(tailnet 이름 · 자격증명 시크릿 이름)을 렌더하고, `<앱>-db` Secret은 기존과 같은 형식(Secrets Manager의 username/password JSON + 통로 주소)으로 `service-base`가 만든다. Terraform 변수 `db_link`는 렌더 결과이고, 무엇을 넣을지의 근거는 `plan.yaml`이다.
 * 지원하지 않는 조합은 인프라 변경 전에 `check-artifacts.sh`가 오류로 멈춘다.
 
 ## 4. 결과와 한계

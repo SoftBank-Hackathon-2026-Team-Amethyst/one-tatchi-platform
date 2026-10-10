@@ -42,7 +42,7 @@ if command -v yq >/dev/null && [ -f "$plan" ]; then
     yq -o=json '.' "$cfg" | jq -e 'has("target") or has("services")' >/dev/null 2>&1 \
       && fail "$cfg: target · services는 plan.yaml로 옮긴다"
   fi
-  # 계층별 배포 위치 (T32, ADR 0016). layers가 없으면 모든 계층이 target에 있다(기존 동작).
+  # 계층별 배포 위치 (T32, ADR 0018). layers가 없으면 모든 계층이 target에 있다(기존 동작).
   # 지원 조합은 target aws + fe aws · be aws · db onprem 하나다. 인프라를 바꾸기 전에 여기서 멈춘다.
   while IFS= read -r msg; do
     [ -n "$msg" ] && fail "$plan: $msg"

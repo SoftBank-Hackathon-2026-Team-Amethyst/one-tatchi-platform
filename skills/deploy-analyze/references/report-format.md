@@ -101,7 +101,7 @@ services:
 
 ### 계층별 배포 위치 (선택, T32)
 
-FE · BE · DB를 다른 곳에 둘 때만 쓴다. 키가 없으면 모든 계층이 `target`에 있다(기존 동작). 결정 이유는 [ADR 0016](../../../docs/adr/0016-layered-deploy-placement.md).
+FE · BE · DB를 다른 곳에 둘 때만 쓴다. 키가 없으면 모든 계층이 `target`에 있다(기존 동작). 결정 이유는 [ADR 0018](../../../docs/adr/0018-layered-deploy-placement.md).
 
 ```yaml
 target: aws                  # 앱(FE · BE)이 뜨는 대상. 의미는 그대로다
