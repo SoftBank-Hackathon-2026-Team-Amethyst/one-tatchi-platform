@@ -21,6 +21,16 @@ variable "grafana_chart_version" {
   default = "13.2.7"
 }
 
+variable "dashboard_host" {
+  description = "중앙 Grafana의 HTTPS 호스트. 비우면 기존 host 없는 HTTP Ingress를 유지한다"
+  type        = string
+  default     = ""
+  validation {
+    condition     = var.dashboard_host == "" || (length(var.dashboard_host) <= 253 && can(regex("^([a-z0-9]([a-z0-9-]*[a-z0-9])?\\.)+[a-z0-9]([a-z0-9-]*[a-z0-9])?$", var.dashboard_host)))
+    error_message = "dashboard_host에는 스킴·포트·경로 없이 DNS 호스트 이름만 입력하세요."
+  }
+}
+
 variable "central_metrics" {
   description = "중앙 Prometheus. 인증 Secret(htpasswd)은 별도로 주입하며 Terraform이 비밀번호를 관리하지 않는다."
   type = object({
