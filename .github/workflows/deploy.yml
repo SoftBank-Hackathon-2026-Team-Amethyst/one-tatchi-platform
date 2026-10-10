@@ -109,6 +109,7 @@ jobs:
   # 값이 없거나 파일이 없으면 안전한 쪽(regulated)으로 본다.
   gate:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     outputs:
       environment: ${{ steps.gate.outputs.environment }}
       mode: ${{ steps.mode.outputs.mode }}
@@ -178,7 +179,7 @@ jobs:
     # Production traffic changes remain behind the deploy job's prod approval.
     environment: test
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 10
     outputs:
       images: ${{ steps.publish.outputs.images }}
     concurrency:
@@ -194,7 +195,7 @@ jobs:
         with:
           pattern: checked-image-${{ github.run_id }}-*
           path: ${{ runner.temp }}/checked-images
-      - run: sudo apt-get update -qq && sudo apt-get install -y skopeo
+      - run: command -v skopeo >/dev/null 2>&1 || (sudo apt-get update -qq && sudo apt-get install -y skopeo)
       - if: inputs.target == 'aws'
         uses: aws-actions/configure-aws-credentials@v6
         with:
@@ -231,6 +232,7 @@ jobs:
       promoted: ${{ steps.yolo.outputs.promoted }}
     # onprem은 맥북의 self-hosted runner(바깥 방향 연결)에서 돈다. push 이벤트로만 호출한다.
     runs-on: ${{ inputs.target == 'onprem' && fromJSON(format('["self-hosted","{0}"]', inputs.onprem-runner-label)) || 'ubuntu-latest' }}
+    timeout-minutes: 20
     # environment를 지정하면 GitHub Deployments에 배포 기록이 남는다. prod는 승인을 기다리고, prod-auto는 바로 반영한다.
     environment:
       name: ${{ needs.gate.outputs.environment }}
