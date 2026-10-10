@@ -62,8 +62,8 @@ module "eks" {
 
 locals {
   cluster_autoscaler_asg_tags = {
-    "k8s.io/cluster-autoscaler/enabled"          = "true"
-    "k8s.io/cluster-autoscaler/${var.name}"      = "owned"
+    "k8s.io/cluster-autoscaler/enabled"     = "true"
+    "k8s.io/cluster-autoscaler/${var.name}" = "owned"
   }
 }
 
