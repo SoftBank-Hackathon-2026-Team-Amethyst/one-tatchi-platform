@@ -20,6 +20,11 @@ description: 웹앱을 예외 경로(yolo)로 test 승격 후 main PR 자동 머
    - `.deploy/brief.md`가 있으면 그대로 재사용한다.
    - 없으면 질문하지 않고 다섯 항목을 모두 **명시적 건너뛰기 값**(`null` · `unknown` · `auto`)으로 저장한다. 규제 여부가 미정이므로 `compliance`는 `regulated`가 되고 운영 반영에는 사람 승인이 필요하다. 이 스킬을 실행한 것이 건너뛰기의 승인이다. 코드에서 규모 · 예산 · 규제를 추측해 답변으로 적지 않는다.
    - 분석기는 브리프가 비어 있는 항목을 코드와 문서로 추정하고 모두 보고서의 **가정** 절에 적는다.
+   - **분석 재사용.** 분석기 5개를 다시 돌리는 데 보통 10~15분이 든다. 다음 조건을 모두 만족하면 분석기를 돌리지 않고 기존 `.deploy/report.md` · `plan.yaml` · `analysis/`를 그대로 쓴다. 조건과 판단 근거(마지막 분석 커밋, diff 범위)는 실행 기록에 적는다.
+     1. `.deploy/report.md`를 만든 커밋이 origin/main에 있고 **7일 이내**다.
+     2. 그 커밋 이후 `be/ fe/ db/ deploy/ infra/ */Dockerfile .deploy/brief.md .deploy/plan.yaml`에 변경이 없거나, 있어도 서비스 수 · 포트 · 헬스체크 · DB 사용 · replicas · resources · 외부 노출 · 환경변수 계약을 바꾸지 않는다(문구 · 번역 · 스타일 · 빌드 스테이지 플래그 · 값 파일의 고정값 같은 변경은 재사용 가능).
+     3. 브리프가 바뀌지 않았다.
+     조건에서 벗어난 분석기만 골라 돌릴 수 있다(예: `infra/`만 바뀌면 보안 · 예산만). 돌리지 않은 분석기는 기존 결과를 "재사용(기준 커밋 …)"으로 기록한다. 재사용 여부와 무관하게 3단계 로컬 검증(`check-artifacts.sh`, 이미지 빌드, lint · test, terraform)은 생략하지 않는다.
 2. **리뷰 지점 1 자동 승인.** 추천을 보여 주지 않고 진행한다. 보여 줬을 내용(대상 · 월 비용 · 가정)을 실행 기록에 적는다. 예산 범위를 넘는 추천이면 비용이 가장 낮은 구성으로 바꾸고 그 사실을 적는다.
 3. **산출물** → `deploy-provision`. 로컬 검증(이미지 빌드, lint · test, `terraform fmt` · `validate`, `check-artifacts.sh`)이 실패하면 고친다(수정 범위는 아래 "고칠 수 있는 것"). 템플릿 본문은 고칠 수 없다.
 4. **기록 · 커밋 · push.** push 전에 `.deploy/log/<YYYYMMDD-HHMMSS>-yolo.md`에 실행자, 시각, 대상, compliance, 가정, 자동 승인한 추천과 경고를 적는다. 이 push의 SHA·검사·승격 결과는 Actions artifact와 자동 PR 본문이 기록한다. `[yolo] <무엇을>` 메시지로 커밋하고 `git push -u origin yolo/<기능>`. push가 `checks` → `test` 배포를 일으킨다.
