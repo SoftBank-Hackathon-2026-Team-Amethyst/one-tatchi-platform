@@ -55,6 +55,11 @@ spec:
             - --provider=oidc
             - --oidc-issuer-url={{ $issuer }}
             - --upstream=http://{{ include "app.name" $root }}-preview.{{ $root.Release.Namespace }}.svc.cluster.local:{{ $root.Values.service.port }}/
+            {{- range .routes }}
+            {{- if not (regexMatch "^/([A-Za-z0-9._~-]+/)+$" (toString .path)) }}{{ fail "previewAuth.routes[].path must look like /prefix/" }}{{ end }}
+            {{- if not (regexMatch "^[a-z0-9]([-a-z0-9]*[a-z0-9])?$" (toString .service)) }}{{ fail "previewAuth.routes[].service must be a Service name in this namespace" }}{{ end }}
+            - --upstream=http://{{ .service }}.{{ $root.Release.Namespace }}.svc.cluster.local:{{ required "previewAuth.routes[].port is required" .port }}{{ .path }}
+            {{- end }}
             - --http-address=0.0.0.0:4180
             - --redirect-url=https://{{ $host }}/oauth2/callback
             - --reverse-proxy=true

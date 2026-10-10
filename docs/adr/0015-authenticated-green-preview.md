@@ -83,7 +83,7 @@ preview를 켠 릴리스마다 oauth2-proxy를 띄우고, preview Ingress(또는
 ## 5. 결과와 남는 위험
 
 * 인증된 승인자는 Slack 링크로 green을 연다. 인증되지 않은 요청은 oauth2-proxy에서 Cognito 로그인으로 돌려보내지고 green에 닿지 않는다.
-* **green FE는 blue BE를 호출한다.** demo-app FE의 nginx가 `demo-app-be`(active Service)로 프록시하기 때문이다(`demo-app/fe/nginx.conf`). FE green 화면만 보고 BE 변경을 검증했다고 볼 수 없다. green FE → green BE 연결은 별도로 정한다(예: preview FE가 `-preview` BE로 프록시하는 설정). T31 범위에서는 알림 문구에 이 한계를 적는다.
+* **green FE가 blue BE를 부르는 문제는 `previewAuth.routes`로 해결한다.** demo-app FE의 nginx는 `/api/`를 `demo-app-be`(active Service)로 프록시한다. 그래서 green 호스트에서는 oauth2-proxy가 `/api/`를 nginx 대신 `demo-app-be-preview`로 바로 보낸다. 파드 설정은 바꾸지 않으므로 승격 뒤 active 트래픽에는 영향이 없다. BE가 바뀌지 않은 배포에서는 BE preview가 active와 같다.
 * **인증은 비밀번호 하나다.** Identity Center MFA가 꺼져 있다(ADR 0001). 해커톤 범위에서는 받아들이고, 운영으로 쓰려면 MFA를 켠다.
 * **onprem · gcp 인증이 AWS에 의존한다.** Identity Center와 Cognito가 AWS에 있으므로 AWS 장애 시 다른 대상의 green 미리보기도 열리지 않는다. 승격 버튼과 promote-judge는 영향을 받지 않는다.
 * 클러스터 내부 접근 격리(NetworkPolicy · RBAC)는 이 결정과 별개로 T30에 남는다.
