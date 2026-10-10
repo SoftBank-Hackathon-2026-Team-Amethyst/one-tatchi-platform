@@ -263,7 +263,7 @@ Claude Code는 `/todo-task`, Codex는 `$todo-task`로 이 순서를 따르는 �
 **만들 것** 맥북(M2 · 16GB)에 k3d(k3s) · Cloudflare Tunnel을 띄우고, 온프레미스 Terraform 모듈과 demo-app의 `infra/envs/onprem` 루트로 test 환경을 구성해 같은 App Chart로 앱을 배포한다. runner를 통한 자동 배포는 T5, 온프레미스 관측은 T17에서 다룬다.
 
 - **우선순위** P0 · **영역** 레포 · 인프라 · **담당** 원가연
-- **선행** `T20` · **후속** `T17`, `T19`, `T27` · **설계 문서** 6.4
+- **선행** `T20` · **후속** `T17`, `T19`, `T27`, `T29` · **설계 문서** 6.4
 
 **목표** 같은 App Chart로 로컬 맥북의 게시판이 Cloudflare Quick Tunnel HTTPS 주소에서 동작한다.
 
@@ -304,7 +304,7 @@ Claude Code는 `/todo-task`, Codex는 `$todo-task`로 이 순서를 따르는 �
 **만들 것** `modules/*/aws` Terraform 구현체 7개(사전 검증 코드 이식 + 해결한 문제 반영)와 demo-app용 `infra/envs/aws` 예시 루트.
 
 - **우선순위** P0 · **영역** 레포 · 인프라 · **담당** 김형래
-- **선행** `T20` · **후속** `T21` · **설계 문서** 6.4
+- **선행** `T20` · **후속** `T21`, `T28`, `T29` · **설계 문서** 6.4
 
 **목표** one-tatchi-platform의 `modules/*/aws`를 사전 검증한 코드 기준으로 완성한다.
 
@@ -518,7 +518,7 @@ Claude Code는 `/todo-task`, Codex는 `$todo-task`로 이 순서를 따르는 �
 **만들 것** 재사용 워크플로의 승격 판단 job: smoke 요청 실행 → 지표 조회 → Claude API 호출(`{decision, reason}`) → `kubectl argo rollouts promote` 또는 `abort`.
 
 - **우선순위** P0 · **영역** 파이프라인 (platform 재사용 워크플로) · **담당** 배규태
-- **선행** `T5` · **후속** `T8`, `T12` · **설계 문서** 6.5, FR-7
+- **선행** `T5` · **후속** `T8`, `T12`, `T28` · **설계 문서** 6.5, FR-7
 
 **목표** green의 지표를 보고 promote 또는 abort를 정하고 근거를 남긴다.
 
@@ -602,7 +602,7 @@ Claude Code는 `/todo-task`, Codex는 `$todo-task`로 이 순서를 따르는 �
 **만들 것** 데모 사전 점검 체크리스트 문서와 리허설 2회 기록(걸린 시간, 문제점).
 
 - **우선순위** P1 · **영역** 관측 · 문서 · 데모 · **담당** 미정
-- **선행** `T2`, `T3`, `T9`, `T26` · **후속** 없음 · **설계 문서** 10장
+- **선행** `T2`, `T3`, `T9`, `T26`, `T28` · **후속** 없음 · **설계 문서** 10장
 
 **목표** 3분 안에 라이브 데모가 끝난다.
 
@@ -653,6 +653,48 @@ Claude Code는 `/todo-task`, Codex는 `$todo-task`로 이 순서를 따르는 �
 
 ---
 
+### [T28] 클라우드 DB 연결 복구와 DB 상태 검증
+
+**어디에 필요** AWS test(`yolo.<도메인>`) · prod(`<도메인>`)의 BE가 RDS에 붙지 못해 메모리 모드로 돌고 있다(`/api/info`의 `dbConnected: false`, 화면에 "메모리 모드"). 방명록 · 투표가 재배포마다 사라지므로 데모 시나리오 1:45 · 2:10 장면이 깨진다. 온프레미스는 정상이다.
+
+**만들 것** AWS BE의 DB TLS 접속 설정, service-base가 만드는 접속 문자열 정리, 스킬 템플릿의 기본값, 그리고 DB가 안 붙은 green을 승격하지 않는 smoke 검사.
+
+- **우선순위** P0 · **영역** 레포 · 인프라 · **담당** 원가연
+- **선행** `T24`, `T7` · **후속** `T19` · **설계 문서** 6.4, FR-9
+
+**목표** 세 배포 대상 모두 같은 값 파일로 BE가 DB에 붙고, DB가 안 붙은 상태는 파이프라인이 잡아낸다.
+
+**원인(확인한 것)** RDS Postgres 17은 TLS 없는 접속을 거부한다. BE(Node `postgres`)는 Secret의 `DATABASE_URL`(`postgresql+psycopg://…`, `sslmode` 없음)로 TLS 없이 붙어 실패하고 메모리 폴백으로 넘어간다. GCP 값(`deploy/gcp/values.yaml`)에는 `PGSSL: require`가 있어 붙지만 AWS 값에는 없다. 온프레미스 Postgres는 TLS를 강제하지 않아 붙는다. 마이그레이션 Job은 `PG_URL`(`sslmode=require`)을 써서 성공하므로 네트워크 · 자격증명은 문제가 없다. `/health`는 DB가 끊겨도 200이라 smoke · AI 판단이 통과한다.
+
+**할 일**
+- [ ] demo-app `deploy/aws/values.yaml`에 `env.PGSSL: require`(GCP와 동일)를 넣어 test · prod 재배포, `/api/info`가 `dbConnected: true`인지 확인
+- [ ] service-base `DATABASE_URL`을 Node · Python이 모두 읽는 형식(`postgresql://…?sslmode=require`)으로 바꾸고, SQLAlchemy 접두(`+psycopg`)가 필요하면 별도 키로 둔다. 세 대상에서 같은 키로 붙는지 확인
+- [ ] deploy-provision 템플릿: `database: true`인 서비스는 클라우드 대상(aws · gcp)에 DB TLS 설정을 기본으로 넣고 `check-artifacts.sh`가 빠졌는지 검사
+- [ ] promote-judge smoke에 응답 본문 조건(예: `expect_body: {"database": "connected"}`)을 추가하고 demo-app `smoke.json`의 `/health`에 적용. DB가 안 붙은 green은 abort
+- [ ] ADR: 클라우드 DB는 TLS 필수, 메모리 폴백은 데모 안전장치이지 정상 상태가 아님. 운영 문서에 `dbConnected` 확인 절차
+
+**완료 기준** AWS test · prod와 온프레미스 모두 `/api/info`가 `dbConnected: true`를 돌려주고, 방명록 글이 재배포 뒤에도 남는다. DB를 끊은 상태로 배포하면 smoke가 실패해 승격되지 않는다.
+
+### [T29] 서비스 이중화 (앱 복제 · DB 다중화)
+
+**어디에 필요** 브리프 가용성 답이 "일반 운영"(`standard`)인데 실제로는 모든 대상이 파드 1개다(`deploy/aws/values.yaml` · `deploy/onprem/values.yaml` `replicas: 1`). App Chart에 PodDisruptionBudget · 분산 배치가 없고, RDS는 `multi_az = false`, 온프레미스 Postgres는 단일 StatefulSet이다. 파드 하나가 죽으면 서비스가 멈추므로 Blue-Green 무중단(FR-6)과 "클라우드 활용" 심사 항목에 맞지 않는다.
+
+**만들 것** App Chart의 이중화 템플릿(PDB · topologySpread · 선택적 HPA), 가용성 답변 → `replicas` · `multi_az` 매핑(스킬), AWS 노드 용량 재산정, demo-app 값 갱신, DB 다중화 결정.
+
+- **우선순위** P1 · **영역** 레포 · 인프라 · **담당** 미정
+- **선행** `T24`, `T3` · **후속** `T19` · **설계 문서** 6.4, FR-6
+
+**목표** 가용성 답변대로 파드가 2개 이상 서로 다른 노드에 떠 있고, 파드 하나가 죽어도 요청이 실패하지 않는다.
+
+**할 일**
+- [ ] App Chart: `replicas`가 2 이상이면 PodDisruptionBudget(`minAvailable: 1`)과 `topologySpreadConstraints`(노드 분산)를 만든다. `helm lint` · 템플릿 테스트
+- [ ] 가용성 답변 → 값 매핑을 스킬에 고정: `demo` 1 / `standard` 2 / `high` 3 이상 + `multi_az`. deploy-analyze 서비스 분석기와 deploy-provision 템플릿에 반영 (지금은 standard인데 aws · onprem 1)
+- [ ] AWS 노드 용량 재산정: test · prod × 서비스 2개 × Blue-Green(2배) × replicas 2 + 시스템 파드가 들어가도록 노드 타입 · 수(`infra/envs/aws` `node_count`, `node_instance_types`) 조정, 비용 분석기 추정에 반영 (t3.medium은 노드당 파드 17개)
+- [ ] demo-app aws · onprem 값을 `replicas: 2`로 올려 test · prod 재배포. 파드 하나를 지워도 외부 주소 요청 실패 0인지 확인
+- [ ] DB: AWS `multi_az`를 가용성 답변에 연결(standard 이상 true, 비용 표기). 온프레미스 Postgres는 단일 유지 여부와 이유를 ADR에 (T27 결정과 맞춤)
+
+**완료 기준** test · prod 각 서비스가 파드 2개 이상 · 서로 다른 노드에 떠 있고, 파드 하나를 지워도 smoke 에러율 0이다. RDS가 multi-AZ이거나 미루는 결정과 비용 근거가 ADR에 있다.
+
 ## 9단계
 
 앞 단계의 선행 작업이 끝나면 아래 작업을 동시에 진행한다.
@@ -680,5 +722,5 @@ Claude Code는 `/todo-task`, Codex는 `$todo-task`로 이 순서를 따르는 �
 ## GitHub Project 등록 현황
 
 - 이슈는 `one-tatchi-platform` 레포, 보드는 조직 프로젝트 **Softbank 2026 project**
-- 등록된 이슈: T1~T25 (#1~#25), T26 (#35)
+- 등록된 이슈: T1~T25 (#1~#25), T26 (#35), T27 (#82)
 - 라벨: `P0`/`P1`/`P2`, `area:infra`/`area:pipeline`/`area:skill`/`area:docs`, `stage:N`
