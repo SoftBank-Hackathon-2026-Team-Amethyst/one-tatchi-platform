@@ -69,7 +69,7 @@ preview를 켠 릴리스마다 oauth2-proxy를 띄우고, preview Ingress(또는
 
 | 위치 | 내용 |
 |---|---|
-| `charts/app` | `preview.auth.enabled`, `preview.auth.host`, `preview.auth.oidc`(issuer URL, client ID, Secret 이름), 허용 이메일 도메인 · 그룹. 켜면 oauth2-proxy Deployment · Service · Ingress를 만든다. 꺼져 있으면 지금과 같다. |
+| `charts/app` | `previewAuth.enabled`, `previewAuth.host`, `previewAuth.issuerUrl`, `previewAuth.remoteKey`(클라이언트 ID · 시크릿 · 쿠키 시크릿을 담은 클라우드 시크릿, ClusterSecretStore로 가져온다), 허용 이메일 도메인. 켜면 oauth2-proxy Deployment · Service · ExternalSecret과, `ingress.enabled`일 때 Ingress를 만든다. 꺼져 있으면 지금과 같다. |
 | `modules/preview_auth/aws` | Cognito User Pool, 도메인, 앱 클라이언트, SAML IdP(메타데이터 URL은 변수). 콜백 URL 목록을 받는다. 다른 팀은 SAML IdP 자리에 자기 IdP를 넣으면 된다. |
 | `org/` (팀 전용) | Identity Center 고객 관리형 SAML 앱, 승인자 그룹 할당. SAML 앱의 ACS URL · 속성 매핑을 API로 설정할 수 없으면 `org/README.md`의 "콘솔 설정" 표에 적는다. |
 | demo-app | 모듈 호출, green 호스트 DNS · 인증서, 대상별 values, 시크릿 주입. |
@@ -78,7 +78,7 @@ preview를 켠 릴리스마다 oauth2-proxy를 띄우고, preview Ingress(또는
 
 **접근 대상:** Identity Center에서 SAML 앱에 할당한 그룹만 로그인할 수 있다. 기본은 `onetatchi-admin`(승인자)이다. `readonly` 그룹에 열지는 T31에서 정한다.
 
-**호스트:** aws는 `green.onetatchi.soulee.dev`, `green.yolo.onetatchi.soulee.dev`(Route53). onprem은 Quick Tunnel 주소가 바뀌어 Cognito 콜백 URL을 고정할 수 없으므로 Named Tunnel이 필요하다. `onetatchi.soulee.dev` 아래는 Route53에 위임돼 있으므로, Cloudflare 영역(`soulee.dev`) 아래 별도 이름이 필요한지 확인한다. gcp는 GCE Ingress 주소에 붙일 호스트를 정한다.
+**호스트:** aws는 `green.onetatchi.soulee.dev`, `green-yolo.onetatchi.soulee.dev`(Route53). 인증서가 `*.onetatchi.soulee.dev`라서 `green.yolo.…`처럼 두 단계인 이름은 덮지 못한다. onprem은 Quick Tunnel 주소가 바뀌어 Cognito 콜백 URL을 고정할 수 없으므로 Named Tunnel이 필요하다. `onetatchi.soulee.dev` 아래는 Route53에 위임돼 있으므로, Cloudflare 영역(`soulee.dev`) 아래 별도 이름이 필요한지 확인한다. gcp는 GCE Ingress 주소에 붙일 호스트를 정한다.
 
 ## 5. 결과와 남는 위험
 
