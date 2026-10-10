@@ -23,3 +23,5 @@ IdP 앱을 만들려면 Cognito의 ACS URL이 필요하고, Cognito의 IdP 설�
 ## 시크릿
 
 oauth2-proxy 환경변수(`OAUTH2_PROXY_CLIENT_ID` · `OAUTH2_PROXY_CLIENT_SECRET` · `OAUTH2_PROXY_COOKIE_SECRET`)를 JSON으로 담은 Secrets Manager 시크릿을 만든다. 클라이언트 시크릿은 Cognito가 만들어 state에 남으므로, 사람이 값을 넣는 `modules/secret`과 달리 이 모듈이 값까지 쓴다. state 접근 권한이 곧 이 시크릿의 접근 권한이다.
+
+plan은 refresh할 때 시크릿 버전을 읽는다(`GetSecretValue`). `ReadOnlyAccess`만 가진 PR plan 역할은 이 권한이 없으므로 `secret_reader_arns`에 넣는다. 그 역할은 state에서 같은 값을 이미 읽을 수 있으므로 노출 범위는 늘지 않는다.

@@ -84,3 +84,24 @@ resource "aws_secretsmanager_secret_version" "this" {
     OAUTH2_PROXY_COOKIE_SECRET = random_password.cookie.result
   })
 }
+
+# ReadOnlyAccess에는 GetSecretValue가 없어, 이 정책이 없으면 PR plan의 refresh가 실패한다.
+data "aws_iam_policy_document" "readers" {
+  count = length(var.secret_reader_arns) > 0 ? 1 : 0
+
+  statement {
+    principals {
+      type        = "AWS"
+      identifiers = var.secret_reader_arns
+    }
+    actions   = ["secretsmanager:GetSecretValue", "secretsmanager:DescribeSecret"]
+    resources = ["*"] # 시크릿 리소스 정책에서 *는 이 시크릿 하나다.
+  }
+}
+
+resource "aws_secretsmanager_secret_policy" "readers" {
+  count = length(var.secret_reader_arns) > 0 ? 1 : 0
+
+  secret_arn = aws_secretsmanager_secret.this.arn
+  policy     = data.aws_iam_policy_document.readers[0].json
+}
