@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # 대상 레포의 배포 산출물을 정적으로 검사한다. 문제를 모두 출력하고, 하나라도 있으면 1로 끝난다.
 #   check-artifacts.sh [대상 레포 경로]
-# 검사: 자리표시자 잔존 · .deploy/config.yaml 형식 · 버전 표기 일치 · 필수 파일 · smoke.json 형식 · Dockerfile · terraform fmt
+# 검사: 자리표시자 잔존 · .deploy/config.yaml 형식 · plan.yaml(계층별 배포 위치 조합 포함) · 버전 표기 일치 · 필수 파일 · smoke.json 형식 · Dockerfile · terraform fmt
 # macOS 기본 bash(3.2)에서도 돌아야 한다. yq · terraform이 없으면 그 항목은 건너뛰고 알린다.
 set -uo pipefail
 
@@ -42,6 +42,43 @@ if command -v yq >/dev/null && [ -f "$plan" ]; then
     yq -o=json '.' "$cfg" | jq -e 'has("target") or has("services")' >/dev/null 2>&1 \
       && fail "$cfg: target · services는 plan.yaml로 옮긴다"
   fi
+  # 계층별 배포 위치 (T32, ADR 0016). layers가 없으면 모든 계층이 target에 있다(기존 동작).
+  # 지원 조합은 target aws + fe aws · be aws · db onprem 하나다. 인프라를 바꾸기 전에 여기서 멈춘다.
+  while IFS= read -r msg; do
+    [ -n "$msg" ] && fail "$plan: $msg"
+  done < <(yq -o=json '.' "$plan" 2>/dev/null | jq -r '
+    . as $p | ($p.target) as $t |
+    if ($p | has("layers")) | not then
+      if $p | has("database_scope") then "database_scope는 layers.db가 target과 다를 때만 쓴다" else empty end
+    elif ($p.layers | type) != "object" then
+      "layers는 fe · be · db 세 키를 가진 객체여야 한다"
+    else
+      ($p.layers) as $l |
+      ( ["fe", "be", "db"][] as $k | select(($l[$k] | type) != "string") | "layers.\($k) 이 없다 (fe · be · db를 모두 적는다)" ),
+      ( ($l | keys - ["fe", "be", "db"])[] | "layers에 알 수 없는 키: \(.)" ),
+      ( if ($l.fe | type) == "string" and ($l.be | type) == "string" and ($l.db | type) == "string" then
+          if $l.fe != $t or $l.be != $t then
+            "layers.fe · layers.be는 target(\($t))과 같아야 한다 (지금: fe \($l.fe) · be \($l.be))"
+          elif $l.db != $t and ([$t, $l.db] != ["aws", "onprem"]) then
+            "지원하지 않는 계층 조합: fe \($l.fe) · be \($l.be) · db \($l.db) (지원: fe aws · be aws · db onprem)"
+          elif $l.db == $t then
+            (if $p | has("database_scope") then "database_scope는 layers.db가 target과 다를 때만 쓴다" else empty end)
+          else
+            ( if ([$p.services[]? | select(.database == true)] | length) == 0 then
+                "layers.db가 \($l.db) 인데 database: true 인 서비스가 없다" else empty end ),
+            ( if $p | has("database_scope") then
+                ($p.database_scope) as $s |
+                if ($s | type) != "array" or ($s | length) == 0 then
+                  "database_scope는 test · prod 중 하나 이상을 담은 목록이어야 한다 (생략하면 모든 환경)"
+                elif ($s | map(select(. != "test" and . != "prod")) | length) > 0 then
+                  "database_scope에 알 수 없는 환경: \($s | map(select(. != "test" and . != "prod")) | join(", ")) (test · prod)"
+                elif ($s | unique | length) != ($s | length) then
+                  "database_scope에 중복된 환경이 있다"
+                else empty end
+              else empty end )
+          end
+        else empty end )
+    end' 2>/dev/null || echo "layers · database_scope를 읽지 못했다")
 fi
 
 # 3. 버전 표기 일치
