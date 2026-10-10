@@ -385,11 +385,18 @@ jobs:
 
           # 서비스의 외부 주소. 없으면 active는 빈 값이다.
           service_urls() {
-            local release="$1" values="$2" host="" green=""
+            local release="$1" values="$2" host="" green="" auth=""
             active="" preview="(비공개: 인증된 Kubernetes port-forward로 검증)"
             # 승인자용 미리보기를 켠 서비스는 SSO 로그인 뒤에서만 열리는 green 주소를 알린다.
-            green="$(helm get values "$release" -n "$NAMESPACE" -a -o json | jq -r '.previewAuth | select(.enabled == true) | .host // empty')"
-            if [ -n "$green" ]; then preview="https://$green/ (SSO 로그인 필요)"; fi
+            auth="$(helm get values "$release" -n "$NAMESPACE" -a -o json | jq -c '.previewAuth | select(.enabled == true)')"
+            green="$(jq -r '.host // empty' <<<"${auth:-null}")"
+            if [ -n "$green" ]; then
+              preview="https://$green/ (SSO 로그인 필요)"
+              # routes가 없으면 green 화면의 API 호출(예: /api/)은 active BE로 간다.
+              if [ "$(jq '.routes // [] | length' <<<"$auth")" = 0 ]; then
+                preview+=" · 한계: green 화면이 부르는 API는 active(blue) 쪽으로 갈 수 있어요(previewAuth.routes 미설정)"
+              fi
+            fi
             case "$TARGET" in
               aws)
                 # Ingress가 없는 서비스(예: FE가 클러스터 안에서 프록시하는 BE)는 외부 주소가 없다.
