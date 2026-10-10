@@ -76,6 +76,22 @@ class PullRequestTest(unittest.TestCase):
             self.run_pr()
         self.assertFalse(self.merged())
 
+    def test_slow_successful_pr_ci_is_allowed_beyond_ten_minutes(self):
+        self.runs[0].update(status="in_progress", conclusion=None)
+        def finish(_):
+            self.runs[0].update(status="completed", conclusion="success")
+        with patch.object(pr, "gh", self.gh), patch.object(pr.time, "monotonic", side_effect=[0, 1200]), \
+                patch.object(pr.time, "sleep", side_effect=finish):
+            pr.run(self.report, "yolo/example", "org/app")
+        self.assertTrue(self.merged())
+
+    def test_pr_ci_wait_remains_bounded(self):
+        self.runs[0].update(status="in_progress", conclusion=None)
+        with patch.object(pr, "gh", self.gh), patch.object(pr.time, "monotonic", side_effect=[0, 2701]):
+            with self.assertRaisesRegex(RuntimeError, "시간 초과"):
+                pr.run(self.report, "yolo/example", "org/app")
+        self.assertFalse(self.merged())
+
     def test_missing_pr_run_does_not_merge(self):
         self.runs = []
         with self.assertRaisesRegex(RuntimeError, "시간 초과"):

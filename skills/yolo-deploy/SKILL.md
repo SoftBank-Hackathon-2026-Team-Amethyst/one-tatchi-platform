@@ -26,7 +26,8 @@ description: 웹앱을 예외 경로(yolo)로 test 승격 후 main PR 자동 머
 5. **수정 루프 초기화.** [references/repair-loop.md](references/repair-loop.md)를 읽고 `scripts/repair_loop.py init`에 분석으로 확인한 앱 소스, 서비스 Dockerfile, 배포 값 파일, 보호할 커스텀 테스트 경로, 로컬 검사 명령을 전달한다. 최초 push 뒤 깨끗한 작업 트리에서 범위와 SHA를 고정한다. 이후 수정 커밋·push는 이 도구의 `retry`로만 한다.
 6. **지켜보기.** `python3 "<skill-dir>/scripts/repair_loop.py" watch`. 저장소·워크플로·push 이벤트·브랜치·SHA가 맞는 실행만 관찰한다. JSON의 `status`를 확인한다(종료 코드 0만으로 배포 성공이라고 판단하지 않는다).
    - `checks_failed`: 아래 수정 루프. 최대 3회.
-   - `complete`: 검사와 test 배포 job 성공. 실행 요약에서 test 주소와 AI 판단·실제 승격 여부를 별도로 확인한다.
+   - `waiting_merge`: 자동 머지 요청은 성공했지만 최대 5회 조회 후에도 PR이 OPEN이다. 리뷰·검사·충돌 상태와 PR 링크를 보고하고, 필요하면 `watch`로 해당 PR만 다시 조회한다. 완료로 보고하지 않는다.
+   - `complete`: 검사와 test 배포 job 성공. T8 job이 있으면 같은 SHA의 PR이 MERGED임을 확인한 상태다. 머지 주체와 prod 완료를 검증한 것은 아니다. 실행 요약에서 test 주소와 AI 판단·실제 승격 여부를 별도로 확인한다.
    - `stopped` 또는 명령 오류: 실패 원인과 실행 링크를 보고하고 멈춘다. 배포 실패, 자동 PR(`yolo-pr`) 실패, 취소, 권한·조회 오류는 앱 수정으로 해결하지 않는다.
 7. **마무리 보고.** `report`로 검사·배포 결과, 수정 회차·파일·근거, 실행 링크, 자동 PR 주소·머지 상태, 남은 오류를 보고한다. 최종 상태와 원본 로그는 Git 관리 디렉터리에 남고 수정 이력은 수정 커밋에 포함된다. **기록만을 위해 추가 commit/push하지 않는다.** S3 리포트·`yolo-debt`는 T10, main PR 자동 생성·머지는 T8 파이프라인이 맡는다. 일반 리뷰·CODEOWNERS 규칙에 걸리면 PR은 리뷰를 기다린다. v1.14.0 미만은 test까지만 끝나며 이 한계를 알린다.
 

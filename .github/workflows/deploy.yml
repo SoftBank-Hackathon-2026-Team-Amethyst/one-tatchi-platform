@@ -521,7 +521,7 @@ jobs:
     needs: [gate, deploy]
     if: inputs.yolo-auto-merge && needs.deploy.outputs.promoted == 'true'
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 50
     concurrency:
       group: yolo-pr-${{ github.ref }}
       cancel-in-progress: false
