@@ -833,12 +833,12 @@ AWS/GCP/onprem에서 승격 전 공개 preview 경로 없음. 인증된 pipeline
 **목표** 승인자가 Slack 알림의 링크로 green을 열고, Identity Center 승인자 그룹이 아닌 사람과 인증되지 않은 요청은 green에 닿지 않는다.
 
 **할 일**
-- [ ] ADR 0015 합의(T30 담당자), 합의되면 ADR 0011(private-green-access)에 보완 문단 추가
+- [x] ADR 0015 합의(T30 담당자), 합의되면 ADR 0011(private-green-access)에 보완 문단 추가
 - [x] `modules/preview_auth/aws`: Cognito User Pool · 도메인 · 앱 클라이언트 · SAML IdP. `terraform validate` · 테스트
-- [ ] `org/`: Identity Center 고객 관리형 SAML 앱과 승인자 그룹 할당. API로 안 되는 설정은 `org/README.md` 콘솔 설정 표에 기록
+- [x] `org/`: Identity Center 고객 관리형 SAML 앱과 승인자 그룹 할당. API로 안 되는 설정은 `org/README.md` 콘솔 설정 표에 기록
 - [x] App Chart: `preview.auth` 입력과 oauth2-proxy Deployment · Service · Ingress. 인증 설정 없이는 preview Ingress를 렌더하지 않는 T30 회귀 테스트 유지, 인증 조합 테스트 추가
 - [ ] `deploy.yml`: preview 인증을 켠 릴리스는 Slack 알림 · 실행 요약에 green 링크 표시, green FE가 active BE를 호출한다는 한계 문구 포함
-- [ ] demo-app aws 적용: green 호스트 DNS · 인증서 · 시크릿 주입. 승인자 로그인 성공, 비할당 사용자 · 비인증 요청 차단 확인
+- [x] demo-app aws 적용: green 호스트 DNS · 인증서 · 시크릿 주입. 승인자 로그인 성공, 비할당 사용자 · 비인증 요청 차단 확인
 - [ ] onprem(Named Tunnel 호스트) · gcp 적용과 같은 확인
 
 **완료 기준** aws · onprem · gcp에서 regulated 배포 알림의 green 링크를 승인자가 SSO로 열 수 있고, 비인증 요청은 green에 닿지 않는다. promote-judge smoke는 지금처럼 port-forward로 성공한다.
