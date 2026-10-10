@@ -77,7 +77,8 @@ class ObservabilityTests(unittest.TestCase):
             with patch.object(obs.ctl, "load_config", return_value=config), \
                  patch.object(obs.ctl, "cluster_exists", return_value=True), \
                  patch.object(obs.ctl, "check_ownership"), \
-                 patch.object(obs.ctl, "prepare_kubeconfig"), \
+                 patch.object(obs.ctl, "prepare_kubeconfig", return_value={"client_key": "ephemeral-key"}), \
+                 patch.object(obs.ctl, "database_passwords", return_value={"test": "ephemeral-db"}), \
                  patch.dict(obs.os.environ, {"GITHUB_ACTIONS": "false", "KUBECONFIG": "fixture",
                                              "METRICS_PASSWORD": "private-example"}):
                 yield root, settings_path
@@ -100,6 +101,13 @@ class ObservabilityTests(unittest.TestCase):
                                               "-lock-timeout=5m", checked_plan])
             self.assertFalse(checked_plan.parent.exists())
             self.assertTrue(all("METRICS_PASSWORD" not in call.kwargs["env"] for call in calls))
+            self.assertEqual(json.loads(calls[3].kwargs["env"]["TF_VAR_onprem_auth"]),
+                             {"client_key": "ephemeral-key"})
+            self.assertEqual(json.loads(calls[3].kwargs["env"]["TF_VAR_onprem_db_passwords"]),
+                             {"test": "ephemeral-db"})
+            for index in (0, 1, 2, 4, 5):
+                self.assertNotIn("TF_VAR_onprem_auth", calls[index].kwargs["env"])
+                self.assertNotIn("TF_VAR_onprem_db_passwords", calls[index].kwargs["env"])
             self.assertEqual(json.loads(settings_path.read_text()), self.settings)
 
     def test_apply_refuses_unrelated_changes_before_writing_secret(self):
