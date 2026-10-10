@@ -9,6 +9,10 @@ run "eks_grafana_only" {
     grafana_eks_oidc_issuer = "https://oidc.eks.ap-northeast-2.amazonaws.com/id/EXAMPLE"
   }
   assert {
+    condition     = length(google_iam_workload_identity_pool.grafana[0].display_name) <= 32
+    error_message = "GCP Workload Identity Pool display names cannot exceed 32 characters."
+  }
+  assert {
     condition     = google_project_iam_member.grafana[0].role == "roles/monitoring.viewer" && google_iam_workload_identity_pool_provider.grafana[0].attribute_condition == "assertion.sub == 'system:serviceaccount:monitoring:grafana'"
     error_message = "Only the central Grafana Kubernetes identity may read Monitoring."
   }
