@@ -35,9 +35,21 @@ GCP 모듈의 `grafana_workload_provider`, `grafana_service_account` 출력을 A
 
 기본 GKE 시스템 지표와 앱의 Managed Prometheus 시계열을 모두 확인한다. GCP 인증을 설정하지 않은 기존 설치에서는 해당 쿼리를 숨긴다. 단순 datasource 생성만으로 실제 조회 검증을 대신하지 않는다.
 
+Grafana 13 / Cloud Monitoring 플러그인 12.6.2에서는 PromQL target에도 비활성
+`timeSeriesList: {}`를 유지한다. 없으면 플러그인의 legacy migration이 PromQL 모델을
+지워 조회가 실패한다. ADC의 `project_id`도 필요하다. `gce` 인증의 health 확인은
+datasource의 `defaultProject` 대신 ADC에서 프로젝트를 읽는다.
+([플러그인 구현](https://github.com/grafana/grafana-cloudmonitoring-datasource/blob/v12.6.2/pkg/cloudmonitoring/cloudmonitoring.go))
+
 ## 검증·장애 확인
 
 ### 실제 배포 검증 모드 (T17)
+
+아래 모드는 추가 검증 도구다. T17 이슈의 완료 기준은 중앙 연결·서비스 패널·AI 원본
+표시와 AWS/온프레미스 동시 표시이며, 모든 대상에서 장애 주입을 반복해야 한다는 뜻은 아니다.
+온프레미스 배포의 `k3d-<이름>`은 kube context이고 수집기의 `cluster` 라벨은 `<이름>`이다.
+AI 실행 기록에는 원본 context를 보존하며 runtime 조회에서만 수집 라벨로 변환한다.
+Histogram 경계는 Prometheus의 `1` → `1.0` 정규화를 수치로 비교하되 bucket count는 정확히 대조한다.
 
 재사용 `deploy.yml`의 `verify-observability`는 기본값 `false`다. demo-app 전용 검증이며
 `observability-url: https://<중앙-host>/grafana`를 함께 넘긴다. `workflow_dispatch`, main,

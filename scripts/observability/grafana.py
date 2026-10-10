@@ -25,10 +25,12 @@ def rows(frames):
             yield {field["name"]: value for field, value in zip(fields, values)}
 
 
-def numbers(frames):
+def numbers(frames, latest=False):
     for frame in frames:
         for field, values in zip(frame["schema"]["fields"], frame.get("data", {}).get("values", [])):
             if field["type"] == "number":
+                if latest:
+                    values = values[-1:]
                 for value in values:
                     if isinstance(value, (int, float)) and not isinstance(value, bool) and math.isfinite(value):
                         yield field.get("labels", {}), value
@@ -58,6 +60,25 @@ def interpolate(value, variables):
             value = value.replace("${" + key + ":raw}", replacement)
             value = re.sub(r"\$" + re.escape(key) + r"\b", lambda _: replacement, value)
     return value
+
+
+def metrics_cluster(target, cluster):
+    # Deployment selects a kube context; the collector labels the k3d cluster.
+    return cluster.removeprefix("k3d-") if target == "onprem" else cluster
+
+
+def bucket_values(samples):
+    # Prometheus 3 canonicalizes le="1" to le="1.0". Compare numeric bounds,
+    # while retaining exact bucket counts and rejecting ambiguous duplicates.
+    result = {}
+    for bound, value in samples:
+        try:
+            key = float(bound)
+        except ValueError:
+            raise CheckFailed("invalid histogram bucket bound") from None
+        require(not math.isnan(key) and key not in result, "invalid or duplicate histogram bucket bound")
+        result[key] = value
+    return result
 
 
 class Client:
@@ -100,6 +121,10 @@ class Client:
             model.setdefault("period", "60")
             model.setdefault("statistic", "Average")
             model.setdefault("dimensions", {})
+        if uid == "cloud-monitoring" and model.get("queryType") == "promQL":
+            # The plugin's legacy migration drops a PromQL-only query. Its UI
+            # retains this inactive model when switching the editor to PromQL.
+            model.setdefault("timeSeriesList", {})
         if model.get("region") == "default":
             model["region"] = self.sources[uid]["jsonData"]["defaultRegion"]
         model.pop("hide", None)
@@ -202,6 +227,7 @@ class Client:
 
     def runtime(self, session):
         env = os.environ
+        cluster = metrics_cluster(env["TARGET"], env["CLUSTER"])
         traffic = json.loads((session.report / "traffic.json").read_text())
         now = time.time()
         # Evidence for T17's AWS + onprem single-screen criterion, even on a GCP run.
@@ -216,20 +242,20 @@ class Client:
         for name in SERVICES:
             green = session.state["green"][name]
             selector = ','.join(k + '=' + json.dumps(v) for k, v in
-                                {"target": env["TARGET"], "cluster": env["CLUSTER"], "environment": "test",
+                                {"target": env["TARGET"], "cluster": cluster, "environment": "test",
                                  "service": name, "pod": green["name"]}.items())
             expected = total(traffic["snapshots"]["after"]["be" if name.endswith("-be") else "fe"])
             raw_samples = traffic["snapshots"]["after"]["be" if name.endswith("-be") else "fe"]
             bucket_bounds = {json.loads("{" + key.split("{", 1)[1])["le"] for key in raw_samples
                              if key.startswith("app_http_response_time_seconds_hist_bucket{")}
-            expected_buckets = {bound: total(raw_samples, suffix="time_seconds_hist_bucket", le=bound) for bound in bucket_bounds}
-            require(expected_buckets and "+Inf" in expected_buckets, "raw application histogram is missing")
+            expected_buckets = bucket_values((bound, total(raw_samples, suffix="time_seconds_hist_bucket", le=bound)) for bound in bucket_bounds)
+            require(expected_buckets and math.inf in expected_buckets, "raw application histogram is missing")
             # GCP ingestion can lag. Fixed 5m query windows remain anchored to traffic completion.
             deadline = time.monotonic() + (600 if uid == "cloud-monitoring" else 120)
             while True:
-                values = list(numbers(self.prom('sum(app_http_response_count_total{' + selector + '})')))
-                buckets = {labels["le"]: value for labels, value in numbers(self.prom(
-                    'sum by(le) (app_http_response_time_seconds_hist_bucket{' + selector + '})')) if "le" in labels}
+                values = list(numbers(self.prom('sum(app_http_response_count_total{' + selector + '})'), latest=True))
+                buckets = bucket_values((labels["le"], value) for labels, value in numbers(self.prom(
+                    'sum by(le) (app_http_response_time_seconds_hist_bucket{' + selector + '})'), latest=True) if "le" in labels)
                 if values and values[-1][1] == expected and buckets == expected_buckets:
                     break
                 require(time.monotonic() < deadline, f"{name}: receiver counters or buckets differ from raw pod metrics")
@@ -237,7 +263,7 @@ class Client:
             ages = list(numbers(self.prom('max(time() - timestamp(app_http_response_count_total{' + selector + '}))')))
             require(ages and 0 <= ages[-1][1] <= (600 if uid == "cloud-monitoring" else 300), "stale green sample")
             variables = {"target": env["TARGET"], "environment": "test", "service": name,
-                         "cluster": env["CLUSTER"], "__rate_interval": "5m"}
+                         "cluster": cluster, "__rate_interval": "5m"}
             for title in ("요청 / 초", "HTTP 5xx 비율", "응답시간 p95"):
                 model = next(t for t in self.panel(title)["targets"] if t["datasource"]["uid"] == uid)
                 model = interpolate(model, variables)
@@ -261,7 +287,7 @@ class Client:
             require(fresh(frames, now, 300), "CloudWatch Container Insights has no fresh resource data")
         resource_titles = ("GCP 컨테이너 CPU", "GCP 컨테이너 메모리") if env["TARGET"] == "gcp" else ("CPU 사용량", "메모리 사용량")
         for name in SERVICES:
-            variables = {"target": env["TARGET"], "environment": "test", "service": name, "cluster": env["CLUSTER"]}
+            variables = {"target": env["TARGET"], "environment": "test", "service": name, "cluster": cluster}
             for title in resource_titles:
                 model = interpolate(self.panel(title)["targets"][0], variables)
                 if env["TARGET"] == "gcp":
