@@ -171,8 +171,10 @@ jobs:
         name: 한 번 빌드 · amd64/arm64 각각 검사
         env:
           CONTEXT: ${{ matrix.dir }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
         run: bash .platform/.github/actions/image-push/build.sh
       - uses: actions/upload-artifact@v7
+        if: steps.build.outputs.skipped != 'true'
         with:
           name: checked-image-${{ github.run_id }}-${{ steps.build.outputs.key }}
           path: ${{ steps.build.outputs.bundle }}
