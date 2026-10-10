@@ -77,7 +77,7 @@ resource "helm_release" "grafana" {
 
     "grafana.ini" = {
       server = {
-        root_url            = "%(protocol)s://%(domain)s/grafana/"
+        root_url            = var.dashboard_host == "" ? "%(protocol)s://%(domain)s/grafana/" : "https://${var.dashboard_host}/grafana/"
         serve_from_sub_path = true
       }
       # 누구나 대시보드를 볼 수 있게 익명 읽기 전용. 관리자 비밀번호는 차트가 만든 k8s Secret에 있다.
@@ -89,14 +89,17 @@ resource "helm_release" "grafana" {
       ingressClassName = var.ingress_class
       path             = "/grafana"
       pathType         = "Prefix"
-      hosts            = []
-      annotations = {
+      hosts            = var.dashboard_host == "" ? [] : [var.dashboard_host]
+      annotations = merge({
         "alb.ingress.kubernetes.io/scheme"           = "internet-facing"
         "alb.ingress.kubernetes.io/target-type"      = "ip"
         "alb.ingress.kubernetes.io/group.name"       = var.ingress_group
         "alb.ingress.kubernetes.io/group.order"      = "10"
         "alb.ingress.kubernetes.io/healthcheck-path" = "/grafana/api/health"
-      }
+        }, var.dashboard_host == "" ? {} : {
+        "alb.ingress.kubernetes.io/listen-ports" = "[{\"HTTPS\":443}]"
+        "alb.ingress.kubernetes.io/ssl-policy"   = "ELBSecurityPolicy-TLS13-1-2-2021-06"
+      })
     }
 
     datasources = {

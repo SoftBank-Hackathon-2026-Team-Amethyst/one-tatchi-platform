@@ -19,6 +19,10 @@ variables {
 run "existing_installation_unchanged" {
   command = plan
   assert {
+    condition     = length(yamldecode(helm_release.grafana.values[0]).ingress.hosts) == 0 && !contains(keys(yamldecode(helm_release.grafana.values[0]).ingress.annotations), "alb.ingress.kubernetes.io/listen-ports") && output.dashboard_url == ""
+    error_message = "Legacy callers must retain hostless ingress without adding a TLS listener."
+  }
+  assert {
     condition     = length(helm_release.metrics) == 0 && length(helm_release.gcp_credentials) == 0 && length(aws_eks_addon.ebs) == 0
     error_message = "Existing module callers must not create new collectors or credentials."
   }
@@ -26,6 +30,33 @@ run "existing_installation_unchanged" {
     condition     = length(yamldecode(helm_release.grafana.values[0]).datasources["datasources.yaml"].datasources) == 1
     error_message = "CloudWatch remains the sole datasource until explicitly enabled."
   }
+}
+
+run "dashboard_on_production_https_listener" {
+  command = plan
+  variables {
+    ingress_group   = "demo-app-prod"
+    dashboard_host  = "onetatchi.soulee.dev"
+    central_metrics = { enabled = true, receiver_host = "metrics.onetatchi.soulee.dev", receiver_secret_name = "metrics-auth" }
+  }
+  assert {
+    condition     = yamldecode(helm_release.grafana.values[0]).ingress.hosts[0] == "onetatchi.soulee.dev" && jsondecode(yamldecode(helm_release.grafana.values[0]).ingress.annotations["alb.ingress.kubernetes.io/listen-ports"])[0].HTTPS == 443
+    error_message = "Grafana must install its host/path rule on the public HTTPS listener."
+  }
+  assert {
+    condition     = yamldecode(helm_release.grafana.values[0]).ingress.annotations["alb.ingress.kubernetes.io/group.name"] == yamldecode(helm_release.metrics[0].values[0]).receiver.ingressGroup && yamldecode(helm_release.metrics[0].values[0]).receiver.ingressGroup == "demo-app-prod"
+    error_message = "Grafana and the receiver must share the production app ALB."
+  }
+  assert {
+    condition     = yamldecode(helm_release.grafana.values[0])["grafana.ini"].server.root_url == "https://onetatchi.soulee.dev/grafana/" && output.dashboard_url == "https://onetatchi.soulee.dev/grafana/d/deploy-overview"
+    error_message = "Redirects and published dashboard links must retain HTTPS and the Grafana subpath."
+  }
+}
+
+run "reject_url_in_host" {
+  command = plan
+  variables { dashboard_host = "https://example.com/grafana" }
+  expect_failures = [var.dashboard_host]
 }
 run "integrated_dashboard_and_keyless_auth" {
   command = plan
