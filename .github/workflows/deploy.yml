@@ -81,6 +81,10 @@ on:
         description: 공통 액션을 가져올 이 레포의 ref
         type: string
         default: v2
+      yolo-pr-reuse-checks:
+        description: yolo PR 자동 머지 전에 pull_request 검사 실행을 기다리지 않고, 같은 SHA의 push 검사 통과를 인정한다 (T9). infra 변경은 항상 plan 실행을 기다린다
+        type: boolean
+        default: true
       yolo-auto-merge:
         description: test 승격 후 yolo 브랜치의 main PR 생성 · PR 검사 대기 · rebase 자동 머지 요청 (v1.14.0부터)
         type: boolean
@@ -438,10 +442,11 @@ jobs:
           first_active="" slack="" paused=""
           echo "### \`${TAG::7}\` → $TARGET / $ENVIRONMENT" >> "$GITHUB_STEP_SUMMARY"
           count="$(jq length <<<"$SERVICES")"
+          # 1단계: 배열 순서대로(BE 먼저) helm upgrade만 보낸다. 기다리지 않는다.
           for idx in $(seq 0 $((count - 1))); do
             svc="$(jq -c ".[$idx]" <<<"$SERVICES")"
             release="$(jq -r .name <<<"$svc")"
-            echo "::group::$release"
+            echo "::group::$release helm upgrade"
 
             image="$(jq -er --arg r "$release" '.[$r].repository' <<<"$IMAGES")"
             digest="$(jq -er --arg r "$release" '.[$r].digest' <<<"$IMAGES")"
@@ -477,7 +482,16 @@ jobs:
               --set image.digest="$digest" \
               --server-side=false \
               --timeout 10m
+            echo "::endgroup::"
+          done
 
+          # 2단계: green 대기 · 주소는 서비스마다 따로 기다린다. helm upgrade를 먼저 모두 보내 두어
+          # 서비스들의 green 기동이 겹친다 (T9: 직렬이면 서비스당 green 기동 시간이 그대로 더해졌다).
+          # 적용 순서(BE 먼저)는 1단계가 지키고, Blue-Green이라 green FE는 active BE를 보므로 순서가 결과를 바꾸지 않는다.
+          for idx in $(seq 0 $((count - 1))); do
+            svc="$(jq -c ".[$idx]" <<<"$SERVICES")"
+            release="$(jq -r .name <<<"$svc")"
+            echo "::group::$release green 대기"
             wait_rollout "$release"
             service_urls "$release" "$(jq -r .values <<<"$svc")"
             echo "::endgroup::"
@@ -759,4 +773,5 @@ jobs:
         env:
           GH_TOKEN: ${{ steps.app.outputs.token }}
           REPORT: ${{ runner.temp }}/yolo-promotion/yolo-promotion.json
+          REUSE_PUSH_CHECKS: ${{ inputs.yolo-pr-reuse-checks }}
         run: python3 .platform/.github/actions/yolo-pr/pr.py

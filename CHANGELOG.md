@@ -10,6 +10,8 @@
 
 ## Unreleased
 
+- T9: `deploy.yml`이 서비스를 두 단계로 배포한다 — 배열 순서대로 `helm upgrade`를 모두 보낸 뒤 green 대기를 서비스마다 한다(green 기동이 겹쳐 약 30초 단축). 새 입력 `yolo-pr-reuse-checks`(기본 true): yolo PR 자동 머지 전에 같은 SHA의 push `checks` 통과를 인정하고 `pull_request` 검사 실행을 기다리지 않는다(약 1분 단축). infra 변경은 전처럼 plan 실행을 기다린다. false면 이전 동작.
+- 스킬 설치: `scripts/install-skills.sh --auto`가 main 전용 클론에 링크하고 Claude Code `SessionStart` 훅으로 세션마다 fast-forward한다. main에 머지된 스킬 변경이 각 기기에 자동 반영된다.
 ## v2.11.0
 
 - T33: `db_link/tailscale` consume에 `allow_from`(네임스페이스 · 파드 라벨)을 적으면 egress 프록시에 NetworkPolicy를 걸어 그 파드만 DB 포트에 닿는다. `cluster/aws`의 VPC CNI에 `enableNetworkPolicy`를 켠다(정책이 없으면 전처럼 모두 허용, T30 · T33).

@@ -21,8 +21,10 @@ def current_head(repo, branch):
     return api(f"repos/{repo}/git/ref/heads/{quote(branch, safe='')}")["object"]["sha"]
 
 
-def run(report, branch, repo, timeout=2700):
+def run(report, branch, repo, timeout=2700, reuse_push_checks=None):
     sha = report["sha"]
+    if reuse_push_checks is None:
+        reuse_push_checks = os.environ.get("REUSE_PUSH_CHECKS", "true").lower() != "false"
     if not branch.startswith("yolo/") or report["environment"] != "test" or not report["promoted"]:
         raise RuntimeError("test에서 승격한 yolo 커밋만 PR을 만들 수 있다")
 
@@ -75,13 +77,16 @@ def run(report, branch, repo, timeout=2700):
     number = int(pr.rstrip("/").rsplit("/", 1)[-1])
 
     # With no required status checks GitHub may merge immediately, even with --auto.
-    # Require an actual pull_request deploy run, not the earlier push run with the same SHA.
+    # deploy.yml: this job runs inside the push run whose `checks` already passed on this exact SHA
+    # (test needs checks == success), so by default that run counts and the pull_request run is
+    # not awaited (T9: saves about a minute). REUSE_PUSH_CHECKS=false restores the pull_request wait.
+    # infra.yml (plan comment) only exists on pull_request, so it is always awaited when infra changed.
     files = json.loads(gh("pr", "view", pr, "--repo", repo, "--json", "files"))["files"]
-    expected = {".github/workflows/deploy.yml"}
+    expected = set() if reuse_push_checks else {".github/workflows/deploy.yml"}
     if report.get("infra_workflow", True) and any((f["path"].startswith("infra/") or f["path"] == ".github/workflows/infra.yml") for f in files):
         expected.add(".github/workflows/infra.yml")
     deadline = time.monotonic() + timeout
-    while True:
+    while expected:
         assert_head()
         runs = api(f"repos/{repo}/actions/runs?event=pull_request&head_sha={sha}&per_page=100")["workflow_runs"]
         latest = {}
