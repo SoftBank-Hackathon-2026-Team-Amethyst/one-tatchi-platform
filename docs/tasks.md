@@ -839,7 +839,7 @@ AWS/GCP/onprem에서 승격 전 공개 preview 경로 없음. 인증된 pipeline
 - [x] `modules/preview_auth/aws`: Cognito User Pool · 도메인 · 앱 클라이언트 · SAML IdP. `terraform validate` · 테스트
 - [x] `org/`: Identity Center 고객 관리형 SAML 앱과 승인자 그룹 할당. API로 안 되는 설정은 `org/README.md` 콘솔 설정 표에 기록
 - [x] App Chart: `preview.auth` 입력과 oauth2-proxy Deployment · Service · Ingress. 인증 설정 없이는 preview Ingress를 렌더하지 않는 T30 회귀 테스트 유지, 인증 조합 테스트 추가
-- [ ] `deploy.yml`: preview 인증을 켠 릴리스는 Slack 알림 · 실행 요약에 green 링크 표시, `previewAuth.routes`가 없으면 green 화면의 API가 active BE로 간다는 한계 문구 포함
+- [x] `deploy.yml`: preview 인증을 켠 릴리스는 Slack 알림 · 실행 요약에 green 링크 표시, `previewAuth.routes`가 없으면 green 화면의 API가 active BE로 간다는 한계 문구 포함
 - [x] demo-app aws 적용: green 호스트 DNS · 인증서 · 시크릿 주입. 승인자 로그인 성공, 비할당 사용자 · 비인증 요청 차단 확인
 - [ ] onprem 적용: green 전용 Named Tunnel(Public Hostname → `<release>-preview-auth`), `platform` 네임스페이스 시크릿, Cognito 콜백 추가. aws와 같은 확인. gcp는 `T38`
 
