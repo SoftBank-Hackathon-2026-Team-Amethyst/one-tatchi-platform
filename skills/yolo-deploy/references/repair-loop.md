@@ -37,9 +37,9 @@ python3 "<skill-dir>/scripts/repair_loop.py" watch
 python3 "<skill-dir>/scripts/repair_loop.py" report
 ```
 
-`watch`는 실행 생성 최대 2분, 선택된 실행 완료 최대 30분을 기다린다. 시간 초과로 원격 실행을 취소하지 않는다. 실행 ID·attempt가 바뀌거나 조건에 맞는 실행이 여러 개면 중단한다.
+`watch`는 실행 생성 최대 2분, 선택된 실행 완료 최대 90분(초기 검사·test 배포·최대 45분 PR 검사 포함)을 기다린다. 시간 초과로 원격 실행을 취소하지 않는다. 실행 ID·attempt가 바뀌거나 조건에 맞는 실행이 여러 개면 중단한다.
 
-v1.14.0의 T8 자동 PR job은 앱 수정 대상이 아니다. 성공하면 같은 head SHA의 PR 주소·상태를 보고한다. 원격 브랜치가 사라졌다면 해당 job 성공과 같은 SHA의 PR 머지를 확인한 경우에만 정상 완료로 처리하며, 삭제된 브랜치를 다시 push하지 않는다.
+v1.14.0의 T8 자동 PR job은 앱 수정 대상이 아니다. 성공은 자동 머지 요청 성공이다. 같은 head SHA의 main PR을 즉시 조회하고 OPEN이면 10초 간격, 최초 포함 최대 5회 조회한다. MERGED면 머지 완료, CLOSED면 중단, 계속 OPEN이면 `waiting_merge`로 보고한다. 이 상태에서 `watch`는 저장된 PR만 다시 조회하며 완료된 Actions 실행을 다시 관찰하거나 재실행하지 않는다. PR head나 원격 브랜치가 바뀌면 중단한다. 원격 브랜치가 사라졌다면 해당 job 성공과 같은 SHA의 PR 머지를 확인한 경우에만 정상 완료로 처리하며, 삭제된 브랜치를 다시 push하지 않는다.
 
 | status | 다음 동작 |
 |---|---|
@@ -48,7 +48,8 @@ v1.14.0의 T8 자동 PR job은 앱 수정 대상이 아니다. 성공하면 같�
 | `checks_failed` | 로그 확인 → 허용 파일 최소 수정 → `retry` |
 | `pending_push` | 새 수정 없이 인자 없는 `retry`로 같은 커밋 push 재시도 |
 | `committing` | 커밋 중 중단·훅 변경 등 결과가 불명확함. 자동 재시도하지 않고 보고 |
-| `complete` | 검사·test 배포 job 성공. AI 판단과 트래픽 승격은 실행 요약에서 별도 확인 |
+| `waiting_merge` | 자동 머지 요청 후 PR이 열려 있음. 리뷰·검사·충돌 확인 후 `watch`로 PR 재조회. 완료로 보고하지 않음 |
+| `complete` | 검사·test 배포 job 성공. T8 job이 있으면 같은 SHA의 PR이 MERGED임도 확인. 머지 주체와 prod 완료는 검증하지 않음. AI 판단과 트래픽 승격은 실행 요약에서 별도 확인 |
 | `stopped` 또는 `error` | 원인·현재 변경·실행 링크를 보고하고 중단 |
 
 명령 종료 코드 0은 `checks_failed`에서도 나올 수 있다. 반드시 JSON status를 읽는다. 명령 오류는 종료 코드 1과 error를 반환하고 기존 상태를 보존한다. 로그 조회 오류가 있으면 새 앱 수정의 근거로 쓰지 않는다.

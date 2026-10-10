@@ -21,7 +21,7 @@ def current_head(repo, branch):
     return api(f"repos/{repo}/git/ref/heads/{quote(branch, safe='')}")["object"]["sha"]
 
 
-def run(report, branch, repo, timeout=600):
+def run(report, branch, repo, timeout=2700):
     sha = report["sha"]
     if not branch.startswith("yolo/") or report["environment"] != "test" or not report["promoted"]:
         raise RuntimeError("test에서 승격한 yolo 커밋만 PR을 만들 수 있다")

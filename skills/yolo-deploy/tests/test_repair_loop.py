@@ -36,8 +36,14 @@ elif a[:2] == ["run", "list"]:
     print(json.dumps(runs))
 elif a[:2] == ["run", "watch"]:
     sys.exit(s.get("watch_exit", 0))
-elif a[:2] == ["pr", "list"]:
-    print(json.dumps(s.get("pulls", [])))
+elif a[:2] in (["pr", "list"], ["pr", "view"]):
+    sequence = s.get("pull_sequence")
+    if sequence:
+        pulls = sequence.pop(0)
+        p.write_text(json.dumps(s))
+    else:
+        pulls = s.get("pulls", [])
+    print(json.dumps(pulls if a[1] == "list" else pulls[0]))
 elif a[:2] == ["run", "view"]:
     if "--log-failed" in a:
         if s.get("log_error"):
@@ -385,6 +391,49 @@ class RepairLoopTests(unittest.TestCase):
         self.assertEqual(self.s.report()["pull_request"], pull)
         self.assertIsNone(self.s.remote_sha(missing_ok=True))
         self.assertEqual(self.s.head(), self.initial)
+
+    def t8_success(self, **kwargs):
+        data = self.run_data(checks="success", deployment="success", conclusion="success")
+        data["jobs"].append({"name": "test / yolo-pr", "status": "completed", "conclusion": "success"})
+        self.scenario_for(data, **kwargs)
+
+    def test_open_pr_is_polled_five_times_and_can_resume_without_watching_run(self):
+        pull = {"url": "https://github.com/test/app/pull/1", "state": "OPEN", "headRefOid": self.initial}
+        self.t8_success(pulls=[pull])
+        self.s.watch(discovery_seconds=0, merge_poll_seconds=0)
+        self.assertEqual(self.s.state["status"], "waiting_merge")
+        calls = [json.loads(line) for line in self.scenario.with_suffix(".calls").read_text().splitlines()]
+        self.assertEqual(len([c for c in calls if c[0] == "pr"]), 5)
+        self.s.load()
+        pull["state"] = "MERGED"
+        self.t8_success(pulls=[pull])
+        self.g("push", "origin", "--delete", "yolo/test")
+        self.scenario.with_suffix(".calls").write_text("")
+        self.s.watch(merge_poll_seconds=0)
+        self.assertEqual(self.s.state["status"], "complete")
+        calls = [json.loads(line) for line in self.scenario.with_suffix(".calls").read_text().splitlines()]
+        self.assertEqual([c[:2] for c in calls], [["pr", "view"]])
+
+    def test_pr_merge_on_second_poll_finishes_early(self):
+        pull = {"url": "https://github.com/test/app/pull/1", "state": "OPEN", "headRefOid": self.initial}
+        self.t8_success(pull_sequence=[[pull], [dict(pull, state="MERGED")]])
+        with patch.object(loop.time, "sleep") as sleep:
+            self.s.watch(discovery_seconds=0)
+        self.assertEqual(self.s.state["status"], "complete")
+        sleep.assert_called_once_with(10)
+
+    def test_pr_changed_head_is_not_reported_as_merged(self):
+        pull = {"url": "https://github.com/test/app/pull/1", "state": "OPEN", "headRefOid": self.initial}
+        self.t8_success(pull_sequence=[[pull], [dict(pull, state="MERGED", headRefOid="b" * 40)]])
+        with self.assertRaisesRegex(loop.Stop, "PR head"), patch.object(loop.time, "sleep"):
+            self.s.watch(discovery_seconds=0)
+        self.assertNotEqual(self.s.state["status"], "complete")
+
+    def test_closed_pr_is_not_complete(self):
+        pull = {"url": "https://github.com/test/app/pull/1", "state": "CLOSED", "headRefOid": self.initial}
+        self.t8_success(pulls=[pull])
+        self.s.watch(discovery_seconds=0)
+        self.assertEqual(self.s.state["status"], "stopped")
 
     def test_unexplained_branch_deletion_stops(self):
         self.scenario_for(self.run_data(checks="success", deployment="success", conclusion="success"))

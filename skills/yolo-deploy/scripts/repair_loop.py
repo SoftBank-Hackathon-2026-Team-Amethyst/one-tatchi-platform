@@ -117,7 +117,7 @@ class Session:
                      and state["history_file"].startswith(".deploy/log/")
                      and isinstance(state["workflow_id"], int)
                      and state["status"] in {"ready", "watching", "checks_failed", "committing",
-                                              "pending_push", "complete", "stopped"})
+                                              "pending_push", "waiting_merge", "complete", "stopped"})
             if not valid:
                 raise ValueError("invalid state")
         except (OSError, ValueError, KeyError, TypeError) as exc:
@@ -305,12 +305,52 @@ class Session:
             return "complete", "검사와 test 배포 job 성공. 트래픽 승격 여부는 별도 확인"
         return "stopped", "검사·test 배포 완료를 확인할 수 없음"
 
-    def watch(self, discovery_seconds=120, watch_seconds=1800, poll_seconds=5):
+    def observe_merge(self, attempts=5, interval=10):
+        """Observe one PR without requesting merge or changing the remote branch."""
+        pr = self.state.get("pull_request")
+        for attempt in range(attempts):
+            if pr:
+                pr = self.gh_json("pr", "view", pr["url"], "--repo", self.state["repo"],
+                                  "--json", "url,state,headRefOid")
+            else:
+                pulls = self.gh_json("pr", "list", "--repo", self.state["repo"], "--head", self.branch,
+                                     "--base", "main", "--state", "all", "--limit", "100",
+                                     "--json", "url,state,headRefOid")
+                matches = [p for p in pulls if p["headRefOid"] == self.state["sha"]]
+                if len(matches) != 1:
+                    raise Stop("T8 자동 PR을 관찰한 SHA와 연결할 수 없음")
+                pr = matches[0]
+            if pr["headRefOid"] != self.state["sha"]:
+                raise Stop("관찰 중 PR head가 변경됨. 이전 검증으로 머지 완료 처리하지 않음")
+            remote = self.remote_sha(missing_ok=True)
+            if remote not in {None, self.state["sha"]}:
+                raise Stop("관찰 중 원격 브랜치가 변경됨")
+            self.state["pull_request"] = pr
+            if remote is None and pr["state"] != "MERGED":
+                raise Stop("원격 브랜치가 삭제됐지만 해당 SHA의 T8 머지를 확인할 수 없음")
+            if pr["state"] == "MERGED":
+                return "complete", "검사·test 배포 성공 및 같은 SHA의 main PR 머지 확인"
+            if pr["state"] == "CLOSED":
+                return "stopped", "main PR이 머지되지 않고 닫힘"
+            if pr["state"] != "OPEN":
+                raise Stop("알 수 없는 PR 상태")
+            if attempt + 1 < attempts:
+                time.sleep(interval)
+        return "waiting_merge", "자동 머지 요청 후 PR이 열려 있음. 리뷰·검사·충돌 상태 확인 필요"
+
+    def watch(self, discovery_seconds=120, watch_seconds=5400, poll_seconds=5,
+              merge_poll_seconds=10):
         if self.state["status"] in {"committing", "pending_push"}:
             raise Stop("미완료 commit/push 상태를 먼저 확인할 것")
         if (self.head() != self.state["sha"] or not self.clean()
                 or self.remote_sha(missing_ok=True) not in {None, self.state["sha"]}):
             raise Stop("로컬·원격 커밋 또는 작업 트리가 예상 상태와 다름")
+        if self.state["status"] == "waiting_merge":
+            # Resume the saved PR; do not rediscover or rerun the completed Actions run.
+            status, reason = self.observe_merge(interval=merge_poll_seconds)
+            self.state.update(status=status, reason=reason)
+            self.save()
+            return
         deadline = time.monotonic() + discovery_seconds
         while True:
             candidates = self.gh_json("run", "list", "--repo", self.state["repo"], "--workflow", "deploy.yml",
@@ -343,14 +383,8 @@ class Session:
         yolo_pr = any(j["name"].split(" / ")[-1] == "yolo-pr" and j["conclusion"] == "success"
                       for j in data["jobs"])
         if status == "complete" and yolo_pr:
-            pulls = self.gh_json("pr", "list", "--repo", self.state["repo"], "--head", self.branch,
-                                 "--state", "all", "--limit", "100", "--json", "url,state,headRefOid")
-            matches = [p for p in pulls if p["headRefOid"] == self.state["sha"]]
-            if len(matches) != 1:
-                raise Stop("T8 자동 PR을 관찰한 SHA와 연결할 수 없음")
-            self.state["pull_request"] = matches[0]
-        if remote is None and not (status == "complete" and yolo_pr
-                                   and self.state["pull_request"]["state"] == "MERGED"):
+            status, reason = self.observe_merge(interval=merge_poll_seconds)
+        elif remote is None:
             raise Stop("원격 브랜치가 삭제됐지만 해당 SHA의 T8 머지를 확인할 수 없음")
         if data["conclusion"] != "success":
             logs = self.gh("run", "view", str(run["databaseId"]), "--repo", self.state["repo"],

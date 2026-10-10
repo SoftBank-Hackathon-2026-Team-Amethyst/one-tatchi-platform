@@ -14,9 +14,9 @@ Actions 읽기 권한이 필요하고 워크플로 변경이 포함된 PR은 Wor
 
 main 필수 검사 설정이 없어도 검사를 생략하지 않는다. 같은 head의 `pull_request` 이벤트
 deploy 실행과, infra 변경 시 존재하는 infra 워크플로가 성공해야 자동 머지를 요청한다.
-대기는 최대 10분이며, 브랜치가 바뀌면 해당 실행은 멈춘다. `--match-head-commit`으로
+PR 이미지 검사가 20분 이상 걸린 실검증 결과를 반영해 대기는 최대 45분이며, 브랜치가 바뀌면 해당 실행은 멈춘다. `--match-head-commit`으로
 승격한 head에 대해서만 `gh pr merge --auto --rebase`를 요청한다. 리뷰 규칙은 우회하지 않으며,
-리뷰 대기가 있으면 GitHub의 auto-merge 대기 상태로 남는다. 대기 중 추가 push에도 검사를
+리뷰 대기가 있으면 GitHub의 auto-merge 대기 상태로 남는다. `yolo-pr` job 제한은 준비·API 호출 여유를 포함해 50분이다. 대기 중 추가 push에도 검사를
 강제하려면 레포의 필수 검사 규칙을 설정해야 한다. 설정은 레포 관리자가 담당한다.
 
 GitHub rebase merge는 SHA를 유지하지 않는다. 따라서 main push에서 해당 SHA에 연결된
@@ -30,3 +30,11 @@ auto로 해석한다. main의 새 SHA로 test를 다시 검증하고 그 이미�
 삭제와 경합하므로 하지 않고, 정확한 SHA·배포 결과·판단 artifact 링크는 Actions와 PR에 남긴다.
 
 참고: [GitHub의 rebase 동작](https://docs.github.com/en/pull-requests/reference/pull-request-merges#rebase-and-merge-your-commits).
+
+로컬 스킬은 push 실행 전체(초기 검사·test 배포·PR 검사)를 최대 90분 관찰한다.
+`yolo-pr` 성공은 자동 머지 **요청** 성공이며 실제 머지 완료와 다르다. 스킬은 같은 SHA의
+main PR을 즉시 조회하고, OPEN이면 10초 간격으로 최대 5회(최초 포함) 조회한다.
+MERGED만 머지 완료, CLOSED는 중단, 계속 OPEN이면 `waiting_merge`로 보고한다.
+`watch` 재개 시 저장된 PR만 다시 조회하며 Actions 재실행이나 머지를 요청하지 않는다.
+조회마다 head SHA와 원격 브랜치를 검증하고, 브랜치 삭제는 같은 SHA의 MERGED로만 인정한다.
+이 관찰은 실제 머지를 확인하지만 사람이 머지했는지 봇이 머지했는지는 판정하지 않는다.
