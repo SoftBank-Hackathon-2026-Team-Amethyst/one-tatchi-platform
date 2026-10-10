@@ -708,9 +708,9 @@ Claude Code는 `/todo-task`, Codex는 `$todo-task`로 이 순서를 따르는 �
 승격 전 Green을 인터넷에 공개하지 않고, 검증은 인증된 배포 파이프라인의 localhost port-forward로 수행한다. 클러스터 내부 접근과 관리자 접근은 별도 경계로 검증한다.
 
 **할 일**
-- [ ] 차트의 공개 preview Ingress 제거, preview Service ClusterIP 고정, 배포 알림의 공개 preview URL 제거
-- [ ] smoke port-forward를 127.0.0.1로 명시하고 회귀 검사 추가
-- [ ] 접근 경계·마이그레이션·잔여 위험 ADR 및 검증 절차 작성
+- [x] 차트의 공개 preview Ingress 제거, preview Service ClusterIP 고정, 배포 알림의 공개 preview URL 제거
+- [x] smoke port-forward를 127.0.0.1로 명시하고 회귀 검사 추가
+- [x] 접근 경계·마이그레이션·잔여 위험 ADR 및 검증 절차 작성
 - [ ] CNI 지원·다른 허용 정책을 확인해 승격 전 내부 Green 격리와 pipeline RBAC 최소 권한 설계·적용·검증
 - [ ] 새 버전 릴리스와 demo-app 적용 후 기존 preview Ingress/LB listener 제거 및 active 정상·인증된 smoke 정상 확인
 
