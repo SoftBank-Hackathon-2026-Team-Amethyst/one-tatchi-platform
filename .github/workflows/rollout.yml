@@ -59,6 +59,7 @@ jobs:
   device:
     if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     steps:
       - uses: actions/checkout@v7
         with:
@@ -78,6 +79,7 @@ jobs:
     if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
     # onprem은 맥북의 self-hosted runner에서 돈다 (deploy.yml과 같음)
     runs-on: ${{ inputs.target == 'onprem' && fromJSON(format('["self-hosted","{0}"]', inputs.onprem-runner-label)) || 'ubuntu-latest' }}
+    timeout-minutes: 10
     # 같은 대상 · 환경의 조작은 한 번에 하나씩
     concurrency:
       group: rollout-${{ inputs.target-label || inputs.target }}-${{ inputs.cluster }}-${{ inputs.environment }}
