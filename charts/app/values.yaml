@@ -54,6 +54,8 @@ resources:
 
 probe:
   path: /health
+  # Empty or omitted keeps the existing shared readiness/liveness path.
+  livenessPath: ""
   initialDelaySeconds: 5
 
 # readOnlyRootFilesystem이라 쓰기가 필요한 경로는 emptyDir로 마운트한다.

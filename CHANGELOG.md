@@ -10,6 +10,10 @@
 
 ## Unreleased
 
+## v2.13.0
+
+- T17 후속 #211: App Chart에 선택적 `probe.livenessPath`를 추가한다. 비우면 기존 `probe.path`를 그대로 쓰며 readiness는 바뀌지 않는다. DB 상태를 검사하는 readiness와 프로세스 생존 확인을 분리해 DB 장애가 BE 반복 재시작으로 이어지는 것을 막을 수 있다. demo-app은 test 환경에서 먼저 적용한다.
+
 ## v2.12.0
 
 - T6 · T9: 운영 승인을 `deploy.yml`의 별도 `approve` job(environment `prod`)으로 분리한다. 승인 대기가 deploy의 동시성 차선을 잡아 뒤의 운영 배포가 전부 취소되던 문제를 없앤다. 승인 뒤 deploy job은 `prod-auto`(main 전용)로 돈다. Slack 승인 버튼 · 감사 로그 표지는 그대로. 새 재사용 워크플로 `approval-timeout.yml`(+ `deploy-provision` 템플릿): 승인 대기가 `max-wait-minutes`(기본 60)를 넘긴 실행을 취소하고 Slack에 알린다.
