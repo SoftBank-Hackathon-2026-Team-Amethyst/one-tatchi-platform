@@ -10,6 +10,8 @@
 
 ## Unreleased
 
+## v2.8.0
+
 - T35: `deploy.yml`이 환경별 덧붙임 값 파일 `<values>.<environment>.yaml`(예: `deploy/values-be.test.yaml`)을 기본 → `deploy/<target>/values.yaml` → 환경 순서로 합친다(`scripts/values-files.sh`, 테스트로 고정). 없으면 이전과 같다. `check-artifacts.sh`는 장애 주입 · 디버그 플래그(`CHAOS_*` · `FAULT_*` · `DEBUG`)가 test 덧붙임 파일 밖에 있으면 실패한다. prod에 `POST /api/chaos` 경로가 열리지 않게 한다.
 
 ## v2.7.0
