@@ -1,0 +1,22 @@
+# 하이브리드, 새 앱: FE · BE는 AWS, DB는 온프레미스. database_scope를 생략해 모든 환경이 외부 DB를 쓴다.
+target: aws
+layers:
+  fe: aws
+  be: aws
+  db: onprem
+services:
+  - name: demo-app-be
+    path: be
+    runtime: node
+    port: 8000
+    health: /health
+    public: false
+    database: true
+    migration: db/init.sql
+  - name: demo-app-fe
+    path: fe
+    runtime: node
+    port: 3000
+    health: /
+    public: true
+    database: false

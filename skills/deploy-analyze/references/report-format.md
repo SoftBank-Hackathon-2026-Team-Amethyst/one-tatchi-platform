@@ -55,6 +55,8 @@ Dockerfile 추가, 로컬 DB를 운영 DB로, 헬스체크 추가, lint · build
 | `config.yaml` | `compliance` | `write_brief.py`(브리프 답변) | `deploy.yml` gate(운영 environment 선택), `config-guard` |
 | `plan.yaml` | `target` | `deploy-analyze` 종합 | `deploy-provision`(워크플로 호출부 기본 대상, `infra/envs/<target>`) |
 | `plan.yaml` | `services` | `deploy-analyze` 종합 | `deploy-provision`(값 파일, `services` JSON, `checks` 입력, `smoke.json`), `check-artifacts.sh` |
+| `plan.yaml` | `layers` (선택) | `deploy-analyze` 종합 | `deploy-provision`(AWS 루트의 DB 연결), `check-artifacts.sh`(지원 조합) |
+| `plan.yaml` | `database_scope` (선택) | `deploy-analyze` 종합(기존 값 보존) | `deploy-provision`(외부 DB를 쓸 환경 · RDS 유지 여부), `check-artifacts.sh` |
 
 `config.yaml`은 `write_brief.py`와 `deploy-provision`(`template_version` 한 번)만 쓴다. 종합 단계는 건드리지 않는다.
 
@@ -96,3 +98,30 @@ services:
 - `compliance`와 `template_version`(`config.yaml`)은 종합 단계에서 쓰지 않는다.
 - `services` 순서가 배포 순서다. DB를 쓰는 BE를 먼저, 그것을 프록시하는 FE를 뒤에 둔다.
 - 서비스 이름은 `<앱>-<서비스>`. 앱 이름은 레포 이름(소문자 · 숫자 · 하이픈).
+
+### 계층별 배포 위치 (선택, T32)
+
+FE · BE · DB를 다른 곳에 둘 때만 쓴다. 키가 없으면 모든 계층이 `target`에 있다(기존 동작). 결정 이유는 [ADR 0016](../../../docs/adr/0016-layered-deploy-placement.md).
+
+```yaml
+target: aws                  # 앱(FE · BE)이 뜨는 대상. 의미는 그대로다
+layers:
+  fe: aws
+  be: aws
+  db: onprem                 # DB만 온프레미스
+database_scope: [test]       # 외부 DB를 쓸 환경. 생략하면 모든 환경
+```
+
+규칙:
+
+- 지원 조합은 하나다: `target: aws`, `layers: {fe: aws, be: aws, db: onprem}`. 그 밖의 조합은 `check-artifacts.sh`가 인프라 변경 전에 오류로 멈춘다.
+- `layers`를 쓰면 `fe` · `be` · `db` 세 키를 모두 적는다. `fe` · `be`는 `target`과 같아야 한다.
+- `layers.db`가 `target`과 다르면 `database: true`인 서비스가 하나 이상 있어야 한다.
+- `database_scope`는 `layers.db`가 `target`과 다를 때만 쓴다. 값은 `test` · `prod` 중 하나 이상이고 중복 없이 적는다. 생략하면 모든 환경이다.
+  - 새 앱은 생략한다. 옮길 데이터가 없으므로 모든 환경이 처음부터 외부 DB를 쓴다.
+  - 이미 운영 데이터가 있는 앱만 `[test]`처럼 좁힌다. 빠진 환경은 기존 클라우드 DB(RDS)를 계속 쓰고, 스킬은 그 DB를 지우지 않는다.
+  - 운영 데이터 이전은 자동화하지 않는다. 빠진 환경을 넣기 전에 데이터 이전 절차를 사람이 따른다.
+- 계약에는 기기를 적지 않는다. `onprem`은 팀이 운영하는 온프레미스 클러스터다. 어느 기기인지는 러너 라벨 · 클러스터 이름이, AWS에서 DB로 가는 통로 · 주소 · 자격증명은 T33 구성이 정한다.
+- 종합 단계는 기존 `plan.yaml`의 `database_scope`를 보존한다. 단일 대상에서 처음 하이브리드로 바꿀 때 대상 레포의 AWS 루트에 이미 `module "database"`가 있으면 `[test]`로 시작한다.
+
+예시: [`examples/plan/`](examples/plan/)의 `single-target.yaml`(기존), `layers-all.yaml`(새 앱), `layers-test-only.yaml`(운영 데이터가 있는 앱), `layers-unsupported.yaml`(검사가 거부).
