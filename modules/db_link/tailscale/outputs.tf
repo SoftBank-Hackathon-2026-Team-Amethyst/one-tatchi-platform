@@ -1,5 +1,5 @@
 output "operator_namespace" {
-  value = kubernetes_namespace_v1.tailscale.metadata[0].name
+  value = local.namespace
 }
 
 output "published" {
@@ -9,5 +9,5 @@ output "published" {
 
 output "consumed" {
   description = "consume한 DB의 클러스터 안 주소. service-base의 database.host에 넣는다"
-  value       = { for k, v in var.consume : k => { host = "${k}.${v.namespace}.svc.cluster.local", port = v.port } }
+  value       = { for k, v in var.consume : k => { host = "${coalesce(v.name, k)}.${v.namespace}.svc.cluster.local", port = v.port } }
 }
