@@ -7,7 +7,7 @@ resource "google_iam_workload_identity_pool" "grafana" {
   count                     = var.grafana_eks_oidc_issuer == "" ? 0 : 1
   project                   = var.project_id
   workload_identity_pool_id = "grafana-eks"
-  display_name              = "Central Grafana read-only monitoring"
+  display_name              = "Central Grafana Monitoring"
 }
 resource "google_iam_workload_identity_pool_provider" "grafana" {
   count                              = var.grafana_eks_oidc_issuer == "" ? 0 : 1
