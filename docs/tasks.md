@@ -674,8 +674,8 @@ Claude Code는 `/todo-task`, Codex는 `$todo-task`로 이 순서를 따르는 �
 - [x] demo-app `deploy/aws/values.yaml`에 `env.PGSSL: require`(GCP와 동일)를 넣어 test · prod 재배포, `/api/info`가 `dbConnected: true`인지 확인
 - [ ] service-base `DATABASE_URL`을 Node · Python이 모두 읽는 형식(`postgresql://…?sslmode=require`)으로 바꾸고, SQLAlchemy 접두(`+psycopg`)가 필요하면 별도 키로 둔다. 세 대상에서 같은 키로 붙는지 확인
 - [x] deploy-provision 템플릿: `database: true`인 서비스는 클라우드 대상(aws · gcp)에 DB TLS 설정을 기본으로 넣고 `check-artifacts.sh`가 빠졌는지 검사
-- [ ] promote-judge smoke에 응답 본문 조건(예: `expect_body: {"database": "connected"}`)을 추가하고 demo-app `smoke.json`의 `/health`에 적용. DB가 안 붙은 green은 abort
-- [ ] ADR: 클라우드 DB는 TLS 필수, 메모리 폴백은 데모 안전장치이지 정상 상태가 아님. 운영 문서에 `dbConnected` 확인 절차
+- [x] promote-judge smoke에 응답 본문 조건(예: `expect_body: {"database": "connected"}`)을 추가하고 demo-app `smoke.json`의 `/health`에 적용. DB가 안 붙은 green은 abort
+- [x] ADR: 클라우드 DB는 TLS 필수, 메모리 폴백은 데모 안전장치이지 정상 상태가 아님. 운영 문서에 `dbConnected` 확인 절차
 
 **완료 기준** AWS test · prod와 온프레미스 모두 `/api/info`가 `dbConnected: true`를 돌려주고, 방명록 글이 재배포 뒤에도 남는다. DB를 끊은 상태로 배포하면 smoke가 실패해 승격되지 않는다.
 
@@ -734,7 +734,7 @@ AWS/GCP/onprem에서 승격 전 공개 preview 경로 없음. 인증된 pipeline
 **목표** EKS test 네임스페이스의 BE가 맥북 Postgres에 TLS로 붙고, DB 포트는 인터넷에 열리지 않으며, 접속 정보는 AWS Secret으로만 전달된다.
 
 **할 일**
-- [ ] AWS BE → 온프레미스 DB의 VPN 등 비공개 연결 방식, 주소 유지, 라우팅, DNS, 암호화와 접근 제한을 설계하고 테스트 환경에서 검증한다. DB 포트를 인터넷에 공개하지 않는다. 후보 비교(Cloudflare Tunnel TCP · Tailscale)와 결정을 ADR에
+- [x] AWS BE → 온프레미스 DB의 VPN 등 비공개 연결 방식, 주소 유지, 라우팅, DNS, 암호화와 접근 제한을 설계하고 테스트 환경에서 검증한다. DB 포트를 인터넷에 공개하지 않는다. 후보 비교(Cloudflare Tunnel TCP · Tailscale)와 결정을 ADR에
 - [ ] 맥북 재부팅 · 잠금 뒤에도 통로가 다시 서고 주소가 유지되는지 확인한다 (T27 자동 복구와 맞춤). 안 되면 복구 절차를 README에
 - [ ] 온프레미스 PostgreSQL의 데이터·자격증명을 유지하며 AWS 앱에서 사용할 접속 Secret을 구성한다. 비밀번호를 Git·Terraform state·로그에 평문으로 기록하지 않고 test·prod의 DB 데이터와 자격증명을 분리한다. `DATABASE_URL` · `PG_URL` 키와 `sslmode=require`는 service-base와 같게
 - [ ] BE 파드만 DB에 닿도록 제한한다 (보안 그룹 · NetworkPolicy · Access 정책 중 통로에 맞는 것). 다른 네임스페이스 · 외부에서의 접속이 거부되는지 확인
