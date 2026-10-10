@@ -66,13 +66,13 @@ if [ -n "$version" ]; then
       expected="$(yq -r ".infra_versions.$scope // .template_version" "$cfg")"
       [[ "$expected" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]] || fail "infra_versions.$scope: vX.Y.Z 형식이 아니다"
     fi
-    # preview_auth was introduced with the v2 app preview contract; cloud migration pins
-    # apply to the existing infrastructure, while this module follows template_version.
+    # v2 app extensions follow template_version; cloud migration pins only apply to
+    # the existing infrastructure. They do not exist in the pinned v1 release.
     refs="$(/usr/bin/grep -rn --include='*.tf' --exclude-dir=.terraform "one-tatchi-platform.git//[^?]*?ref=$semver" "infra/envs/$scope" 2>/dev/null || true)"
-    bad="$(printf '%s\n' "$refs" | /usr/bin/grep -v '//modules/preview_auth/aws?ref=' | /usr/bin/grep -v "?ref=$expected\"" || true)"
+    bad="$(printf '%s\n' "$refs" | /usr/bin/grep -Ev '//modules/(preview_auth/aws|db_link/tailscale)\?ref=' | /usr/bin/grep -v "?ref=$expected\"" || true)"
     [ -z "$bad" ] || fail "$scope 모듈 ?ref= 버전이 $expected 과 다르다:"$'\n'"$bad"
-    bad="$(printf '%s\n' "$refs" | /usr/bin/grep '//modules/preview_auth/aws?ref=' | /usr/bin/grep -v "?ref=$version\"" || true)"
-    [ -z "$bad" ] || fail "$scope preview_auth 버전이 $version 과 다르다:"$'\n'"$bad"
+    bad="$(printf '%s\n' "$refs" | /usr/bin/grep -E '//modules/(preview_auth/aws|db_link/tailscale)\?ref=' | /usr/bin/grep -v "?ref=$version\"" || true)"
+    [ -z "$bad" ] || fail "$scope 앱 확장 모듈 버전이 $version 과 다르다:"$'\n'"$bad"
   done
 fi
 
