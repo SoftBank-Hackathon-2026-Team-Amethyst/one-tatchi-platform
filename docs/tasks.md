@@ -667,7 +667,7 @@ Claude Code는 `/todo-task`, Codex는 `$todo-task`로 이 순서를 따르는 �
 **원인(확인한 것)** RDS Postgres 17은 TLS 없는 접속을 거부한다. BE(Node `postgres`)는 Secret의 `DATABASE_URL`(`postgresql+psycopg://…`, `sslmode` 없음)로 TLS 없이 붙어 실패하고 메모리 폴백으로 넘어간다. GCP 값(`deploy/gcp/values.yaml`)에는 `PGSSL: require`가 있어 붙지만 AWS 값에는 없다. 온프레미스 Postgres는 TLS를 강제하지 않아 붙는다. 마이그레이션 Job은 `PG_URL`(`sslmode=require`)을 써서 성공하므로 네트워크 · 자격증명은 문제가 없다. `/health`는 DB가 끊겨도 200이라 smoke · AI 판단이 통과한다.
 
 **할 일**
-- [ ] demo-app `deploy/aws/values.yaml`에 `env.PGSSL: require`(GCP와 동일)를 넣어 test · prod 재배포, `/api/info`가 `dbConnected: true`인지 확인
+- [x] demo-app `deploy/aws/values.yaml`에 `env.PGSSL: require`(GCP와 동일)를 넣어 test · prod 재배포, `/api/info`가 `dbConnected: true`인지 확인
 - [ ] service-base `DATABASE_URL`을 Node · Python이 모두 읽는 형식(`postgresql://…?sslmode=require`)으로 바꾸고, SQLAlchemy 접두(`+psycopg`)가 필요하면 별도 키로 둔다. 세 대상에서 같은 키로 붙는지 확인
 - [x] deploy-provision 템플릿: `database: true`인 서비스는 클라우드 대상(aws · gcp)에 DB TLS 설정을 기본으로 넣고 `check-artifacts.sh`가 빠졌는지 검사
 - [ ] promote-judge smoke에 응답 본문 조건(예: `expect_body: {"database": "connected"}`)을 추가하고 demo-app `smoke.json`의 `/health`에 적용. DB가 안 붙은 green은 abort
