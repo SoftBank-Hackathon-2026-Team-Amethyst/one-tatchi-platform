@@ -37,3 +37,27 @@ runAsNonRoot: true
 capabilities:
   drop: ["ALL"]
 {{- end -}}
+
+{{/* ALB/Ingress annotations shared by the active and authenticated preview Ingresses. */}}
+{{- define "app.ingressAnnotations" -}}
+{{- $root := .root -}}
+{{- if eq $root.Values.ingress.className "alb" }}
+alb.ingress.kubernetes.io/scheme: internet-facing
+alb.ingress.kubernetes.io/target-type: ip
+alb.ingress.kubernetes.io/group.name: {{ required "ingress.group is required" $root.Values.ingress.group }}
+alb.ingress.kubernetes.io/group.order: {{ $root.Values.ingress.order | quote }}
+{{- if not $.host }}
+alb.ingress.kubernetes.io/listen-ports: {{ printf "[{\"HTTP\": %v}]" 80 | squote }}
+{{- else }}
+alb.ingress.kubernetes.io/listen-ports: '[{"HTTP": 80}, {"HTTPS": 443}]'
+alb.ingress.kubernetes.io/ssl-redirect: "443"
+{{- end }}
+{{- if $.host }}
+alb.ingress.kubernetes.io/ssl-policy: {{ $root.Values.ingress.sslPolicy }}
+{{- end }}
+alb.ingress.kubernetes.io/healthcheck-path: {{ $.healthcheckPath }}
+{{- end }}
+{{- with $root.Values.ingress.annotations }}
+{{ toYaml . }}
+{{- end }}
+{{- end -}}

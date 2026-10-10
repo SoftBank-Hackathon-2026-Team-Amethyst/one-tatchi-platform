@@ -67,6 +67,32 @@ ingress:
   sslPolicy: ELBSecurityPolicy-TLS13-1-2-2021-06
   # Green has no public Ingress. Legacy previewPort values are ignored.
 
+# 승인자용 green 미리보기 (ADR 0015). 꺼져 있으면 green은 내부 preview Service로만 열린다.
+# 켜면 oauth2-proxy가 OIDC 로그인을 강제하고, 인증된 요청만 <release>-preview로 넘긴다.
+# blueGreen과 ingress.enabled가 필요하다. 인증 설정 없이 green을 여는 경로는 만들지 않는다.
+previewAuth:
+  enabled: false
+  # green 접속 호스트 (예: green.onetachi.soulee.dev). HTTPS 인증서가 이 이름을 포함해야 한다.
+  host: ""
+  # OIDC issuer (예: Cognito https://cognito-idp.<region>.amazonaws.com/<user pool id>)
+  issuerUrl: ""
+  # 클라우드 시크릿(JSON) ID. 키: OAUTH2_PROXY_CLIENT_ID, OAUTH2_PROXY_CLIENT_SECRET, OAUTH2_PROXY_COOKIE_SECRET
+  # ClusterSecretStore(secretStore)를 거쳐 <release>-preview-auth Secret으로 만든다.
+  remoteKey: ""
+  secretStore: cloud-secrets
+  # 로그인 허용 범위는 IdP 할당(Identity Center 앱 할당)으로 정한다. 이메일 도메인은 추가 제한이다.
+  emailDomains:
+    - "*"
+  # IdP가 email_verified를 주지 않는 페더레이션(Identity Center → Cognito)이면 true로 둔다.
+  allowUnverifiedEmail: true
+  image: quay.io/oauth2-proxy/oauth2-proxy:v7.15.4
+  resources:
+    requests:
+      cpu: 10m
+      memory: 32Mi
+    limits:
+      memory: 64Mi
+
 migration:
   enabled: false
   image: postgres:17

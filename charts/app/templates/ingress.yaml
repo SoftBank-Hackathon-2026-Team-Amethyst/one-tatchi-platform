@@ -8,26 +8,10 @@ metadata:
   name: {{ $name }}
   labels:
     {{- include "app.labels" $ | nindent 4 }}
+  {{- with include "app.ingressAnnotations" (dict "root" $ "host" $.Values.ingress.host "healthcheckPath" $.Values.ingress.healthcheckPath) | trim }}
   annotations:
-    {{- if eq $.Values.ingress.className "alb" }}
-    alb.ingress.kubernetes.io/scheme: internet-facing
-    alb.ingress.kubernetes.io/target-type: ip
-    alb.ingress.kubernetes.io/group.name: {{ required "ingress.group is required" $.Values.ingress.group }}
-    alb.ingress.kubernetes.io/group.order: {{ $.Values.ingress.order | quote }}
-    {{- if not $.Values.ingress.host }}
-    alb.ingress.kubernetes.io/listen-ports: {{ printf "[{\"HTTP\": %v}]" 80 | squote }}
-    {{- else }}
-    alb.ingress.kubernetes.io/listen-ports: '[{"HTTP": 80}, {"HTTPS": 443}]'
-    alb.ingress.kubernetes.io/ssl-redirect: "443"
-    {{- end }}
-    {{- if $.Values.ingress.host }}
-    alb.ingress.kubernetes.io/ssl-policy: {{ $.Values.ingress.sslPolicy }}
-    {{- end }}
-    alb.ingress.kubernetes.io/healthcheck-path: {{ $.Values.ingress.healthcheckPath }}
-    {{- end }}
-    {{- with $.Values.ingress.annotations }}
-    {{- toYaml . | nindent 4 }}
-    {{- end }}
+    {{- . | nindent 4 }}
+  {{- end }}
 spec:
   {{- if $.Values.ingress.className }}
   ingressClassName: {{ $.Values.ingress.className }}
