@@ -48,6 +48,7 @@ jobs:
   python:
     if: inputs.python-dirs != '[]'
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     strategy:
       fail-fast: false
       matrix:
@@ -81,6 +82,7 @@ jobs:
   node:
     if: inputs.node-dirs != '[]'
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     strategy:
       fail-fast: false
       matrix:
@@ -93,6 +95,7 @@ jobs:
       - uses: pnpm/action-setup@v6
         with:
           package_json_file: ${{ matrix.dir }}/package.json
+        # package_json_file sets PNPM_HOME but does not add it to PATH.
       - uses: actions/setup-node@v7
         with:
           node-version: 22
@@ -106,6 +109,7 @@ jobs:
 
   vuln-scan:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v7
       - name: 오픈소스 취약점 검사 (Trivy)
@@ -121,6 +125,7 @@ jobs:
   iac-scan:
     if: inputs.iac-path != ''
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v7
       - name: IaC 규정 검사 (Trivy config)
@@ -139,6 +144,7 @@ jobs:
   image-scan:
     if: inputs.image-dirs != '[]'
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     strategy:
       fail-fast: false
       matrix:
@@ -176,6 +182,7 @@ jobs:
 
   secret-scan:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v7
         with:
@@ -187,6 +194,7 @@ jobs:
 
   license-scan:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v7
       - name: 라이선스 리포트 (Trivy, 전체 심각도)
@@ -215,6 +223,7 @@ jobs:
   #   - 사람이 바꾼 PR은 통과하고, CODEOWNERS 리뷰를 받아야 머지된다
   config-guard:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v7
         with:
