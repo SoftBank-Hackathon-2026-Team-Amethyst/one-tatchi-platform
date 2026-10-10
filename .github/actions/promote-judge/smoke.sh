@@ -116,4 +116,4 @@ jq -n --arg started_at "$started_at" --arg ended_at "$(date -u +%Y-%m-%dT%H:%M:%
   '{started_at:$started_at,ended_at:$ended_at,configured_seconds:$configured_seconds}' > "$WORK_DIR/observation.json"
 total="$(wc -l < "$out" | tr -d ' ')"
 failed="$(jq -s '[.[] | select(.ok | not)] | length' "$out")"
-echo "smoke: $pass바퀴, 요청 $total건, 실패 $failed건 ($WINDOW_SECONDS초)"
+echo "smoke: ${pass}바퀴, 요청 ${total}건, 실패 ${failed}건 (${WINDOW_SECONDS}초)"
