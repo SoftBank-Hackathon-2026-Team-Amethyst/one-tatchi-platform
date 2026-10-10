@@ -539,6 +539,10 @@ def main():
     parser.add_argument("args", nargs=argparse.REMAINDER)
     a = parser.parse_args()
     config = load_config(a.config)
+    # The installed CLI must use the same stable tools as launchd, including from a
+    # terminal that does not have the task-local k3d/kubectl/Terraform on its PATH.
+    if a.command != "install" and config.get("path"):
+        os.environ["PATH"] = config["path"]
     if a.command in ("doctor", "status"):
         result = status(config)
         print(json.dumps(result, indent=2))
