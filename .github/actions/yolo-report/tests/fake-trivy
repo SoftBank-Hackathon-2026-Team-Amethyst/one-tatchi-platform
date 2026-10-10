@@ -1,0 +1,23 @@
+#!/usr/bin/env python3
+"""테스트용 trivy. 스캔한 트리의 fake-<scanners>.json을 결과로 쓴다(없으면 빈 결과).
+FAKE_TRIVY_FAIL=<scanners>면 그 스캔이 실패한다."""
+import json
+import os
+from pathlib import Path
+import shutil
+import sys
+
+args = sys.argv[1:]
+if args[:1] == ["version"]:
+    print(json.dumps({"Version": "0.75.0", "VulnerabilityDB": {"UpdatedAt": "2026-10-10T01:03:02.007870471Z"}}))
+    sys.exit(0)
+scanners = args[args.index("--scanners") + 1]
+if os.environ.get("FAKE_TRIVY_FAIL") == scanners:
+    print("FATAL fake scan error", file=sys.stderr)
+    sys.exit(1)
+output = Path(args[args.index("--output") + 1])
+fixture = Path.cwd() / f"fake-{scanners.replace(',', '-')}.json"
+if fixture.is_file():
+    shutil.copy(fixture, output)
+else:
+    output.write_text(json.dumps({"Results": []}))

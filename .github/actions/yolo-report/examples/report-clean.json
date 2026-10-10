@@ -1,0 +1,126 @@
+{
+  "schema_version": "1",
+  "report_id": "37950445566-1",
+  "generated_at": "2026-10-10T06:03:11Z",
+  "repository": "SoftBank-Hackathon-2026-Team-Amethyst/demo-app",
+  "deploy": {
+    "actor": "baekyutae",
+    "branch": "yolo/vote-copy",
+    "sha": "a1b2c3d4e5f60718293a4b5c6d7e8f9012345678",
+    "target": "gcp",
+    "target_label": "gcp",
+    "environment": "test",
+    "compliance": "none",
+    "template_version": "v2.2.0",
+    "run_url": "https://github.com/SoftBank-Hackathon-2026-Team-Amethyst/demo-app/actions/runs/37950445566/attempts/1",
+    "promoted": true
+  },
+  "repairs": {
+    "count": 0,
+    "max": 3,
+    "items": [],
+    "history_file": null
+  },
+  "warnings": {
+    "total": 1,
+    "new_total": 0,
+    "base_sha": "9a8b7c6d5e4f3a2b1c0d9e8f7a6b5c4d3e2f1a0b",
+    "items": [
+      {
+        "source": "scan_exception",
+        "severity": "UNKNOWN",
+        "id": "AWS-0040",
+        "target": ".trivyignore",
+        "package": null,
+        "title": "GitHub hosted runner의 Helm/kubectl 연결을 위해 EKS API를 공개한다 (main에 원래 있던 예외)",
+        "new_on_branch": false
+      }
+    ],
+    "scanner": {
+      "name": "trivy",
+      "version": "0.75.0",
+      "db_updated_at": "2026-10-10T00:00:00Z"
+    }
+  },
+  "judgment": {
+    "decision": "promote",
+    "reason": "demo-app-be: 에러율 0%, p95 140ms로 기준 안이라 승격한다. / demo-app-fe: 에러율 0%, p95 95ms로 기준 안이라 승격한다.",
+    "services": {
+      "demo-app-be": {
+        "decision": "promote",
+        "source": "ai",
+        "reason": "에러율 0%, p95 140ms로 기준 안이라 승격한다.",
+        "metrics": {
+          "requests": 110,
+          "failed": 0,
+          "error_rate": 0,
+          "p95_ms": 140,
+          "restarts": 0
+        },
+        "thresholds": {
+          "max_error_rate": 0,
+          "max_p95_ms": 2000,
+          "max_restarts": 0
+        },
+        "near_threshold": []
+      },
+      "demo-app-fe": {
+        "decision": "promote",
+        "source": "ai",
+        "reason": "에러율 0%, p95 95ms로 기준 안이라 승격한다.",
+        "metrics": {
+          "requests": 130,
+          "failed": 0,
+          "error_rate": 0,
+          "p95_ms": 95,
+          "restarts": 0
+        },
+        "thresholds": {
+          "max_error_rate": 0,
+          "max_p95_ms": 2000,
+          "max_restarts": 0
+        },
+        "near_threshold": []
+      }
+    }
+  },
+  "approval": {
+    "status": "skipped",
+    "stage": "expected",
+    "basis": "compliance=none → main 반영 후 승인 없이 prod-auto"
+  },
+  "collection": {
+    "deploy": {
+      "status": "ok",
+      "detail": null
+    },
+    "repairs": {
+      "status": "ok",
+      "detail": null
+    },
+    "warnings": {
+      "status": "ok",
+      "detail": null
+    },
+    "judgment": {
+      "status": "ok",
+      "detail": null
+    },
+    "approval": {
+      "status": "ok",
+      "detail": null
+    },
+    "lint": {
+      "status": "not_collected",
+      "detail": "린트 경고는 구조화된 출력이 없어 수집 범위 밖"
+    },
+    "image": {
+      "status": "not_collected",
+      "detail": "이미지(OS 패키지) 비차단 취약점은 수집 범위 밖. 차단 검사는 checks.yml image-scan이 한다"
+    }
+  },
+  "debt": {
+    "open_issue": false,
+    "reasons": []
+  }
+}

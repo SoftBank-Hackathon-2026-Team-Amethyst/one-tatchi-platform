@@ -726,7 +726,7 @@ AWS/GCP/onprem에서 승격 전 공개 preview 경로 없음. 인증된 pipeline
 
 **어디에 필요** yolo는 리뷰가 없으니, 무엇을 안고 배포했는지 기록과 책임 소재를 남긴다.
 
-**만들 것** 재사용 워크플로 `report.yml`: 리포트 JSON 생성 → S3 감사 로그 저장 → 문제가 있으면 `yolo-debt` 이슈 생성.
+**만들 것** 공통 액션 `yolo-report`(재사용 `deploy.yml`의 `yolo-report` job에서 호출): 리포트 JSON 생성 → S3 감사 로그 저장 → 문제가 있으면 `yolo-debt` 이슈 생성.
 
 - **우선순위** P1 · **영역** 파이프라인 (platform 재사용 워크플로) · **담당** 배규태
 - **선행** `T8` · **후속** 없음 · **설계 문서** 6.3, FR-12
@@ -734,7 +734,7 @@ AWS/GCP/onprem에서 승격 전 공개 preview 경로 없음. 인증된 pipeline
 **목표** yolo 배포마다 누가·언제·어떤 문제를 안고 배포했는지 남고, 문제가 있으면 이슈가 열린다.
 
 **할 일**
-- [ ] 리포트 JSON 스키마, 재사용 `report.yml`
+- [ ] 리포트 JSON 스키마, 공통 액션 `yolo-report` · `deploy.yml` 연결
 - [ ] 수집: 실행자, 시각, SHA, 대상, compliance, template_version, 자동 수정 이력, 비차단 경고, AI 판단 근거, 승인 생략 여부
 - [ ] 저장: 감사 로그(S3), 실행 요약. 문제가 있으면 demo-app에 `yolo-debt` 이슈
 

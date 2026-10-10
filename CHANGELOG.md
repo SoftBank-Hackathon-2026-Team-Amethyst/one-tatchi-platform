@@ -10,6 +10,8 @@
 
 ## Unreleased
 
+- T10: yolo 배포 리포트. yolo push의 test 배포가 끝나면(승격 · abort 모두) 재사용 `deploy.yml`의 새 `yolo-report` job이 실행자 · 커밋 · 대상 · compliance · AI 자동 수정 · 배포를 막지 않은 경고 · AI 승격 판단 근거 · 운영 승인 여부를 리포트 JSON으로 만들어 감사 로그 버킷(`reports/yolo/…`)에 저장하고, 실행 요약에 표를 남긴다. yolo 브랜치가 새로 들여온 경고 · AI 수정 · 수집 실패가 있으면 대상 레포에 `yolo-debt` 이슈를 연다(브랜치당 1개). 리포트가 실패하면 `yolo-pr`(main 자동 머지)로 가지 않는다. `yolo-auto-merge: true`인 호출부에서만 돌며 호출부 수정은 필요 없다. 봇 App에 Issues 쓰기 권한이 필요하다. 새 입력 `report-scan-path`(기본 `.`) · `report-iac-path`(기본 `infra`). 공통 액션 `.github/actions/yolo-report`.
+
 ## v2.1.5
 
 - T9: checks 워크플로우의 image-scan에서 PR 변경사항이 없는 서비스 디렉토리는 도커 빌드 및 Trivy 스캔을 건너뛰어 PR 검사 시간을 획기적으로 단축한다.
