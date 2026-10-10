@@ -46,6 +46,15 @@ resource "aws_cognito_identity_provider" "saml" {
   attribute_mapping = {
     email = var.saml_email_attribute
   }
+
+  # Cognito가 메타데이터 URL에서 계산해 채우는 값이다. 무시하지 않으면 plan마다 지우려는 diff가 생긴다.
+  lifecycle {
+    ignore_changes = [
+      provider_details["ActiveEncryptionCertificate"],
+      provider_details["SLORedirectBindingURI"],
+      provider_details["SSORedirectBindingURI"],
+    ]
+  }
 }
 
 resource "aws_cognito_user_pool_client" "this" {
