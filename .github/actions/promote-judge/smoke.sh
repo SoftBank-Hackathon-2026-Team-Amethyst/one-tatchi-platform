@@ -29,15 +29,15 @@ default='[{"method":"GET","path":"/health","expect":200}]'
 if [ -f "$SMOKE_FILE" ]; then
   if ! list="$(jq -ce --arg r "$RELEASE" '.[$r] // empty' "$SMOKE_FILE" 2>/dev/null)"; then
     if jq -e . "$SMOKE_FILE" >/dev/null 2>&1; then
-      echo "$SMOKE_FILE에 $RELEASE 항목이 없어 기본 요청(GET /health)을 쓴다"
+      echo "${SMOKE_FILE}에 $RELEASE 항목이 없어 기본 요청(GET /health)을 쓴다"
       list="$default"
     else
-      echo "::error::$SMOKE_FILE이 올바른 JSON이 아니다"
+      echo "::error::${SMOKE_FILE}이 올바른 JSON이 아니다"
       exit 1
     fi
   fi
 else
-  echo "$SMOKE_FILE이 없어 기본 요청(GET /health)을 쓴다"
+  echo "${SMOKE_FILE}이 없어 기본 요청(GET /health)을 쓴다"
   list="$default"
 fi
 jq -c '.[] | {method: ((.method // "GET") | ascii_upcase), path, expect: (.expect // 200), body}' <<<"$list" > "$requests"
@@ -57,7 +57,7 @@ if [ -z "${BASE_URL:-}" ]; then
   svc_port="$($KUBECTL get svc "$svc" -n "$NAMESPACE" -o jsonpath='{.spec.ports[0].port}')"
   pf_log="$WORK_DIR/port-forward.log"
   # 로컬 포트는 비어 있는 것을 kubectl이 고른다. 고른 포트는 로그의 "Forwarding from 127.0.0.1:<포트>"에서 읽는다.
-  $KUBECTL port-forward "svc/$svc" -n "$NAMESPACE" ":$svc_port" > "$pf_log" 2>&1 &
+  $KUBECTL port-forward --address 127.0.0.1 "svc/$svc" -n "$NAMESPACE" ":$svc_port" > "$pf_log" 2>&1 &
   pf_pid=$!
   local_port=""
   for _ in $(seq 1 50); do
@@ -116,4 +116,4 @@ jq -n --arg started_at "$started_at" --arg ended_at "$(date -u +%Y-%m-%dT%H:%M:%
   '{started_at:$started_at,ended_at:$ended_at,configured_seconds:$configured_seconds}' > "$WORK_DIR/observation.json"
 total="$(wc -l < "$out" | tr -d ' ')"
 failed="$(jq -s '[.[] | select(.ok | not)] | length' "$out")"
-echo "smoke: $pass바퀴, 요청 $total건, 실패 $failed건 ($WINDOW_SECONDS초)"
+echo "smoke: ${pass}바퀴, 요청 ${total}건, 실패 ${failed}건 (${WINDOW_SECONDS}초)"

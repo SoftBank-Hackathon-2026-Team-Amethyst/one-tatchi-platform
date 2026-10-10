@@ -5,6 +5,22 @@ here="$(cd "$(dirname "$0")" && pwd)"
 : "${CONTEXT:?}" "${GITHUB_SHA:?}" "${RUNNER_TEMP:?}"
 key="$(python3 "$here/bundle.py" key "$CONTEXT")"
 bundle="$RUNNER_TEMP/image-bundles/$key"
+
+# PR 검사 시 해당 서비스 디렉토리에 변경사항이 없으면 빌드와 스캔을 건너뛴다.
+if [ "${GITHUB_EVENT_NAME:-}" = "pull_request" ] && [ -n "${BASE_SHA:-}" ]; then
+  if ! git cat-file -e "$BASE_SHA^{commit}" 2>/dev/null; then
+    git fetch origin "$BASE_SHA" --depth=1 2>/dev/null || true
+  fi
+  if git cat-file -e "$BASE_SHA^{commit}" 2>/dev/null; then
+    if git diff --quiet "$BASE_SHA" HEAD -- "$CONTEXT"; then
+      echo "::notice::$CONTEXT 디렉토리에 변경사항이 없으므로 PR 이미지 빌드 및 취약점 검사를 건너뜁니다."
+      echo "key=$key" >> "$GITHUB_OUTPUT"
+      echo "skipped=true" >> "$GITHUB_OUTPUT"
+      exit 0
+    fi
+  fi
+fi
+
 mkdir -p "$bundle"
 rm -f "$bundle/verified.json"
 cache_scope="buildx-${CONTEXT//\//-}"

@@ -1,0 +1,158 @@
+{
+  "schema_version": "1",
+  "report_id": "37950112233-1",
+  "generated_at": "2026-10-10T05:12:40Z",
+  "repository": "SoftBank-Hackathon-2026-Team-Amethyst/demo-app",
+  "deploy": {
+    "actor": "baekyutae",
+    "branch": "yolo/guestbook-limit",
+    "sha": "4f1c2b7e9d0a8c6b5e3f2a1d0c9b8a7f6e5d4c3b",
+    "target": "aws",
+    "target_label": "aws",
+    "environment": "test",
+    "compliance": "regulated",
+    "template_version": "v2.2.0",
+    "run_url": "https://github.com/SoftBank-Hackathon-2026-Team-Amethyst/demo-app/actions/runs/37950112233/attempts/1",
+    "promoted": true
+  },
+  "repairs": {
+    "count": 1,
+    "max": 3,
+    "items": [
+      {
+        "number": 1,
+        "commit": "4f1c2b7e9d0a8c6b5e3f2a1d0c9b8a7f6e5d4c3b",
+        "files": [
+          "be/src/routes/guestbook.ts"
+        ],
+        "reason": "lint 실패: 사용하지 않는 변수 limit. 쿼리 상한으로 사용하도록 수정"
+      }
+    ],
+    "history_file": ".deploy/log/20261010-050211-9a8b7c6d-yolo.md"
+  },
+  "warnings": {
+    "total": 3,
+    "new_total": 1,
+    "base_sha": "9a8b7c6d5e4f3a2b1c0d9e8f7a6b5c4d3e2f1a0b",
+    "items": [
+      {
+        "source": "vulnerability",
+        "severity": "MEDIUM",
+        "id": "CVE-2026-00001",
+        "target": "be/pnpm-lock.yaml",
+        "package": "example-lib",
+        "title": "예시 취약점 (설명용 합성 값)",
+        "new_on_branch": true
+      },
+      {
+        "source": "scan_exception",
+        "severity": "UNKNOWN",
+        "id": "CVE-2026-00002",
+        "target": ".trivyignore",
+        "package": null,
+        "title": "베이스 이미지 패치 대기 (설명용 합성 값)",
+        "new_on_branch": false
+      },
+      {
+        "source": "misconfiguration",
+        "severity": "MEDIUM",
+        "id": "AWS-0038",
+        "target": "infra/envs/aws/main.tf",
+        "package": null,
+        "title": "예시 IaC 설정 경고 (설명용 합성 값)",
+        "new_on_branch": false
+      }
+    ],
+    "scanner": {
+      "name": "trivy",
+      "version": "0.75.0",
+      "db_updated_at": "2026-10-10T00:00:00Z"
+    }
+  },
+  "judgment": {
+    "decision": "promote",
+    "reason": "demo-app-be: 에러율 0%, p95 1720ms로 기준 안이고 green 파드 1개 Ready라 승격한다. / demo-app-fe: 에러율 0%, p95 210ms로 기준 안이라 승격한다.",
+    "services": {
+      "demo-app-be": {
+        "decision": "promote",
+        "source": "ai",
+        "reason": "에러율 0%, p95 1720ms로 기준 안이고 green 파드 1개 Ready라 승격한다.",
+        "metrics": {
+          "requests": 96,
+          "failed": 0,
+          "error_rate": 0,
+          "p95_ms": 1720,
+          "restarts": 0
+        },
+        "thresholds": {
+          "max_error_rate": 0,
+          "max_p95_ms": 2000,
+          "max_restarts": 0
+        },
+        "near_threshold": [
+          "p95 1720ms ≥ 기준 2000ms의 80%"
+        ]
+      },
+      "demo-app-fe": {
+        "decision": "promote",
+        "source": "ai",
+        "reason": "에러율 0%, p95 210ms로 기준 안이라 승격한다.",
+        "metrics": {
+          "requests": 120,
+          "failed": 0,
+          "error_rate": 0,
+          "p95_ms": 210,
+          "restarts": 0
+        },
+        "thresholds": {
+          "max_error_rate": 0,
+          "max_p95_ms": 2000,
+          "max_restarts": 0
+        },
+        "near_threshold": []
+      }
+    }
+  },
+  "approval": {
+    "status": "required",
+    "stage": "expected",
+    "basis": "compliance=regulated → prod 반영 전 사람 승인(environment prod)"
+  },
+  "collection": {
+    "deploy": {
+      "status": "ok",
+      "detail": null
+    },
+    "repairs": {
+      "status": "ok",
+      "detail": null
+    },
+    "warnings": {
+      "status": "ok",
+      "detail": null
+    },
+    "judgment": {
+      "status": "ok",
+      "detail": null
+    },
+    "approval": {
+      "status": "ok",
+      "detail": null
+    },
+    "lint": {
+      "status": "not_collected",
+      "detail": "린트 경고는 구조화된 출력이 없어 수집 범위 밖"
+    },
+    "image": {
+      "status": "not_collected",
+      "detail": "이미지(OS 패키지) 비차단 취약점은 수집 범위 밖. 차단 검사는 checks.yml image-scan이 한다"
+    }
+  },
+  "debt": {
+    "open_issue": true,
+    "reasons": [
+      "AI 자동 수정 1회",
+      "이 브랜치가 새로 들여온 비차단 경고 1건 (취약점 MEDIUM 1)"
+    ]
+  }
+}

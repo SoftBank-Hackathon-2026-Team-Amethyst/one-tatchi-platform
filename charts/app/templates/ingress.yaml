@@ -1,15 +1,11 @@
 {{- if .Values.ingress.enabled }}
 {{- $name := include "app.name" . -}}
-{{- $targets := list (dict "suffix" "" "service" $name "port" 80) -}}
-{{- if include "app.isBlueGreen" . }}
-{{- $targets = append $targets (dict "suffix" "-preview" "service" (printf "%s-preview" $name) "port" .Values.ingress.previewPort) -}}
-{{- end }}
-{{- range $t := $targets }}
+{{/* Green is reachable only through the internal preview Service. */}}
 ---
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
-  name: {{ $name }}{{ $t.suffix }}
+  name: {{ $name }}
   labels:
     {{- include "app.labels" $ | nindent 4 }}
   annotations:
@@ -19,12 +15,10 @@ metadata:
     alb.ingress.kubernetes.io/group.name: {{ required "ingress.group is required" $.Values.ingress.group }}
     alb.ingress.kubernetes.io/group.order: {{ $.Values.ingress.order | quote }}
     {{- if not $.Values.ingress.host }}
-    alb.ingress.kubernetes.io/listen-ports: {{ printf "[{\"HTTP\": %v}]" $t.port | squote }}
-    {{- else if eq $t.suffix "" }}
+    alb.ingress.kubernetes.io/listen-ports: {{ printf "[{\"HTTP\": %v}]" 80 | squote }}
+    {{- else }}
     alb.ingress.kubernetes.io/listen-ports: '[{"HTTP": 80}, {"HTTPS": 443}]'
     alb.ingress.kubernetes.io/ssl-redirect: "443"
-    {{- else }}
-    alb.ingress.kubernetes.io/listen-ports: {{ printf "[{\"HTTPS\": %v}]" $t.port | squote }}
     {{- end }}
     {{- if $.Values.ingress.host }}
     alb.ingress.kubernetes.io/ssl-policy: {{ $.Values.ingress.sslPolicy }}
@@ -51,9 +45,8 @@ spec:
             pathType: Prefix
             backend:
               service:
-                name: {{ $t.service }}
+                name: {{ $name }}
                 port:
                   name: http
           {{- end }}
-{{- end }}
 {{- end }}
