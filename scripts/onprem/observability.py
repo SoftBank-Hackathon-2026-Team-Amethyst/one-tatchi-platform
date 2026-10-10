@@ -115,12 +115,15 @@ def connect(config_path, requested, mode):
                 current = json.loads(ctl.state_path(config).read_text())
                 if any(current.get(key) != state.get(key) for key in ("lineage", "serial")):
                     raise RuntimeError("device state changed during review; run a fresh plan")
+                ctl.check_ownership(config, ctl.cluster_exists(config))
                 ctl.prepare_kubeconfig(config)
                 env["KUBECONFIG"] = os.environ["KUBECONFIG"]
                 command(["kubectl", "apply", "--server-side", "--field-manager=t17-metrics", "-f", "-"], env=env, input=payload)
-                # The v2 wrapper rejects saved-plan apply and rechecks ownership/credentials.
-                command([sys.executable, wrapper, "--config", config_path, "terraform", "apply",
-                         "-input=false", "-auto-approve", "-lock-timeout=5m"], env=env)
+                # Apply only the private plan created and checked above. The general-purpose
+                # wrapper injects CLI variables, which cannot accompany a saved plan.
+                # Terraform also rejects this plan if the state changed after our check.
+                command(["terraform", f"-chdir={root}", "apply", "-input=false",
+                         "-lock-timeout=5m", plan_path], env=env)
                 keep_settings = True
                 command(["kubectl", "-n", "monitoring", "rollout", "restart", "deployment/deploy-metrics"], env=env)
                 command(["kubectl", "-n", "monitoring", "rollout", "status", "deployment/deploy-metrics", "--timeout=180s"], env=env)

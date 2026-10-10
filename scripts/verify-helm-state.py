@@ -27,6 +27,8 @@ def verify(root):
     # Terraform state may contain credentials. Parse it in memory and emit names/status only.
     state = json.loads(read(["terraform", f"-chdir={root}", "show", "-json"]))
     owned = list(releases(state.get("values", {}).get("root_module", {})))
+    if not owned:
+        raise RuntimeError("no state-owned Helm releases; verify the existing cluster's backend before planning")
     namespaces = sorted({namespace for _, namespace, _ in owned})
     for namespace in namespaces:
         if read(["kubectl", "auth", "can-i", "list", "secrets", "-n", namespace]).strip() != "yes":

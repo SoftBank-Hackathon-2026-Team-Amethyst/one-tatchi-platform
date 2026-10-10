@@ -49,10 +49,12 @@ v2 재사용 `onprem-observability.yml`은 `workflow_dispatch`의 main에서만 
 자원 변경이 있으면 중단한다. plan 종료 시 기존 공개 tfvars를 복원하며 Secret을 만들지 않는다.
 
 검토 후 같은 입력으로 `apply`를 실행하면 `monitoring/deploy-metrics-remote-write` Secret을
-stdin으로 전달하고 기존 설치의 `onpremctl`로 전체 apply한다. 공개 설정은 해당 device root의
-`t17-metrics.auto.tfvars.json`에 유지한다. 자격증명은 파일·state·로그에 쓰지 않는다.
-v2 wrapper는 저장 plan 적용을 허용하지 않으므로 적용 직전에 state lineage/serial을 확인하고
-다시 plan하는 apply를 사용한다. 그동안 다른 로컬 Terraform 작업이나 root 편집을 하지 않는다.
+stdin으로 전달하고 같은 실행에서 검사한 저장 plan만 적용한다. 공개 설정은 해당 device root의
+`t17-metrics.auto.tfvars.json`에 유지한다. Remote-write 비밀번호는 파일·state·로그에 쓰지 않는다.
+기존 설치의 `onpremctl`이 소유권과 클러스터·DB 인증을 확인하며 plan을 만든다. plan에는 provider
+인증 정보가 포함될 수 있어 비공개 임시 디렉터리에만 저장하고 실행 종료 시 삭제한다. 적용 직전에
+소유권과 state lineage/serial을 다시 확인한 뒤 Terraform으로 해당 plan을 적용한다. 임의의 외부
+plan은 받지 않으며 재계획하지 않는다. 동시에 다른 로컬 Terraform 작업이나 root 편집을 하지 않는다.
 적용 후 collector rollout과 중앙의 실제 시계열을 확인한다. 중앙 연결을 해제해야 하면 공개
 remote-write 설정만 원래 값으로 되돌려 wrapper로 plan/apply하고 DB·PVC·클러스터는 보존한다.
 

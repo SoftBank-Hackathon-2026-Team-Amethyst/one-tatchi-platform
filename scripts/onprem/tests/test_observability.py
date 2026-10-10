@@ -4,6 +4,7 @@ import subprocess
 import sys
 import tempfile
 import unittest
+from contextlib import contextmanager
 from pathlib import Path
 from unittest.mock import patch
 
@@ -61,7 +62,8 @@ class ObservabilityTests(unittest.TestCase):
                 obs.command(["kubectl", "apply", "-f", "-"], input="private-example")
         self.assertNotIn("private-example", str(error.exception))
 
-    def test_plan_restores_settings_and_never_writes_a_secret(self):
+    @contextmanager
+    def device(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             state = {"serial": 4, "lineage": "fixture", "resources": [{
@@ -75,11 +77,53 @@ class ObservabilityTests(unittest.TestCase):
             with patch.object(obs.ctl, "load_config", return_value=config), \
                  patch.object(obs.ctl, "cluster_exists", return_value=True), \
                  patch.object(obs.ctl, "check_ownership"), \
-                 patch.dict(obs.os.environ, {"GITHUB_ACTIONS": "false"}), \
-                 patch.object(obs, "command", side_effect=["", json.dumps(self.plan())]) as command:
-                obs.connect(root / "config.json", self.settings, "plan")
+                 patch.object(obs.ctl, "prepare_kubeconfig"), \
+                 patch.dict(obs.os.environ, {"GITHUB_ACTIONS": "false", "KUBECONFIG": "fixture",
+                                             "METRICS_PASSWORD": "private-example"}):
+                yield root, settings_path
+
+    def test_plan_restores_settings_and_never_writes_a_secret(self):
+        with self.device() as (root, settings_path), \
+             patch.object(obs, "command", side_effect=["", json.dumps(self.plan())]) as command:
+            obs.connect(root / "config.json", self.settings, "plan")
+            self.assertEqual(command.call_count, 2)
+            self.assertFalse(any(call.args[0][0] == "kubectl" for call in command.call_args_list))
+            self.assertEqual(settings_path.read_text(), '{"previous": true}\n')
+
+    def test_apply_uses_only_the_plan_that_was_checked(self):
+        with self.device() as (root, settings_path), \
+             patch.object(obs, "command", side_effect=["", json.dumps(self.plan()), "", "", "", ""]) as command:
+            obs.connect(root / "config.json", self.settings, "apply")
+            calls = command.call_args_list
+            checked_plan = calls[1].args[0][-1]
+            self.assertEqual(calls[3].args[0], ["terraform", f"-chdir={root}", "apply", "-input=false",
+                                              "-lock-timeout=5m", checked_plan])
+            self.assertFalse(checked_plan.parent.exists())
+            self.assertTrue(all("METRICS_PASSWORD" not in call.kwargs["env"] for call in calls))
+            self.assertEqual(json.loads(settings_path.read_text()), self.settings)
+
+    def test_apply_refuses_unrelated_changes_before_writing_secret(self):
+        with self.device() as (root, settings_path), \
+             patch.object(obs, "command", side_effect=["", json.dumps(self.plan(address="module.database.db"))]) as command:
+            with self.assertRaisesRegex(RuntimeError, "refusing unrelated"):
+                obs.connect(root / "config.json", self.settings, "apply")
+            self.assertEqual(command.call_count, 2)
+            self.assertEqual(settings_path.read_text(), '{"previous": true}\n')
+
+    def test_apply_refuses_state_change_before_writing_secret(self):
+        with self.device() as (root, settings_path):
+            def changed_state(args, **kwargs):
+                if args[0] == "terraform":
+                    path = root / "terraform.tfstate"
+                    state = json.loads(path.read_text())
+                    state["serial"] += 1
+                    path.write_text(json.dumps(state))
+                    return json.dumps(self.plan())
+                return ""
+            with patch.object(obs, "command", side_effect=changed_state) as command:
+                with self.assertRaisesRegex(RuntimeError, "state changed"):
+                    obs.connect(root / "config.json", self.settings, "apply")
                 self.assertEqual(command.call_count, 2)
-                self.assertFalse(any(call.args[0][0] == "kubectl" for call in command.call_args_list))
             self.assertEqual(settings_path.read_text(), '{"previous": true}\n')
 
 

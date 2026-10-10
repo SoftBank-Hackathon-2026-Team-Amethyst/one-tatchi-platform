@@ -33,6 +33,11 @@ class HelmVisibilityTests(unittest.TestCase):
             visibility.verify("root")
             self.assertEqual(read.call_args.args[0][:2], ["helm", "list"])
 
+    def test_empty_or_wrong_backend_is_not_a_successful_visibility_check(self):
+        with patch.object(visibility, "read", return_value='{"values": {"root_module": {}}}'):
+            with self.assertRaisesRegex(RuntimeError, "no state-owned Helm"):
+                visibility.verify("root")
+
     def test_provider_errors_are_redacted(self):
         with patch.object(visibility.subprocess, "run", return_value=subprocess.CompletedProcess([], 1, "", "token=private")):
             with self.assertRaises(RuntimeError) as error:
