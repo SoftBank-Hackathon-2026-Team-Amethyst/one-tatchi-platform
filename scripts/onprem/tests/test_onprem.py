@@ -148,8 +148,8 @@ class LifecycleTests(unittest.TestCase):
             config = self.config(Path(tmp))
             ctl.stop_services(config)
             calls = [c.args[0] for c in run.call_args_list]
-            self.assertEqual(sum(c[1] == "bootout" for c in calls), 3)
-            self.assertEqual(sum(c[1] == "print" for c in calls), 6)
+            self.assertEqual(sum(c[1] == "bootout" for c in calls), 4)
+            self.assertEqual(sum(c[1] == "print" for c in calls), 8)
             self.assertTrue(all(c[0] == "launchctl" for c in calls))
 
     def test_existing_database_password_is_preserved(self):
@@ -176,13 +176,15 @@ class LifecycleTests(unittest.TestCase):
             run.return_value.returncode = 0
             ctl.start_services(self.config(Path(tmp)))
             self.assertFalse(any(c.args[0][1] == "bootstrap" for c in run.call_args_list))
-            self.assertEqual(sum(c.args[0][1] == "kickstart" for c in run.call_args_list), 3)
+            self.assertEqual(sum(c.args[0][1] == "kickstart" for c in run.call_args_list), 4)
 
     def test_docker_delay_retries_without_creating_cluster(self):
         config = {"home": "", "cluster": "demo", "environments": ["test", "prod"]}
         calls, attempts = [], [0]
         def run(args, **kwargs):
             calls.append(args)
+            if args[:2] == ["docker", "inspect"]:
+                return subprocess.CompletedProcess(args, 0, json.dumps([{"Config": {"Labels": {"k3d.cluster": "demo", "k3d.role": "loadbalancer"}}}]))
             if args[:2] == ["docker", "info"]:
                 attempts[0] += 1
                 return subprocess.CompletedProcess(args, int(attempts[0] < 3))
@@ -190,7 +192,9 @@ class LifecycleTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             config["home"] = tmp
             with patch.object(ctl, "run", run), patch.object(ctl, "cluster_exists", return_value=True), \
-                    patch.object(ctl, "check_ownership"), patch.object(ctl, "prepare_kubeconfig"), patch.object(ctl.time, "sleep"):
+                    patch.object(ctl, "check_ownership"), patch.object(ctl, "prepare_kubeconfig"), patch.object(ctl.time, "sleep"), \
+                    patch.object(ctl, "boot_id", return_value="boot-new"), patch.object(ctl, "workloads_ready", return_value=True), \
+                    patch.object(ctl, "endpoint_snapshot", return_value={"status": "ready", "urls": {}}):
                 ctl.restore(config)
             self.assertEqual(attempts[0], 3)
             self.assertTrue(any(c[:3] == ["k3d", "cluster", "start"] for c in calls))

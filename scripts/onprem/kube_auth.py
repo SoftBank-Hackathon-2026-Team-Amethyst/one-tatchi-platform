@@ -8,15 +8,16 @@ import re
 import subprocess
 import sys
 from pathlib import Path
+from deadline import remaining
 
 
 def credentials(cluster):
     if not re.fullmatch(r"[a-z0-9][a-z0-9-]*", cluster):
         raise ValueError("invalid cluster name")
-    raw = subprocess.run(["k3d", "kubeconfig", "get", cluster], capture_output=True, check=True, timeout=20)
+    raw = subprocess.run(["k3d", "kubeconfig", "get", cluster], capture_output=True, check=True, timeout=remaining(20))
     result = subprocess.run(
         ["kubectl", "config", "view", "--raw", "--kubeconfig=/dev/stdin", "-o", "json"],
-        input=raw.stdout, capture_output=True, check=True, timeout=10,
+        input=raw.stdout, capture_output=True, check=True, timeout=remaining(10),
     )
     config = json.loads(result.stdout)
     context = next(c["context"] for c in config["contexts"] if c["name"] == f"k3d-{cluster}")

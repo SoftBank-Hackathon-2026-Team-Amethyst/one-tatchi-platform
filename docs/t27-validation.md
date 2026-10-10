@@ -51,3 +51,26 @@ installer에도 실제 runner/work 경로 검사와 BOM이 있는 공식 설정 
 
 실기 검증 워크플로: `onprem-verify.yml`. 잠금/해제 시각은 사람이 별도로 기록해야 한다.
 이슈 체크는 해당 변경의 머지와 실제 검증 후 진행한다.
+
+
+## 2026-10-10 T27 재부팅 복구 후속
+
+범위는 사용자가 선택한 현재 맥북 `secondary`다. 기존 T17 작업, 다른 맥북·AWS·GCP는 변경하지 않는다.
+현재 맥북의 10분 잠금 결과를 완료 근거로 유지한다. 두 맥북의 30분 검증으로 확대해 해석하지 않는다.
+기존 로컬 문서의 미커밋 수정은 원래 worktree에 보존하고 이번 구현은 별도 T27 브랜치에서 진행했다.
+
+- 선행 앱: main `b8bc6d8e1de8a9a84e574997806777e48c3a2c09`. DB 재연결 수정 `3b0caf7` 포함을 확인했다. 기능을 다시 작성하지 않았다.
+- [Actions 38037479505](https://github.com/SoftBank-Hackathon-2026-Team-Amethyst/demo-app/actions/runs/38037479505): 기존 두 아키텍처 빌드·검사·OCI artifact 발행 통과. test와 prod에 동일 BE `sha256:cc5e6e5b4262a73654490c92a29e587e5159ecdf5c03d80a5f2083394a782828`, FE `sha256:eddca0ef02f040e9fd8df0a998d6600ff8df69cec39646bdfb1b4a3bd7e3045d`를 배포했다. 차트는 `2.2.1`로 고정했다.
+- test 검사 BE 442건/FE 200건, prod 검사 BE 414건/FE 192건 모두 실패 0. 판단 근거 확인 후 로컬 CLI로 test·prod 승격 완료. prod의 `one-tatchi-bot` 보호 규칙은 사용자가 기존 승인 버튼으로 승인했고 동일 digest 검사는 유지했다.
+- 단일 서버 격리 환경의 1.33.4에서 Docker IP `.3 → .5` 변경 시 실제 네트워크 정책 fatal 오류와 반복 종료 5회를 재현했다.
+- 같은 서버 이름·인증 파일·볼륨으로 1.33.6을 적용했다. k3d nginx가 예전 IP를 보관하는 별도 문제를 확인해 복구 순서에 해당 프로필의 API 프록시 재시작을 추가했다.
+- 이후 실제 IP 변경 `.6 → .7 → .8 → .9` 3회 모두 통과. 매회 약 54초에 Docker/Node IP 일치, 같은 PVC UID·데이터, Service·내부/외부 DNS 통과. Docker 반복 종료 0.
+- 1.33.6에서 새 PVC 생성·마운트·읽기·쓰기 통과. 실제 containerd `2.1.5-k3s1.33`, runc `1.3.3`, CoreDNS `1.13.1`, Local Path Provisioner `0.0.32` 확인.
+- 실기 Quick Tunnel fixture: test/prod 모두 외부 검증, test 터널 단독 재시작 시 새 URL, tunnel scale 0일 때 이전 test URL 제거, scale 1 후 새 주소 복구를 확인했다. 정적 HTTP fixture의 검사이며 DB 보존 검증과 구분한다.
+- 실제 secondary의 정지 상태 볼륨 5개·노드 인증·k3d 시작 파일·컨테이너 설정·Terraform state를 age로 암호화했다. 복구 키는 백업/저장소 밖에 별도로 보관했다.
+- 이전 1.33.4 이미지의 `network=none` 복원 클론에서 PVC 3개·test/prod SQL 검증 글·앱 API·인증정보 일치와 백업 이전 Prometheus 데이터 조회를 확인했다. 외부 통신 실패도 확인했다.
+- 같은 복원 클론에서 DB를 내려 둔 상태로 BE를 시작했다. health 503/fallback-memory 이후 DB를 올리자 같은 BE 컨테이너가 재시작 0회로 health 200/connected와 기존 SQL 데이터를 반환했다.
+- Linux 컨테이너의 저장소 전체 scripts 회귀 검사 통과. 변경 루트 및 클러스터 모듈 Terraform fmt/init/validate 통과. 복구 실패·오래된 URL·이전 부팅·공통 마감시간·볼륨 보존·버전 기록 방지 검사 포함.
+
+실제 맥북 재부팅·로그인 관측은 별도다. 관측 결과가 나오기 전에는 재부팅 이슈 항목을 체크하지 않는다.
+백업·원본 설정·상세 런타임 로그는 공개 저장소에 올리지 않는다.
