@@ -1,0 +1,73 @@
+{
+  "schema_version": "1",
+  "run": {
+    "repository": "SoftBank-Hackathon-2026-Team-Amethyst/demo-app",
+    "run_id": "38070479286",
+    "run_attempt": "1",
+    "run_url": "https://github.com/SoftBank-Hackathon-2026-Team-Amethyst/demo-app/actions/runs/38070479286/attempts/1",
+    "sha": "7d957874950d5261679da077bf9e907ec34ce6af",
+    "ref": "refs/heads/yolo/pipeline-v2-12",
+    "event": "push",
+    "actor": "silano08"
+  },
+  "deploy": {
+    "target": "aws",
+    "target_label": "aws",
+    "environment": "test",
+    "namespace": "test",
+    "services": [
+      "demo-app-be",
+      "demo-app-fe"
+    ]
+  },
+  "failed_jobs": [
+    {
+      "name": "test / deploy",
+      "job_id": "114267116459",
+      "failed_steps": [
+        "서비스 배포 (이미지 → helm upgrade → green 대기 → 주소)"
+      ],
+      "errors": [
+        "level=WARN msg=\"upgrade failed\" name=demo-app-be error=\"pre-upgrade hooks failed: resource Job/test/demo-app-be-migration not ready. status: Failed, message: Job Failed. failed: 3/1\"",
+        "Error: UPGRADE FAILED: pre-upgrade hooks failed: resource Job/test/demo-app-be-migration not ready. status: Failed, message: Job Failed. failed: 3/1",
+        "##[error]Process completed with exit code 1."
+      ],
+      "log_tail": "##[group]demo-app-be helm upgrade\nPulled: ghcr.io/softbank-hackathon-2026-team-amethyst/charts/app:2.12.0\nDigest: sha256:0fa7817dd6619c21af0a839c0924154014cb46b93a62ff48bbaa80751841c1b4\nlevel=WARN msg=\"upgrade failed\" name=demo-app-be error=\"pre-upgrade hooks failed: resource Job/test/demo-app-be-migration not ready. status: Failed, message: Job Failed. failed: 3/1\"\nError: UPGRADE FAILED: pre-upgrade hooks failed: resource Job/test/demo-app-be-migration not ready. status: Failed, message: Job Failed. failed: 3/1\n##[error]Process completed with exit code 1."
+    }
+  ],
+  "cluster": {
+    "rollouts": [
+      {
+        "name": "demo-app-be",
+        "phase": "Healthy",
+        "message": "(설명용 합성 값) helm upgrade가 hook에서 멈춰 새 green이 만들어지지 않았다"
+      }
+    ],
+    "events": [
+      {
+        "reason": "BackoffLimitExceeded",
+        "object": "Job/demo-app-be-migration",
+        "message": "Job has reached the specified backoff limit",
+        "count": 1
+      }
+    ],
+    "pods": [],
+    "migration_jobs": [
+      {
+        "name": "demo-app-be-migration",
+        "status": "Failed",
+        "log_tail": "(설명용 합성 값) psql: error: connection to server at \"demo-app-db-onprem.test.svc.cluster.local\" (10.43.0.12), port 5432 failed: Connection refused"
+      }
+    ]
+  },
+  "collection": {
+    "actions_logs": {
+      "status": "ok",
+      "detail": null
+    },
+    "cluster": {
+      "status": "ok",
+      "detail": null
+    }
+  }
+}

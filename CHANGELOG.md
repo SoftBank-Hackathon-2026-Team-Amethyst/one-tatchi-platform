@@ -10,6 +10,10 @@
 
 ## Unreleased
 
+## v2.14.0
+
+- T12: 배포 실패 원인 진단. `deploy.yml`의 `publish` · `deploy` job이 실패하면 새 `failure-diagnosis` job이 실패 job 로그(봇 App 토큰으로 API)와 실패 시점 클러스터 상태(deploy job 안에 더한 실패 시 단계, Rollout · Warning 이벤트 · 문제 파드 로그 · 마이그레이션 Job 로그)를 묶고, 비밀값을 가린 뒤 Claude로 원인을 요약해 실행 요약 · PR 코멘트(커밋에 연결된 PR이 있을 때) · Slack 새 메시지로 남긴다. 기존 단계와 실패 알림은 그대로다. 의도한 AI abort(auto)는 제외하고, prod는 외부 LLM으로 보내지 않고 오류 줄만 남긴다. 진단이 실패해도 배포 결과는 바뀌지 않는다. 호출부 변경 없음(`ANTHROPIC_API_KEY` · `BOT_PRIVATE_KEY`는 이미 전달). 새 공통 액션 `.github/actions/failure-diagnosis`, [ADR 0019](docs/adr/0019-failure-evidence-collection.md). deploy job 출력 `executed` 추가. demo-app E2E(run 38077153897)에서 publish 실패 진단(실제 Claude 요약 `credentials` · high, Slack 전송)을 확인했다. 마이그레이션 실패 · 클러스터 상태 수집 · PR 코멘트는 이 버전 적용 뒤 확인한다.
+
 ## v2.13.1
 
 - T9: v2.12.0 회귀 수정. `approve` job이 skipped(test · prod-auto)일 때 `yolo-pr` job이 간접 의존 때문에 함께 skipped되어 승격 뒤 main PR이 만들어지지 않던 문제. `yolo-pr` 조건에 `always()`와 직접 의존 job 성공 조건을 명시한다. (같은 커밋을 `v2.12.1`로도 태그했다. 내용은 v2.13.0 + 이 수정이며 v2.13.1을 쓴다)

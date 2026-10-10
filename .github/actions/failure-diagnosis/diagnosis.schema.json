@@ -1,0 +1,23 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/SoftBank-Hackathon-2026-Team-Amethyst/one-tatchi-platform/.github/actions/failure-diagnosis/diagnosis.schema.json",
+  "title": "배포 실패 원인 진단",
+  "description": "증거 묶음을 Claude가 요약한 결과 (T12). source가 fallback이면 AI 요약 없이 오류 줄만 보여 준다.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "source", "model", "category", "summary", "evidence", "actions", "confidence", "error"],
+  "properties": {
+    "schema_version": {"const": "1"},
+    "source": {"description": "ai: Claude 요약 / fallback: 요약 실패 · 요약 안 함(prod 기본)", "enum": ["ai", "fallback"]},
+    "model": {"type": ["string", "null"]},
+    "category": {
+      "description": "migration: 마이그레이션 Job / image_publish: 이미지 발행 · 레지스트리 / rollout_unhealthy: green이 Ready가 안 됨 · Degraded / credentials: 클라우드 · 클러스터 인증 / timeout: 대기 시간 초과 / configuration: 값 파일 · 차트 · 입력 오류 / infrastructure: 클러스터 · 노드 · 네트워크 / unknown",
+      "enum": ["migration", "image_publish", "rollout_unhealthy", "credentials", "timeout", "configuration", "infrastructure", "unknown"]
+    },
+    "summary": {"description": "한국어 한두 문장. 무엇이 왜 실패했는지", "type": "string", "minLength": 1, "maxLength": 600},
+    "evidence": {"description": "근거가 된 로그 · 이벤트 줄 (증거 묶음에 있는 그대로)", "type": "array", "maxItems": 8, "items": {"type": "string", "maxLength": 400}},
+    "actions": {"description": "확인 · 조치 (명령 · 파일 위치 위주). 코드 수정 PR은 만들지 않는다", "type": "array", "maxItems": 6, "items": {"type": "string", "maxLength": 300}},
+    "confidence": {"description": "증거로 원인이 확인되면 high, 추정이 섞이면 medium · low", "enum": ["high", "medium", "low"]},
+    "error": {"description": "fallback 이유 (키 없음 · 호출 실패 · 거절 · 형식 오류 · prod 요약 안 함). ai면 null", "type": ["string", "null"], "maxLength": 300}
+  }
+}

@@ -324,6 +324,7 @@ jobs:
     outputs:
       promoted: ${{ steps.yolo.outputs.promoted }}
       judged: ${{ steps.judge.outcome }}
+      executed: ${{ steps.judge.outputs.executed }}
     # onprem은 맥북의 self-hosted runner(바깥 방향 연결)에서 돈다. push 또는 main 수동 실행에서 호출한다.
     runs-on: ${{ inputs.target == 'onprem' && fromJSON(format('["self-hosted","{0}"]', inputs.onprem-runner-label)) || 'ubuntu-latest' }}
     timeout-minutes: ${{ inputs.verify-observability && 45 || 20 }}
@@ -564,6 +565,24 @@ jobs:
           name: yolo-promotion
           path: ${{ runner.temp }}/yolo-promotion.json
           if-no-files-found: error
+      # 배포 실패 원인 진단 (T12, ADR 0019): 클러스터 접속이 살아 있을 때 실패 시점 상태를 모은다.
+      # 의도한 AI abort(auto)는 제외한다. 비밀값을 가린 결과만 올리고, failure-diagnosis job이 실패 job 로그와 묶어 요약한다.
+      - id: failure-cluster
+        name: 실패 시점 클러스터 상태 (원인 진단용)
+        if: failure() && steps.judge.outputs.executed != 'abort'
+        continue-on-error: true
+        timeout-minutes: 3
+        env:
+          OUT: ${{ runner.temp }}/failure-diagnosis/cluster.json
+        run: RELEASES="$(jq -r '[.[].name] | join(" ")' <<<"$SERVICES")" bash .platform/.github/actions/failure-diagnosis/cluster.sh
+      - if: failure() && steps.failure-cluster.outcome == 'success'
+        continue-on-error: true
+        uses: actions/upload-artifact@v7
+        with:
+          name: failure-cluster-${{ inputs.target-label || inputs.target }}-${{ inputs.environment }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/failure-diagnosis/cluster.json
+          if-no-files-found: ignore
+          overwrite: true
       # 판단 근거(지표 · 규칙 판정 · AI 답)는 T10 yolo 배포 리포트가 읽는다.
       - if: always() && steps.judge.outcome != 'skipped'
         uses: actions/upload-artifact@v7
@@ -685,6 +704,60 @@ jobs:
           result: ${{ job.status }}
           details: ${{ steps.notify.outputs.details }}
           buttons: ${{ steps.notify.outputs.buttons }}
+
+  # 배포 실패 원인 진단 (T12, ADR 0019). publish · deploy가 실패하면 실패 job 로그와 클러스터 상태를 묶어 Claude로
+  # 원인을 요약하고 실행 요약 · PR 코멘트 · Slack 새 메시지로 남긴다. 기존 실패 알림(deploy job의 slack-notify)은 그대로 먼저 간다.
+  # 의도한 AI abort(auto)는 판단 근거가 이미 있어 제외한다. 실패 job 로그는 job이 끝나야 API로 받을 수 있어 별도 job으로 둔다.
+  # 호출부에 actions: read가 없어도 되게 봇 App 토큰으로 로그를 읽는다. 진단이 실패해도 배포 결과는 바뀌지 않는다.
+  failure-diagnosis:
+    needs: [publish, deploy]
+    if: >-
+      always() &&
+      (needs.publish.result == 'failure' || (needs.deploy.result == 'failure' && needs.deploy.outputs.executed != 'abort'))
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          repository: SoftBank-Hackathon-2026-Team-Amethyst/one-tatchi-platform
+          ref: ${{ inputs.template-ref }}
+          path: .platform
+          sparse-checkout: .github/actions/failure-diagnosis
+          persist-credentials: false
+      # 클러스터에 접속하지 못했거나 publish만 실패했으면 artifact가 없다. 수집 상태로 남긴다.
+      - if: needs.deploy.result == 'failure'
+        continue-on-error: true
+        uses: actions/download-artifact@v8
+        with:
+          name: failure-cluster-${{ inputs.target-label || inputs.target }}-${{ inputs.environment }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/failure-cluster
+      - id: app
+        continue-on-error: true
+        uses: actions/create-github-app-token@v3
+        with:
+          client-id: ${{ vars.BOT_CLIENT_ID }}
+          private-key: ${{ secrets.BOT_PRIVATE_KEY }}
+      - continue-on-error: true
+        uses: ./.platform/.github/actions/failure-diagnosis
+        with:
+          target: ${{ inputs.target }}
+          target-label: ${{ inputs.target-label || inputs.target }}
+          environment: ${{ inputs.environment }}
+          namespace: ${{ inputs.namespace }}
+          services: ${{ inputs.services }}
+          cluster-file: ${{ runner.temp }}/failure-cluster/cluster.json
+          github-token: ${{ steps.app.outputs.token || github.token }}
+          anthropic-api-key: ${{ secrets.ANTHROPIC_API_KEY }}
+          slack-token: ${{ secrets.SLACK_BOT_TOKEN }}
+          slack-channel: ${{ vars.SLACK_CHANNEL_ID }}
+      # 증거 · 요약 원본 (비밀값을 가린 결과)
+      - if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: failure-diagnosis-${{ inputs.target-label || inputs.target }}-${{ inputs.environment }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/failure-diagnosis/
+          if-no-files-found: ignore
+          overwrite: true
 
   # yolo 배포 리포트 (T10, 설계 6.3 · FR-12). yolo push의 test 배포가 끝나면(승격 · abort 모두) 누가 · 무엇을 ·
   # 어떤 문제를 안고 배포했는지 S3 감사 로그에 남기고, 새 경고 · AI 수정 · 수집 실패가 있으면 yolo-debt 이슈를 연다.

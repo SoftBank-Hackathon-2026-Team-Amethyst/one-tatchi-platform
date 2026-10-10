@@ -1,0 +1,24 @@
+#!/usr/bin/env bash
+# failure-diagnosis 테스트용 가짜 kubectl. 응답은 FAKE_DIR의 파일에서 읽는다.
+#   rollout-<이름>.json · events.json · pods.json · job-<이름>.json
+#   logs-<파드>.txt · logs-<파드>.previous.txt · logs-job-<이름>.txt
+#   FAKE_DOWN   값이 있으면 모든 명령이 클러스터 접속 실패
+#   FAKE_CALLS  호출 인자를 한 줄씩 남길 파일
+[ -z "${FAKE_CALLS:-}" ] || echo "$*" >> "$FAKE_CALLS"
+[ -z "${FAKE_DOWN:-}" ] || { echo 'Unable to connect to the server: dial tcp 127.0.0.1:6443: connect: connection refused' >&2; exit 1; }
+d="${FAKE_DIR:?}"
+notfound() { echo "Error from server (NotFound): $1 not found" >&2; exit 1; }
+case "$1 $2" in
+  "get rollout") [ -f "$d/rollout-$3.json" ] && cat "$d/rollout-$3.json" || notfound "rollouts.argoproj.io \"$3\"" ;;
+  "get events")  [ -f "$d/events.json" ] && cat "$d/events.json" || echo '{"items":[]}' ;;
+  "get pods")    [ -f "$d/pods.json" ] && cat "$d/pods.json" || echo '{"items":[]}' ;;
+  "get job")     [ -f "$d/job-$3.json" ] && cat "$d/job-$3.json" || notfound "jobs.batch \"$3\"" ;;
+  logs\ *)
+    target="$2"
+    case "$target" in
+      job/*) f="$d/logs-job-${target#job/}.txt" ;;
+      *) case " $* " in *" --previous "*) f="$d/logs-$target.previous.txt" ;; *) f="$d/logs-$target.txt" ;; esac ;;
+    esac
+    [ -f "$f" ] && cat "$f" || { echo "Error from server (BadRequest): previous terminated container not found" >&2; exit 1; } ;;
+  *) echo "fake-kubectl: 지원하지 않는 명령 $*" >&2; exit 1 ;;
+esac
