@@ -365,7 +365,8 @@ jobs:
           ENVIRONMENT: ${{ inputs.environment }}
         run: |
           wait_rollout() {
-            for _ in $(seq 1 60); do
+            # 3초 간격 × 200회 = 10분. green이 Ready가 된 뒤 다음 조회까지 평균 1.5초만 기다린다 (T9: 10초 간격은 서비스당 평균 5초를 버렸다).
+            for _ in $(seq 1 200); do
               phase="$(kubectl get rollout "$1" -n "$NAMESPACE" -o jsonpath='{.status.phase}')"
               echo "phase=$phase"
               case "$phase" in
@@ -375,7 +376,7 @@ jobs:
                   kubectl argo rollouts get rollout "$1" -n "$NAMESPACE"; return 0 ;;
                 Degraded) kubectl argo rollouts get rollout "$1" -n "$NAMESPACE"; return 1 ;;
               esac
-              sleep 10
+              sleep 3
             done
             kubectl argo rollouts get rollout "$1" -n "$NAMESPACE"
             echo "::error::$1: 10분 안에 Paused · Healthy가 되지 않았다"

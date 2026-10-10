@@ -10,6 +10,7 @@
 
 ## Unreleased
 
+- T9: `deploy.yml` green 대기 조회 간격 10초 → 3초, `yolo-pr` PR 검사 조회 간격 10초 → 5초(한도는 그대로). 스킬 `yolo-deploy`에 검증 선행(브랜치 생성 직후 이미지 빌드 · lint · test를 백그라운드로), `deploy-provision`에 `infra/` 변경이 없으면 `terraform init · validate` 생략, 실행 기록 세 개를 한 번에 만드는 `scripts/yolo_log.py` 추가.
 - T17: Grafana 차트의 `extraContainerVolumes`로 GCP 단기 토큰을 실제 projected volume으로 전달하고, Grafana 13의 Cloud Monitoring 플러그인에 ADC 환경변수를 전달한다. 빈 디렉터리 마운트와 기본 인증정보 누락으로 실제 GCP 조회가 실패하던 문제를 고친다.
 
 ## v2.8.0
