@@ -717,6 +717,28 @@ Claude Code는 `/todo-task`, Codex는 `$todo-task`로 이 순서를 따르는 �
 **완료 기준**
 AWS/GCP/onprem에서 승격 전 공개 preview 경로 없음. 인증된 pipeline smoke 성공, 비인가 내부 워크로드 접근 차단, 승격 후 active 정상. 관리자·노드 권한은 신뢰 경계 예외임을 명시. 기존 설치의 마이그레이션까지 확인하고 완료 처리한다.
 
+### [T31] 승인자용 green 미리보기 (Identity Center SSO)
+
+**어디에 필요** regulated 대상은 사람이 승격하는데, T30 이후 승인자가 green을 열어 볼 방법이 없다. 설계 문서 FR-6(승격 전 미리보기 주소)을 인증된 경로로 되살린다.
+
+**만들 것** Identity Center(SAML) → Cognito(OIDC) → 차트 안 oauth2-proxy로 인증을 강제하는 `green.<host>` 미리보기, 배포 알림의 green 링크 (ADR 0015).
+
+- **우선순위** P1 · **영역** 레포 · 인프라 · **담당** 이소울
+- **선행** `T2`, `T23`, `T30` · **후속** `T19` · **설계 문서** FR-6
+
+**목표** 승인자가 Slack 알림의 링크로 green을 열고, Identity Center 승인자 그룹이 아닌 사람과 인증되지 않은 요청은 green에 닿지 않는다.
+
+**할 일**
+- [ ] ADR 0015 합의(T30 담당자), 합의되면 ADR 0011에 보완 문단 추가
+- [ ] `modules/preview_auth/aws`: Cognito User Pool · 도메인 · 앱 클라이언트 · SAML IdP. `terraform validate` · 테스트
+- [ ] `org/`: Identity Center 고객 관리형 SAML 앱과 승인자 그룹 할당. API로 안 되는 설정은 `org/README.md` 콘솔 설정 표에 기록
+- [ ] App Chart: `preview.auth` 입력과 oauth2-proxy Deployment · Service · Ingress. 인증 설정 없이는 preview Ingress를 렌더하지 않는 T30 회귀 테스트 유지, 인증 조합 테스트 추가
+- [ ] `deploy.yml`: preview 인증을 켠 릴리스는 Slack 알림 · 실행 요약에 green 링크 표시, green FE가 active BE를 호출한다는 한계 문구 포함
+- [ ] demo-app aws 적용: green 호스트 DNS · 인증서 · 시크릿 주입. 승인자 로그인 성공, 비할당 사용자 · 비인증 요청 차단 확인
+- [ ] onprem(Named Tunnel 호스트) · gcp 적용과 같은 확인
+
+**완료 기준** aws · onprem · gcp에서 regulated 배포 알림의 green 링크를 승인자가 SSO로 열 수 있고, 비인증 요청은 green에 닿지 않는다. promote-judge smoke는 지금처럼 port-forward로 성공한다.
+
 
 ## 9단계
 
