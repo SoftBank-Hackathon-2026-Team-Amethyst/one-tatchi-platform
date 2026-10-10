@@ -79,6 +79,25 @@ if command -v yq >/dev/null && [ -f "$plan" ]; then
           end
         else empty end )
     end' 2>/dev/null || echo "layers · database_scope를 읽지 못했다")
+  # DB를 온프레미스에 둔다면 AWS 루트가 그 계획대로 렌더됐는지 본다 (T32 C3). 운영 DB(RDS)를 실수로 빼는 것을 막는다.
+  if [ "$(yq -r '.layers.db // ""' "$plan" 2>/dev/null)" = onprem ] && [ -d infra/envs/aws ]; then
+    aws_main=infra/envs/aws/main.tf; aws_vars=infra/envs/aws/terraform.tfvars
+    scope="$(yq -r '(.database_scope // ["test", "prod"]) | sort | join(" ")' "$plan" 2>/dev/null)"
+    /usr/bin/grep -q '^module "db_link"' "$aws_main" 2>/dev/null \
+      || fail "$aws_main: layers.db가 onprem인데 module \"db_link\"가 없다 (DB_LINK=true로 렌더)"
+    if yq -e 'has("database_scope")' "$plan" >/dev/null 2>&1; then
+      /usr/bin/grep -q '^module "database"' "$aws_main" 2>/dev/null \
+        || fail "$aws_main: database_scope($scope) 밖의 환경이 쓸 RDS(module \"database\")가 없다. 운영 DB를 빼지 않는다"
+    else
+      /usr/bin/grep -q '^module "database"' "$aws_main" 2>/dev/null \
+        && fail "$aws_main: database_scope를 생략해 모든 환경이 온프레미스 DB인데 RDS(module \"database\")가 남아 있다 (NO_RDS=true로 렌더하거나, 운영 데이터가 있으면 database_scope를 좁힌다)"
+    fi
+    linked="$(awk '/^db_link[[:space:]]*=/ { on = 1; next } on && /^}/ { exit }
+      on && match($0, /^[[:space:]]*[a-z][a-z0-9-]*[[:space:]]*=[[:space:]]*\{/) { k = $0; sub(/^[[:space:]]*/, "", k); sub(/[[:space:]]*=.*/, "", k); print k }' \
+      "$aws_vars" 2>/dev/null | sort | tr '\n' ' ')"
+    [ "${linked% }" = "$scope" ] \
+      || fail "$aws_vars: db_link 환경(${linked% })이 plan.yaml database_scope($scope)와 다르다"
+  fi
 fi
 
 # 3. 버전 표기 일치

@@ -15,6 +15,7 @@ output "repository_urls" {
   value = module.registry.repository_urls
 }
 
+# [if !NO_RDS]
 output "database" {
   value = {
     host      = module.database.host
@@ -23,6 +24,7 @@ output "database" {
     remoteKey = module.database.credentials_secret_id
   }
 }
+# [end]
 
 output "ingress_group" {
   value = var.service

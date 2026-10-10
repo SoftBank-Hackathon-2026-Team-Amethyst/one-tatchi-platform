@@ -75,3 +75,40 @@ variable "chart_version" {
   description = "service-base 차트 버전 (template_version과 같게)"
   type        = string
 }
+# [if DB_LINK]
+
+# ---------- 계층별 배포 위치 (T32): DB는 온프레미스 (db_link, T33) ----------
+variable "tailnet" {
+  description = "팀 Tailscale tailnet DNS 이름 (예: xxxx.ts.net)"
+  type        = string
+}
+
+variable "tailscale_oauth_secret_name" {
+  description = "Tailscale operator OAuth 클라이언트 (Secrets Manager, JSON 키 client_id · client_secret). 값은 콘솔 · CLI로 넣는다"
+  type        = string
+  default     = "one-tatchi/tailscale-oauth"
+}
+
+variable "tailscale_operator_chart_version" {
+  type    = string
+  default = "1.102.4"
+}
+
+variable "db_link" {
+  description = <<-EOT
+    온프레미스 DB를 쓸 환경 (plan.yaml의 database_scope, 생략하면 모든 환경). 키는 환경(네임스페이스)이다.
+    fqdn은 온프레미스 루트가 publish한 tailnet 이름(<앱>-db-<환경>.<tailnet>), secret_name은 그 DB의
+    username/password JSON이 든 Secrets Manager 시크릿(<앱>-db-onprem-<환경>). 여기 없는 환경은 RDS를 쓴다.
+  EOT
+  type = map(object({
+    fqdn          = string
+    secret_name   = string
+    database_name = optional(string)
+  }))
+
+  validation {
+    condition     = length(var.db_link) > 0 && alltrue([for env in keys(var.db_link) : contains(var.environments, env)])
+    error_message = "db_link의 키는 environments에 있는 환경이어야 하고 하나 이상이어야 한다."
+  }
+}
+# [end]

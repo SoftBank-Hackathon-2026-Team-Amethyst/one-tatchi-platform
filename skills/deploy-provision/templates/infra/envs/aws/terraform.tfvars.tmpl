@@ -7,3 +7,8 @@ repositories  = @@REPOSITORIES_HCL@@
 database_name = "@@DB_NAME@@"
 domain_name   = "@@DOMAIN@@"
 chart_version = "@@CHART_VERSION@@"
+# [if DB_LINK]
+
+tailnet = "@@TAILNET@@"
+db_link = @@DB_LINK_HCL@@
+# [end]
