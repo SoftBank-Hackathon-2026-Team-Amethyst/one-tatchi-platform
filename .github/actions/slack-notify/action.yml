@@ -17,7 +17,7 @@ inputs:
     description: 반영한 버전 (커밋 SHA 등)
     default: ${{ github.sha }}
   result:
-    description: success | failure | cancelled
+    description: success | failure | cancelled | waiting
     required: true
   requested-by:
     description: 워크플로를 대신 실행시킨 주체 (예. Slack 사용자)
@@ -64,12 +64,28 @@ runs:
           exit 0
         fi
         case "$RESULT" in
-          success) icon=":white_check_mark:" ;;
-          failure) icon=":x:" ;;
-          waiting) icon=":hourglass_flowing_sand:" ;;
-          *)       icon=":warning:" ;;
+          success)   icon=":white_check_mark:"; greeting="야하! 작업 성공!" ;;
+          failure)   icon=":x:"; greeting="하아…? 작업 실패. 실행 로그를 확인해 주세요." ;;
+          waiting)   icon=":hourglass_flowing_sand:"; greeting="우라! 대기 중." ;;
+          cancelled) icon=":warning:"; greeting="후웅… 작업이 취소됐습니다." ;;
+          *)         icon=":warning:"; greeting="후웅… 실행 상태를 확인해 주세요." ;;
         esac
-        text="$icon *$ACTION* \`$TARGET\` @ \`${VERSION::7}\` ($RESULT)"
+        # 짧은 감탄사는 우사기에서 착안한 표현. 성공 알림을 트래픽 승격 완료로 해석하지 않습니다.
+        if [ "$RESULT" = success ]; then
+          case "$ACTION" in
+            "PR 준비") greeting="야하! PR 검사 통과!" ;;
+            deploy) greeting="야하! 배포 완료! 승격 여부는 아래 결과를 확인해 주세요." ;;
+            promote) greeting="우라라! 승격 완료!" ;;
+            abort) greeting="후웅! 배포 중단 처리 완료." ;;
+            undo) greeting="우라! 되돌리기 완료." ;;
+            infra-apply) greeting="야하! 인프라 반영 완료!" ;;
+            destroy) greeting="후웅! 리소스 삭제 완료." ;;
+          esac
+        elif [ "$RESULT" = waiting ] && [ "$ACTION" = "운영 승인 대기" ]; then
+          greeting="우라! 운영 승인 대기 중. 대상과 버전을 확인해 주세요."
+        fi
+        text="$icon $greeting
+        *$ACTION* \`$TARGET\` @ \`${VERSION::7}\` ($RESULT)"
         meta="${REQUESTED_BY:-$GITHUB_ACTOR} | <$RUN_URL|워크플로 실행 보기>"
         # 버튼의 action_id와 value는 slack-bot/app/main.py와 맞춘 약속입니다 (slack-bot/README.md "버튼 약속").
         #   rollout_<promote|abort|undo>: value = <서비스|all>@<대상>.<환경>
