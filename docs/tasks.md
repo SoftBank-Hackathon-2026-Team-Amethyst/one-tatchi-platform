@@ -42,12 +42,13 @@ Claude Code는 `/todo-task`, Codex는 `$todo-task`로 이 순서를 따르는 �
 - `T36` 장애 훈련 워크플로 (green 확인 · 주입 · 채점) (P1)
 - `T37` 장애 훈련 Slack 명령과 Grafana 기록 (P1)
 
-**이소울** · 파이프라인 (5개, P0 3개)
+**이소울** · 파이프라인 (6개, P0 3개)
 - `T6` 규제 여부에 따른 운영 관문 (P0)
 - `T23` 초기 인프라 세팅 (계정 · 권한) (P0)
 - `T22` 템플릿 버전 업데이트 흐름 (P1)
 - `T2` 도메인과 HTTPS (P0)
 - `T26` Slack 버튼으로 머지 · 승인 · 승격 (P1). 담당 필요
+- `T38` gcp 승인자용 green 미리보기 (P2)
 
 **김형래** · 에이전트 스킬 (4개, P0 3개)
 - `T14` yolo 자동 수정 루프 (P0)
@@ -829,7 +830,7 @@ AWS/GCP/onprem에서 승격 전 공개 preview 경로 없음. 인증된 pipeline
 **만들 것** Identity Center(SAML) → Cognito(OIDC) → 차트 안 oauth2-proxy로 인증을 강제하는 `green.<host>` 미리보기, 배포 알림의 green 링크 (ADR 0015).
 
 - **우선순위** P1 · **영역** 레포 · 인프라 · **담당** 이소울
-- **선행** `T2`, `T23`, `T30` · **후속** 없음 · **설계 문서** FR-6
+- **선행** `T2`, `T23`, `T30` · **후속** `T38` · **설계 문서** FR-6
 
 **목표** 승인자가 Slack 알림의 링크로 green을 열고, Identity Center 승인자 그룹이 아닌 사람과 인증되지 않은 요청은 green에 닿지 않는다.
 
@@ -838,11 +839,29 @@ AWS/GCP/onprem에서 승격 전 공개 preview 경로 없음. 인증된 pipeline
 - [x] `modules/preview_auth/aws`: Cognito User Pool · 도메인 · 앱 클라이언트 · SAML IdP. `terraform validate` · 테스트
 - [x] `org/`: Identity Center 고객 관리형 SAML 앱과 승인자 그룹 할당. API로 안 되는 설정은 `org/README.md` 콘솔 설정 표에 기록
 - [x] App Chart: `preview.auth` 입력과 oauth2-proxy Deployment · Service · Ingress. 인증 설정 없이는 preview Ingress를 렌더하지 않는 T30 회귀 테스트 유지, 인증 조합 테스트 추가
-- [ ] `deploy.yml`: preview 인증을 켠 릴리스는 Slack 알림 · 실행 요약에 green 링크 표시, green FE가 active BE를 호출한다는 한계 문구 포함
+- [ ] `deploy.yml`: preview 인증을 켠 릴리스는 Slack 알림 · 실행 요약에 green 링크 표시, `previewAuth.routes`가 없으면 green 화면의 API가 active BE로 간다는 한계 문구 포함
 - [x] demo-app aws 적용: green 호스트 DNS · 인증서 · 시크릿 주입. 승인자 로그인 성공, 비할당 사용자 · 비인증 요청 차단 확인
-- [ ] onprem(Named Tunnel 호스트) · gcp 적용과 같은 확인
+- [ ] onprem 적용: green 전용 Named Tunnel(Public Hostname → `<release>-preview-auth`), `platform` 네임스페이스 시크릿, Cognito 콜백 추가. aws와 같은 확인. gcp는 `T38`
 
-**완료 기준** aws · onprem · gcp에서 regulated 배포 알림의 green 링크를 승인자가 SSO로 열 수 있고, 비인증 요청은 green에 닿지 않는다. promote-judge smoke는 지금처럼 port-forward로 성공한다.
+**완료 기준** aws · onprem에서 regulated 배포 알림의 green 링크를 승인자가 SSO로 열 수 있고, 비인증 요청은 green에 닿지 않는다. promote-judge smoke는 지금처럼 port-forward로 성공한다.
+
+### [T38] gcp 승인자용 green 미리보기
+
+**어디에 필요** `T31`은 aws · onprem에서 SSO로 green을 연다. gcp는 green 호스트에 붙일 HTTPS · DNS가 없고 비밀값 저장소가 달라 따로 다룬다.
+
+**만들 것** App Chart preview Ingress 전용 TLS · 어노테이션 입력, demo-app gcp의 시크릿 · 고정 IP · DNS · Cognito 콜백.
+
+- **우선순위** P2 · **영역** 레포 · 인프라 · **담당** 이소울
+- **선행** `T31` · **후속** 없음 · **설계 문서** FR-6
+
+**목표** gcp 대상에서도 승인자가 Slack 알림의 green 링크를 SSO로 열고, 인증되지 않은 요청은 green에 닿지 않는다.
+
+**할 일**
+- [ ] App Chart: preview Ingress에만 붙는 TLS(GKE ManagedCertificate 또는 미리 올린 인증서) · 고정 IP 어노테이션 입력. active Ingress와 충돌하지 않는지 테스트
+- [ ] demo-app `infra/envs/gcp`: oauth2-proxy 시크릿(GCP Secret Manager) · `readable_secret_ids` · 고정 IP, `infra/envs/aws`: Route53 레코드 · Cognito 콜백. `deploy.yml` 대상별 `preview-host`
+- [ ] gcp test · prod 적용과 확인: 승인자 로그인 성공, 비할당 사용자 · 비인증 요청 차단, promote-judge smoke 정상
+
+**완료 기준** gcp에서 regulated 배포 알림의 green 링크를 승인자가 SSO로 열 수 있고, 비인증 요청은 green에 닿지 않는다.
 
 ### [T36] 장애 훈련 워크플로 (green 확인 · 주입 · 채점)
 
