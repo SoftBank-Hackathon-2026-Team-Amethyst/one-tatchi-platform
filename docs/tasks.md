@@ -397,7 +397,7 @@ Claude Code는 `/todo-task`, Codex는 `$todo-task`로 이 순서를 따르는 �
 **목표** 배포 대상별 지표를 Grafana 한 곳에서 본다.
 
 **할 일**
-- [ ] 중앙 Grafana에 CloudWatch, Prometheus(온프레미스), Cloud Monitoring 연결
+- [x] 중앙 Grafana에 CloudWatch, Prometheus(온프레미스), Cloud Monitoring 연결
 - [ ] 대시보드: 서비스별 요청 · 에러율 · 응답시간 · 리소스
 - [x] AI 판단 job의 원본 metrics.json · 관찰 창 · 실행 정보를 그대로 표시하고 실제 사용자 트래픽과 구분
 
