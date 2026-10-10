@@ -734,9 +734,9 @@ AWS/GCP/onprem에서 승격 전 공개 preview 경로 없음. 인증된 pipeline
 **목표** yolo 배포마다 누가·언제·어떤 문제를 안고 배포했는지 남고, 문제가 있으면 이슈가 열린다.
 
 **할 일**
-- [ ] 리포트 JSON 스키마, 공통 액션 `yolo-report` · `deploy.yml` 연결
-- [ ] 수집: 실행자, 시각, SHA, 대상, compliance, template_version, 자동 수정 이력, 비차단 경고, AI 판단 근거, 승인 생략 여부
-- [ ] 저장: 감사 로그(S3), 실행 요약. 문제가 있으면 demo-app에 `yolo-debt` 이슈
+- [x] 리포트 JSON 스키마, 공통 액션 `yolo-report` · `deploy.yml` 연결
+- [x] 수집: 실행자, 시각, SHA, 대상, compliance, template_version, 자동 수정 이력, 비차단 경고, AI 판단 근거, 승인 생략 여부
+- [x] 저장: 감사 로그(S3), 실행 요약. 문제가 있으면 demo-app에 `yolo-debt` 이슈
 
 **완료 기준** 경고가 있는 yolo 배포 후 `yolo-debt` 이슈가 열린다.
 
