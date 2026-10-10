@@ -10,6 +10,12 @@
 
 ## Unreleased
 
+## v2.10.0
+
+- T31: `deploy.yml`에 `preview-auth` 입력(기본 true)을 추가한다. false면 values와 관계없이 승인자용 green 미리보기를 끈다. 같은 values를 쓰지만 미리보기 호스트 · 터널이 없는 클러스터(onprem 보조 기기)에 쓴다.
+
+## v2.9.0
+
 - T31: preview 인증을 켠 릴리스의 Slack 알림 · 실행 요약에서 `previewAuth.routes`가 비어 있으면, green 화면이 부르는 API가 active(blue)로 갈 수 있다는 한계를 green 링크 옆에 적는다.
 - T27: `audit-state`로 기존 state·backup·plan ZIP/JSON과 현재 DB·k3d·관측·선택형 Tailscale 인증정보를 대조한다. 이전 검사에서 JSON 이스케이프된 비밀값을 놓치던 문제를 고치고 기본 기기의 실행/복구 절차를 추가한다.
 - T17: Cloud Monitoring PromQL 쿼리가 구형 쿼리로 잘못 변환되지 않게 비활성 편집기 모델을 보존하고, ADC에 프로젝트 ID를 넣어 health 조회를 고친다. 온프레미스 검증은 k3d context와 수집 cluster 라벨을 구분하고, histogram 경계의 `1`/`1.0` 표기와 GCP 범위 응답의 최신 값을 올바르게 비교한다.
