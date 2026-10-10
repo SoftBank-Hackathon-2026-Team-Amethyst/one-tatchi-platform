@@ -16,8 +16,8 @@ run "three_nodes_in_two_zones" {
     error_message = "Three nodes must be created in total, not three per zone."
   }
   assert {
-    condition     = alltrue([for pool in google_container_node_pool.this : length(pool.node_locations) == 1]) && sum([for pool in google_container_node_pool.this : pool.autoscaling[0].max_node_count]) == 3
-    error_message = "Each pool must stay in its assigned zone and total scaling limit must be three."
+    condition     = alltrue([for pool in google_container_node_pool.this : length(pool.node_locations) == 1]) && sum([for pool in google_container_node_pool.this : pool.autoscaling[0].max_node_count]) == 5
+    error_message = "Each pool must stay in its assigned zone and total scaling limit must be five."
   }
   assert {
     condition     = google_container_cluster.this.private_cluster_config[0].enable_private_nodes && !google_container_cluster.this.private_cluster_config[0].enable_private_endpoint

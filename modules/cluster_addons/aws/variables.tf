@@ -21,12 +21,18 @@ variable "chart_versions" {
     argo_rollouts                = string
     external_secrets             = string
     external_dns                 = optional(string, "1.23.0")
+    metrics_server               = optional(string, "3.13.0")
+    cluster_autoscaler           = optional(string, "9.59.0")
+    cluster_autoscaler_image     = optional(string, "v1.36.1")
   })
   default = {
     aws_load_balancer_controller = "3.5.0"
     argo_rollouts                = "2.43.5"
     external_secrets             = "2.11.0"
     external_dns                 = "1.23.0"
+    metrics_server               = "3.13.0"
+    cluster_autoscaler           = "9.59.0"
+    cluster_autoscaler_image     = "v1.36.1"
   }
 }
 

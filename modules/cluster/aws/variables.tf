@@ -27,7 +27,7 @@ variable "node_count" {
     desired = number
     max     = number
   })
-  default = { min = 2, desired = 2, max = 3 }
+  default = { min = 2, desired = 2, max = 5 }
 }
 
 variable "admin_principal_arns" {

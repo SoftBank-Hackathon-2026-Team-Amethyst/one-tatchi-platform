@@ -9,7 +9,7 @@ variable "kubernetes_version" {
 }
 
 variable "node_count" {
-  description = "에이전트 노드 수. 맥북 한 대에서는 0(서버 노드 하나)으로 충분하다"
+  description = "사전 생성할 k3d agent 노드 수. k3d는 이 모듈에서 node autoscaler로 확장하지 않는다"
   type        = number
   default     = 0
 }
