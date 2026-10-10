@@ -7,11 +7,13 @@ import subprocess
 import sys
 import time
 from urllib.parse import urlparse
+from deadline import remaining, budget
 
 
 def kubectl(*args):
     try:
-        result = subprocess.run(["kubectl", "--request-timeout=10s", *args], capture_output=True, text=True, timeout=12)
+        seconds = remaining(10)
+        result = subprocess.run(["kubectl", f"--request-timeout={seconds:.3f}s", *args], capture_output=True, text=True, timeout=remaining(12))
     except subprocess.TimeoutExpired:
         raise RuntimeError("tunnel query timed out") from None
     if result.returncode:
@@ -31,6 +33,12 @@ def origin_matches(args, service, namespace):
 
 
 def resolve(service, namespace, timeout=120, query=kubectl, sleep=time.sleep, clock=time.monotonic):
+    # timeout=0 means one bounded observation, never an unbounded set of queries.
+    with budget(timeout if timeout > 0 else 30):
+        return _resolve(service, namespace, timeout, query, sleep, clock)
+
+
+def _resolve(service, namespace, timeout, query, sleep, clock):
     deadline = clock() + timeout
     public = json.loads(query("get", "service", service, "-n", namespace, "-o", "json"))
     ports = {p["port"] for p in public["spec"]["ports"]}
@@ -64,6 +72,9 @@ def resolve(service, namespace, timeout=120, query=kubectl, sleep=time.sleep, cl
             actual = next((c for c in pod.get("spec", {}).get("containers", []) if c["name"] == "cloudflared"), None)
             if not actual or not origin_matches(actual.get("args", []), service, namespace):
                 raise RuntimeError("running tunnel pod points at a different service")
+            # A stale pod must not supply an address for a changed target port.
+            if actual.get("args") != container.get("args"):
+                raise RuntimeError("running tunnel pod differs from the declared tunnel")
             statuses = pod.get("status", {}).get("containerStatuses", [])
             running = next((c for c in statuses if c["name"] == "cloudflared" and c.get("ready")), None)
             started = (running or {}).get("state", {}).get("running", {}).get("startedAt")

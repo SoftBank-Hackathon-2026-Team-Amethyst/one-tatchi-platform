@@ -12,16 +12,19 @@ import shutil
 import subprocess
 import sys
 import time
+import uuid
 from pathlib import Path
 
 from kube_auth import credentials, public_config
 from tunnel import resolve
+from deadline import budget, remaining, pause
 
 BASE = Path.home() / "Library/Application Support/one-tatchi/onprem"
 
 
 def run(args, *, check=True, **kwargs):
     kwargs.setdefault("timeout", 30)
+    kwargs["timeout"] = remaining(kwargs["timeout"])
     try:
         result = subprocess.run([str(a) for a in args], capture_output=True, text=True, **kwargs)
     except subprocess.TimeoutExpired:
@@ -34,11 +37,13 @@ def run(args, *, check=True, **kwargs):
 
 def write_json(path, value):
     path.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
-    temp = path.with_suffix(path.suffix + ".tmp")
-    fd = os.open(temp, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+    temp = path.with_name(path.name + "." + uuid.uuid4().hex + ".tmp")
+    fd = os.open(temp, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
     with os.fdopen(fd, "w") as stream:
         json.dump(value, stream, indent=2)
         stream.write("\n")
+        stream.flush()
+        os.fsync(stream.fileno())
     temp.replace(path)
 
 
@@ -55,6 +60,9 @@ def load_config(path):
         raise ValueError("environments must contain test/prod")
     config.setdefault("secret_namespace", "platform")
     config.setdefault("api_port", 6550)
+    version = config.get("kubernetes_version")
+    if version is not None and not re.fullmatch(r"v\d+\.\d+\.\d+-k3s\d+", version):
+        raise ValueError("kubernetes_version must be a Docker tag such as v1.33.6-k3s1")
     if not isinstance(config["api_port"], int) or not 1024 <= config["api_port"] <= 65535:
         raise ValueError("invalid api_port")
     config["home"] = str(BASE / config["profile"])
@@ -96,7 +104,7 @@ def prepare_kubeconfig(config):
 
 def labels(config):
     prefix = f"dev.onetatchi.onprem.{config['profile']}"
-    return {name: f"{prefix}.{name}" for name in ("awake", "restore", "runner")}
+    return {name: f"{prefix}.{name}" for name in ("awake", "restore", "runner", "urls")}
 
 
 def plists(config, interpreter=sys.executable):
@@ -116,6 +124,7 @@ def plists(config, interpreter=sys.executable):
     result["restore"].update(ProgramArguments=[interpreter, str(cli), "--config", str(config_path), "restore"],
                              KeepAlive={"SuccessfulExit": False})
     result["runner"].update(ProgramArguments=[interpreter, str(cli), "--config", str(config_path), "runner"], KeepAlive=True)
+    result["urls"].update(ProgramArguments=[interpreter, str(cli), "--config", str(config_path), "refresh-urls"], StartInterval=30)
     return result
 
 
@@ -200,49 +209,192 @@ def stop_services(config, uninstall=False):
 
 
 def wait_for(predicate, timeout=300, interval=5):
-    deadline = time.monotonic() + timeout
-    while not predicate():
-        if time.monotonic() >= deadline:
-            raise RuntimeError(f"readiness timeout ({timeout}s)")
-        time.sleep(interval)
+    with budget(timeout):
+        while not predicate():
+            pause(interval)
+
+
+def boot_id():
+    if sys.platform == "darwin":
+        raw = run(["/usr/sbin/sysctl", "-n", "kern.boottime"]).stdout
+        return "macos-" + re.search(r"sec = (\d+)", raw)[1]
+    return Path("/proc/sys/kernel/random/boot_id").read_text().strip()
+
+
+def maintenance(config):
+    return (Path(config["home"]) / "maintenance.json").exists()
+
+
+def kube(*args):
+    return json.loads(run(["kubectl", f"--request-timeout={remaining(10):.3f}s", *args, "-o", "json"]).stdout)
+
+
+def http_check(url, marker=None):
+    # curl's total timeout bounds DNS, connection AND response body; never log the body.
+    started = time.monotonic()
+    response = run(["curl", "--silent", "--show-error", "--fail", "--proto", "=https", "--max-time",
+                    str(remaining(6)), "--max-filesize", "2000000", url], check=False, timeout=remaining(7))
+    return {"ok": response.returncode == 0 and (marker is None or marker in response.stdout),
+            "elapsed_ms": round((time.monotonic() - started) * 1000), "curl_exit": response.returncode}
+
+
+def endpoint_snapshot(config):
+    result = {"boot_id": boot_id(), "observed_at": time.time(), "status": "failed", "urls": {}, "external": {}, "errors": []}
+    for env in config["environments"]:
+        try:
+            url = resolve(f"{config['service']}-fe", env, timeout=0)
+            checks = {"page": http_check(url), "api": http_check(url + "api/guestbook"),
+                      "database_health": http_check(url + "health", '"database":"connected"')}
+            result["external"][env] = checks
+            if not all(c["ok"] for c in checks.values()):
+                raise RuntimeError(f"external HTTP verification failed: {env}")
+            # Only addresses verified in THIS observation are published.
+            result["urls"][env] = url
+        except (RuntimeError, ValueError, KeyError, subprocess.SubprocessError):
+            result["errors"].append(f"current tunnel lookup or HTTP check failed: {env}")
+    result["status"] = "ready" if not result["errors"] else "failed"
+    result["verified_at"] = time.time()
+    result["expires_at"] = result["verified_at"] + 60
+    return result
+
+
+def refresh_urls(config):
+    home = Path(config["home"])
+    home.mkdir(parents=True, exist_ok=True, mode=0o700)
+    with (home / "urls.lock").open("a") as lock:
+        try:
+            fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except BlockingIOError:
+            return None
+        result = {"status": "failed", "observed_at": time.time(), "urls": {}, "external": {}, "errors": []}
+        try:
+            with budget(25):
+                result["boot_id"] = boot_id()
+                if maintenance(config):
+                    raise RuntimeError("maintenance in progress")
+                prepare_kubeconfig(config)
+                result = endpoint_snapshot(config)
+        except (RuntimeError, ValueError, KeyError, subprocess.SubprocessError):
+            result["errors"].append("URL refresh unavailable")
+        write_json(home / "endpoints.json", result)
+        return result
+
+
+def workloads_ready(config):
+    for env in config["environments"]:
+        db = kube("get", "statefulset", f"{config['service']}-db-{env}", "-n", config["secret_namespace"])
+        if db.get("status", {}).get("readyReplicas", 0) != 1:
+            return False
+        for component in ("be", "fe"):
+            rollout = kube("get", "rollout", f"{config['service']}-{component}", "-n", env)
+            state = rollout.get("status", {})
+            if state.get("phase") != "Healthy" or str(state.get("observedGeneration")) != str(rollout["metadata"]["generation"]):
+                return False
+    return True
+
+
+def verify_version(config):
+    expected = config.get("kubernetes_version")
+    if not expected:
+        return
+    info = json.loads(run(["docker", "inspect", f"k3d-{config['cluster']}-server-0"]).stdout)[0]
+    nodes = kube("get", "nodes")["items"]
+    if info["Config"]["Image"] != "rancher/k3s:" + expected or not nodes or any(
+            n["status"]["nodeInfo"]["kubeletVersion"].replace("+", "-") != expected for n in nodes):
+        raise RuntimeError("live Docker/Kubernetes version differs from profile; complete the explicit image replacement first")
 
 
 def restore(config):
     home = Path(config["home"])
     home.mkdir(parents=True, exist_ok=True, mode=0o700)
-    with (home / "restore.lock").open("w") as lock:
+    if maintenance(config):
+        raise RuntimeError("maintenance in progress; automatic recovery is suspended")
+    with (home / "operation.lock").open("a") as lock:
         try:
             fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
         except BlockingIOError:
             return
+        record = {"status": "recovering", "cluster": config["cluster"], "started_at": time.time(), "stages": []}
+        began = time.monotonic()
         phase = "docker"
-        deadline = time.monotonic() + 590
-        def budget(limit):
-            remaining = int(deadline - time.monotonic())
-            if remaining <= 0:
-                raise RuntimeError("startup exceeded the 10 minute budget")
-            return min(limit, remaining)
+        def stage(name, action):
+            nonlocal phase
+            phase = name
+            entry = {"phase": name, "started_at": time.time(), "status": "running"}
+            record["stages"].append(entry)
+            record["phase"] = name
+            write_json(home / "restore.json", record)
+            action()
+            entry.update(status="ready", finished_at=time.time())
+            entry["elapsed_seconds"] = round(entry["finished_at"] - entry["started_at"], 3)
+            write_json(home / "restore.json", record)
         try:
-            run(["open", "-g", "-a", "Docker"])
-            wait_for(lambda: run(["docker", "info"], check=False).returncode == 0, timeout=budget(300))
-            phase = "cluster"
-            check_ownership(config, cluster_exists(config))
-            seconds = budget(120)
-            run(["k3d", "cluster", "start", config["cluster"], "--wait", "--timeout", f"{seconds}s"], timeout=seconds + 2)
-            prepare_kubeconfig(config)
-            seconds = budget(120)
-            run(["kubectl", "wait", "--for=condition=Ready", "nodes", "--all", f"--timeout={seconds}s"], timeout=seconds + 2)
-            phase = "workloads"
-            for env in config["environments"]:
-                seconds = budget(120)
-                run(["kubectl", "rollout", "status", f"deployment/cloudflared-{env}", "-n", "cloudflared", f"--timeout={seconds}s"], timeout=seconds + 2)
-            write_json(home / "restore.json", {"status": "ready", "time": int(time.time()), "cluster": config["cluster"]})
-        except (RuntimeError, subprocess.CalledProcessError, subprocess.TimeoutExpired):
-            write_json(home / "restore.json", {"status": "failed", "phase": phase, "time": int(time.time())})
-            raise
+            with budget(590):
+                record["boot_id"] = boot_id()
+                write_json(home / "restore.json", record)
+                def docker():
+                    run(["open", "-g", "-a", "Docker"])
+                    wait_for(lambda: run(["docker", "info"], check=False).returncode == 0)
+                stage("docker", docker)
+                def cluster():
+                    check_ownership(config, cluster_exists(config))
+                    seconds = max(1, int(remaining(120)))
+                    run(["k3d", "cluster", "start", config["cluster"], "--wait", "--timeout", f"{seconds}s"], timeout=remaining(122))
+                stage("cluster", cluster)
+                # k3d's nginx upstream resolves the server name only when nginx starts.
+                # A surviving/early-started proxy can retain the previous Docker IP.
+                def proxy():
+                    proxy_name = f"k3d-{config['cluster']}-serverlb"
+                    info = json.loads(run(["docker", "inspect", proxy_name]).stdout)[0]
+                    labels = info["Config"].get("Labels", {})
+                    if labels.get("k3d.cluster") != config["cluster"] or labels.get("k3d.role") != "loadbalancer":
+                        raise RuntimeError("API proxy does not belong to the configured cluster")
+                    run(["docker", "restart", "-t", "10", proxy_name], timeout=remaining(25))
+                stage("api-proxy", proxy)
+                def api():
+                    prepare_kubeconfig(config)
+                    wait_for(lambda: run(["kubectl", "get", "--raw=/readyz", "--request-timeout=5s"], check=False).returncode == 0, timeout=120)
+                    seconds = max(1, int(remaining(120)))
+                    run(["kubectl", "wait", "--for=condition=Ready", "nodes", "--all", f"--timeout={seconds}s"], timeout=remaining(122))
+                    verify_version(config)
+                stage("kubernetes", api)
+                def workloads():
+                    def check():
+                        try:
+                            return workloads_ready(config)
+                        except (RuntimeError, KeyError, ValueError):
+                            return False
+                    wait_for(check, timeout=remaining(240))
+                stage("database-apps", workloads)
+                def tunnels():
+                    for env in config["environments"]:
+                        seconds = max(1, int(remaining(120)))
+                        run(["kubectl", "rollout", "status", f"deployment/cloudflared-{env}", "-n", "cloudflared", f"--timeout={seconds}s"], timeout=remaining(122))
+                stage("tunnels", tunnels)
+                def external():
+                    def check():
+                        result = endpoint_snapshot(config)
+                        write_json(home / "endpoints.json", result)
+                        record["external"] = result
+                        return result["status"] == "ready"
+                    wait_for(check, timeout=remaining(120))
+                stage("external-http", external)
+                record.update(status="ready", time=int(time.time()), elapsed_seconds=round(time.monotonic() - began, 3))
+                write_json(home / "restore.json", record)
+        except (RuntimeError, ValueError, KeyError, subprocess.SubprocessError) as exc:
+            # Error messages can include command output; persist a safe class and stage only.
+            record.update(status="failed", phase=phase, time=int(time.time()),
+                          reason=f"{phase}: {type(exc).__name__}", elapsed_seconds=round(time.monotonic() - began, 3))
+            if record["stages"]:
+                record["stages"][-1].update(status="failed", finished_at=time.time())
+            write_json(home / "restore.json", record)
+            write_json(home / "endpoints.json", {"status": "failed", "boot_id": record.get("boot_id"), "urls": {}, "errors": [record["reason"]]})
+            raise RuntimeError(record["reason"]) from None
 
 
 def runner_service(config):
+    if maintenance(config):
+        raise RuntimeError("maintenance in progress; runner is suspended")
     def ready():
         try:
             prepare_kubeconfig(config)
@@ -294,6 +446,8 @@ def terraform(config, args):
     env = dict(os.environ)
     env["TF_VAR_name"] = config["cluster"]
     env["TF_VAR_api_port"] = str(config["api_port"])
+    if config.get("kubernetes_version"):
+        env["TF_VAR_kubernetes_version"] = config["kubernetes_version"]
     root = Path(config["terraform_root"])
     if args[0] in ("plan", "apply"):
         for path in [*root.glob("*.tfvars"), *root.glob("*.tfvars.json")]:
@@ -307,14 +461,27 @@ def terraform(config, args):
         if exists:
             env["TF_VAR_onprem_auth"] = json.dumps(prepare_kubeconfig(config))
             env["KUBECONFIG"] = os.environ["KUBECONFIG"]
+            if args[0] == "apply":
+                verify_version(config)
             if not any(a.startswith("-target=") for a in args):
                 env["TF_VAR_onprem_db_passwords"] = json.dumps(database_passwords(config))
         args = [*args, f"-var=name={config['cluster']}", f"-var=api_port={config['api_port']}"]
+        if config.get("kubernetes_version"):
+            args.append(f"-var=kubernetes_version={config['kubernetes_version']}")
     return subprocess.run(["terraform", f"-chdir={root}", *args], env=env).returncode
 
 
 def status(config):
+    with budget(60):
+        return _status(config)
+
+
+def _status(config):
     result = {"profile": config["profile"], "cluster": config["cluster"], "observed_at": time.time(), "urls": {}, "errors": []}
+    result["boot_id"] = boot_id()
+    result["maintenance"] = maintenance(config)
+    if result["maintenance"]:
+        result["errors"].append("maintenance in progress")
     if sys.platform == "darwin":
         result["ac_power"] = "AC Power" in run(["pmset", "-g", "batt"]).stdout
         assertions = run(["pmset", "-g", "assertions"]).stdout
@@ -346,20 +513,29 @@ def status(config):
                         not all(c.get("ready") for c in p["status"]["containerStatuses"]))]
             if unready:
                 result["errors"].append("unready pods: " + ", ".join(unready))
-            for namespace in config["environments"]:
-                result["urls"][namespace] = resolve(f"{config['service']}-fe", namespace, timeout=0)
+            result["versions"] = {"configured": config.get("kubernetes_version"),
+                "nodes": [{"name": n["metadata"]["name"], "version": n["status"]["nodeInfo"]["kubeletVersion"],
+                           "addresses": n["status"]["addresses"]} for n in kube("get", "nodes")["items"]],
+                "containers": [{"name": c["Name"], "image": c["Config"]["Image"],
+                                "addresses": [n["IPAddress"] for n in c["NetworkSettings"]["Networks"].values()]}
+                               for c in json.loads(run(["docker", "inspect", *ids]).stdout)] if ids else []}
+            endpoints = endpoint_snapshot(config)
+            result["urls"] = endpoints["urls"]
+            result["external"] = endpoints["external"]
+            result["errors"].extend(endpoints["errors"])
         except (RuntimeError, subprocess.CalledProcessError) as exc:
             result["errors"].append(str(exc) if isinstance(exc, RuntimeError) else "cluster authentication failed")
     path = Path(config["home"]) / "restore.json"
     if path.exists():
         result["last_restore"] = json.loads(path.read_text())
+        result["last_restore"]["current_boot"] = result["last_restore"].get("boot_id") == result["boot_id"]
     return result
 
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--config", type=Path, required=True)
-    parser.add_argument("command", choices=["doctor", "install", "start", "stop", "status", "terraform", "migrate-state", "uninstall", "restore", "runner"])
+    parser.add_argument("command", choices=["doctor", "install", "start", "stop", "status", "terraform", "migrate-state", "uninstall", "restore", "runner", "refresh-urls"])
     parser.add_argument("args", nargs=argparse.REMAINDER)
     a = parser.parse_args()
     config = load_config(a.config)
@@ -375,6 +551,9 @@ def main():
         stop_services(config, uninstall=a.command == "uninstall")
     elif a.command == "restore":
         restore(config)
+    elif a.command == "refresh-urls":
+        result = refresh_urls(config)
+        return int(result is not None and result["status"] != "ready")
     elif a.command == "runner":
         runner_service(config)
     elif a.command == "terraform":

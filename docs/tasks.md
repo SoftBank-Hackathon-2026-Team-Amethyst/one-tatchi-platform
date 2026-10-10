@@ -292,7 +292,7 @@ Claude Code는 `/todo-task`, Codex는 `$todo-task`로 이 순서를 따르는 �
 **목표** 전원·네트워크 연결과 열린 덮개 상태에서 화면 잠금·꺼짐 중에도 test · prod가 계속 동작한다. 재부팅 뒤 로그인 1회 후 자동 복구하며, onprem 배포가 실패를 숨기지 않는다.
 
 **할 일**
-- [ ] launchd `caffeinate -s`로 AC 전원에서 잠금 중 연속 실행. Docker 로그인 시작, 기기별 runner·클러스터·state 분리와 두 맥북의 30분 잠금 검증
+- [ ] launchd `caffeinate -s`로 AC 전원에서 잠금 중 연속 실행. Docker 로그인 시작, 기기별 runner·클러스터·state 분리와 현재 secondary 맥북의 10분 잠금 검증 (다른 맥북 검증은 후속 범위)
 - [ ] 재부팅·로그인 후 추가 명령 없이 10분 내 자동 복구와 데이터 보존 확인: k3d 노드 · self-hosted runner(launchd) · cloudflared가 다시 뜨고, 바뀐 터널 주소를 확인하는 방법을 README에
 - [x] 공개 서비스와 환경별 현재 터널을 대조하고 없음·대상 불일치·조회 오류·URL 누락 시 배포 실패. 내부 BE는 외부 주소가 없어도 정상
 - [ ] checks에서 `linux/amd64` + `linux/arm64`를 한 번 빌드·각각 검사. 같은 run의 OCI artifact와 digest로 배포하고 test에서 승격한 동일 digest만 prod에 반영
@@ -300,7 +300,7 @@ Claude Code는 `/todo-task`, Codex는 `$todo-task`로 이 순서를 따르는 �
 - [x] database: 기존 StatefulSet·PVC·접속 규격 유지, Helm Postgres로 교체하지 않는 결정과 이유를 ADR에 기록
 - [ ] (시간이 남으면) 리눅스 머신에서 같은 절차 확인
 
-**완료 기준** 두 맥북 각각 잠금·화면 꺼짐을 포함한 30분 동안 test · prod와 runner가 중단·재시작 없이 동작한다. 별도 재부팅·로그인 뒤 추가 명령 없이 10분 내 복구되고 데이터가 유지된다. 터널이 없을 때 배포가 실패한다.
+**완료 기준** 현재 secondary 맥북의 승인된 10분 잠금 검증에서 test · prod와 runner가 중단·재시작 없이 동작한다. 별도 재부팅·로그인 뒤 추가 명령 없이 10분 내 복구되고 이후 5분 안정 상태와 SQL·외부 API의 실제 데이터 보존을 확인한다. runner online과 검증된 최신 터널 URL의 외부 접속을 모두 요구한다. 터널이 없을 때 배포가 실패한다. 다른 맥북·Linux 실기 검증은 후속 범위다.
 ### [T24] AWS 구현체
 
 **어디에 필요** AWS에 실제로 VPC · EKS · RDS 등을 만드는 Terraform 코드. 첫 배포 대상(Happy Path).

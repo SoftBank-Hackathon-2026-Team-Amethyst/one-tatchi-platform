@@ -5,9 +5,10 @@ terraform {
 }
 
 module "cluster" {
-  source   = "git::https://github.com/SoftBank-Hackathon-2026-Team-Amethyst/one-tatchi-platform.git//modules/cluster/onprem?ref=@@TEMPLATE_VERSION@@"
-  name     = var.name
-  api_port = var.api_port
+  source             = "git::https://github.com/SoftBank-Hackathon-2026-Team-Amethyst/one-tatchi-platform.git//modules/cluster/onprem?ref=@@TEMPLATE_VERSION@@"
+  name               = var.name
+  api_port           = var.api_port
+  kubernetes_version = var.kubernetes_version
 }
 
 provider "kubernetes" {
