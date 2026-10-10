@@ -544,7 +544,7 @@ Claude Code는 `/todo-task`, Codex는 `$todo-task`로 이 순서를 따르는 �
 **목표** yolo push부터 test 반영까지 2분대.
 
 **할 일**
-- [ ] 단계별 소요 시간 측정
+- [x] 단계별 소요 시간 측정
 - [ ] BE · FE 병렬(matrix), 검사 job 병렬
 - [ ] `docker buildx` + GHA 캐시, 베이스 이미지 미리 빌드, pnpm · uv 캐시
 - [ ] 원격 모듈 · OCI 차트 다운로드 시간 확인(캐시)
