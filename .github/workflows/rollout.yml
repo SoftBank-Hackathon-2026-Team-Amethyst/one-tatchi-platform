@@ -151,6 +151,10 @@ jobs:
         with:
           token: ${{ secrets.SLACK_BOT_TOKEN }}
           channel: ${{ vars.SLACK_CHANNEL_ID }}
+          flow: 수동 승격·복구 요청
+          environment: ${{ inputs.environment }}
+          stage: ${{ inputs.action }} 실행 결과
+          next-action: ${{ job.status == 'success' && '아래 실행 결과를 확인해 주세요. PR 머지나 운영 배포 승인 알림이 아니에요.' || '요청이 실패했어요. 실행 로그를 확인해 주세요.' }}
           action: ${{ inputs.action }}
           target: ${{ env.LABEL }}
           result: ${{ job.status }}

@@ -59,6 +59,9 @@ jobs:
         with:
           token: ${{ secrets.SLACK_BOT_TOKEN }}
           channel: ${{ vars.SLACK_CHANNEL_ID }}
+          flow: Janto / 일반 PR
+          stage: 코드 검사 통과 · main 반영 요청
+          next-action: 보호 파일 변경은 코드 리뷰 승인을 먼저 받고 PR 머지를 누르세요. 운영 배포 승인과는 달라요.
           action: PR 준비
           target: "PR #${{ github.event.pull_request.number }}"
           version: ${{ github.event.pull_request.head.sha }}
