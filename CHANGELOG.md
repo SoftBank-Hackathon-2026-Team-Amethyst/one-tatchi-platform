@@ -12,6 +12,7 @@
 
 ## v2.3.0
 
+- T17: T31 SSO preview를 test 실측 동안 비활성화하고, v1 cloud pin과 v2 preview_auth 참조를 산출물 검사·버전 갱신에서 함께 유지한다.
 - T17: 선택형 `verify-observability`로 main 수동 test 배포의 새 private green만 실측한다. AI 60초 관찰·원본 CloudWatch/Grafana 대조, 정상/500/300ms 지연·원본 counter/histogram 대조, 실행별 artifact와 소유권을 확인하는 green 정리를 추가한다. 기존 배포는 기본값 false로 유지한다.
 - T17: GCP 컨테이너 CPU·메모리 패널에 서비스별 파드 필터를 적용한다. AWS v1 호환 패치에도 같은 대시보드 수정을 포함한다.
 - T17: Grafana의 선택형 HTTPS 호스트·대시보드 URL 출력을 추가하고 운영 ALB의 `/grafana` 경로 연결을 지원한다. 기존 host 없는 호출은 유지한다.

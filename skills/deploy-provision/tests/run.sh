@@ -62,6 +62,22 @@ echo "== check-artifacts 통과"
 bash "$check" "$app" >"$tmp/check.log" || { cat "$tmp/check.log" >&2; exit 1; }
 
 echo "== 버전이 어긋나면 실패"
+cp -r "$app" "$tmp/pinned-app"
+printf '\ninfra_versions:\n  aws: v1.8.0\n' >> "$tmp/pinned-app/.deploy/config.yaml"
+mkdir -p "$tmp/pinned-app/infra/envs/aws"
+cat > "$tmp/pinned-app/infra/envs/aws/pinned.tf" <<'EOF'
+module "preview_auth" {
+  source = "git::https://github.com/example/one-tatchi-platform.git//modules/preview_auth/aws?ref=v1.9.0"
+}
+EOF
+# Existing fixture roots are rendered at v1.9.0. Pin those infrastructure modules only.
+find "$tmp/pinned-app/infra/envs/aws" -name '*.tf' ! -name pinned.tf -exec sed -i.bak 's/ref=v1.9.0/ref=v1.8.0/g' {} \;
+bash "$check" "$tmp/pinned-app" >"$tmp/pin.log" || { cat "$tmp/pin.log" >&2; exit 1; }
+sed -i.bak 's/ref=v1.9.0/ref=v1.8.0/g' "$tmp/pinned-app/infra/envs/aws/pinned.tf"
+if bash "$check" "$tmp/pinned-app" >"$tmp/pin-bad.log" 2>&1; then
+  echo "preview_auth가 cloud pin으로 내려간 것을 놓쳤다" >&2; exit 1
+fi
+
 sed -i.bak 's/template-ref: v1.9.0/template-ref: v1.8.0/' "$app/.github/workflows/deploy.yml"
 if bash "$check" "$app" >"$tmp/check2.log" 2>&1; then
   echo "template-ref 불일치를 놓쳤다" >&2; cat "$tmp/check2.log" >&2; exit 1

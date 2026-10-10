@@ -93,6 +93,7 @@ def guard(state, name, owned=False):
 
 def pod_guard(state, name):
     guard(state, name, owned=True)
+    private_preview(name)
     saved = state["green"][name]
     pod = kube("pod", saved["name"])
     require(pod["metadata"]["uid"] == saved["uid"]
@@ -101,6 +102,14 @@ def pod_guard(state, name):
     require(all(c.get("restartCount", 0) == 0 for c in pod["status"].get("containerStatuses", [])),
             "green pod restarted during verification")
     return pod
+
+
+def private_preview(name):
+    # SSO users must not be able to reach the fault-injected green either.
+    for ingress in kube("ingress")["items"]:
+        require(name + "-preview" not in json.dumps(ingress["spec"]), "public preview ingress exists")
+    for service in kube("services")["items"]:
+        require(service["metadata"]["name"] != name + "-preview-auth", "SSO preview proxy still exists")
 
 
 @contextmanager
@@ -239,9 +248,7 @@ class Session:
             require(preview["spec"].get("type", "ClusterIP") == "ClusterIP"
                     and not preview["spec"].get("externalIPs") and revision
                     and revision != current["active"], "preview must be private and separate from blue")
-            # Include defaultBackend and all paths; a preview route would expose injected errors.
-            for ingress in kube("ingress")["items"]:
-                require(name + "-preview" not in json.dumps(ingress["spec"]), "public preview ingress exists")
+            private_preview(name)
             selected = [p for p in pods(name, revision) if ready(p)]
             require(selected and all(marker(p["spec"]) == self.state["marker"] for p in selected),
                     "no ready run-owned green pod")

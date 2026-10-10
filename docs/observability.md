@@ -54,6 +54,9 @@ textbox이므로 단일 서비스 이름과 기본 전체 패턴 `demo-app-.*`�
    `/grafana/api/health`가 앱 SPA나 로그인 redirect이면 Helm 전에 중단한다.
 2. 이번 run/attempt를 `T17_VALIDATION_RUN_ID`로 넣어 같은 digest도 새 green을 만든다.
    검사한 digest를 확인하고 migration hook은 끈다. 자동 승격은 끄고 AI는 manual/60초로 실행한다.
+   T31의 test SSO preview도 `previewAuth.enabled=false`로 끈다. 인증한 승인자에게도 주입한 오류가 노출되지 않아야 한다.
+   검증 중 preview Ingress와 proxy Service가 남거나 다시 생기면 중단한다. test SSO preview는 다음 정상 배포에서 정규 values로 복원된다.
+   HPA를 유지하며 선택한 green 파드의 UID와 재시작 여부를 계속 확인한다. 축소·교체 시 다른 파드로 바꾸어 성공 처리하지 않고 실패·정리한다.
 3. private preview와 active가 다른지 확인하고 선택한 green 파드의 UID/hash/카운터를 기록한다.
    BE DB 연결과 0인 초기 chaos를 확인한다. FE `/api/*`는 active BE로 프록시하므로
    FE 검증은 정적 `/`, BE 검증은 green 파드의 `/api/info`로 제한한다.

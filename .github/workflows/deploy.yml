@@ -436,8 +436,8 @@ jobs:
             migration="$(jq -r '.migration // ""' <<<"$svc")"
             if [ -n "$migration" ]; then extra+=(--set-file migration.sql="$migration"); fi
             if [ "$VERIFY_OBSERVABILITY" = true ]; then
-              # 같은 digest도 새 green 생성. 검증 중에는 DB migration hook을 실행하지 않는다.
-              extra+=(--set-string "env.T17_VALIDATION_RUN_ID=${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}" --set migration.enabled=false --set blueGreen.autoPromotionEnabled=false)
+              # 같은 digest도 새 green 생성. migration과 SSO preview를 끄고 loopback에서만 실측한다.
+              extra+=(--set-string "env.T17_VALIDATION_RUN_ID=${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}" --set migration.enabled=false --set blueGreen.autoPromotionEnabled=false --set previewAuth.enabled=false)
             fi
             if [ "$TARGET" = aws ] && [ -n "$INGRESS_GROUP" ]; then extra+=(--set ingress.group="$INGRESS_GROUP"); fi
             if [ "$TARGET" = aws ] && [ -n "$HOST" ]; then extra+=(--set ingress.host="$HOST"); fi

@@ -170,6 +170,30 @@ class MetricsTest(unittest.TestCase):
             live.metrics('app_http_response_count_total NaN')
 
 
+class PrivatePreviewTest(unittest.TestCase):
+    def test_direct_or_sso_ingress_is_rejected(self):
+        for backend in ("demo-app-be-preview", "demo-app-be-preview-auth"):
+            data = {"items": [{"spec": {"defaultBackend": {"service": {"name": backend}}}}]}
+            with self.subTest(backend=backend), patch.object(live, "kube", return_value=data):
+                with self.assertRaisesRegex(live.CheckFailed, "public preview"):
+                    live.private_preview("demo-app-be")
+
+    def test_proxy_without_ingress_is_rejected_for_tunnel(self):
+        def kube(kind):
+            return {"items": [] if kind == "ingress" else [{"metadata": {"name": "demo-app-fe-preview-auth"}}]}
+        with patch.object(live, "kube", side_effect=kube):
+            with self.assertRaisesRegex(live.CheckFailed, "SSO preview"):
+                live.private_preview("demo-app-fe")
+
+    def test_active_routes_and_other_services_are_preserved(self):
+        def kube(kind):
+            if kind == "ingress":
+                return {"items": [{"spec": {"defaultBackend": {"service": {"name": "demo-app-fe"}}}}]}
+            return {"items": [{"metadata": {"name": name}} for name in ("demo-app-fe", "demo-app-fe-preview", "other-preview-auth")]}
+        with patch.object(live, "kube", side_effect=kube):
+            live.private_preview("demo-app-fe")
+
+
 class GrafanaTest(unittest.TestCase):
     def setUp(self):
         self.env = patch.dict(os.environ, {"OBSERVABILITY_URL": "https://example.com/grafana", "TARGET": "aws"})
