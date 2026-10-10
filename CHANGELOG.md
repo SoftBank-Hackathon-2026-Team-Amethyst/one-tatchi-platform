@@ -8,6 +8,10 @@
 
 릴리스 방법: 이 파일에 항목을 추가하고 main에 머지한 뒤 `git tag vX.Y.Z && git push origin vX.Y.Z`. `release.yml`이 차트를 GHCR에 올리고 메이저 태그(`v1`)를 옮긴 뒤, 대상 레포(demo-app)에 알려 버전 업데이트 PR이 열리게 한다. 버전 항목 제목은 `## vX.Y.Z` 형식을 지킨다(PR 본문에 그 구간이 붙는다).
 
+## Unreleased
+
+- T35: `deploy.yml`이 환경별 덧붙임 값 파일 `<values>.<environment>.yaml`(예: `deploy/values-be.test.yaml`)을 기본 → `deploy/<target>/values.yaml` → 환경 순서로 합친다(`scripts/values-files.sh`, 테스트로 고정). 없으면 이전과 같다. `check-artifacts.sh`는 장애 주입 · 디버그 플래그(`CHAOS_*` · `FAULT_*` · `DEBUG`)가 test 덧붙임 파일 밖에 있으면 실패한다. prod에 `POST /api/chaos` 경로가 열리지 않게 한다.
+
 ## v2.7.0
 
 - T17: 기존 온프레미스 관측 설정의 저장 plan 적용 시 Kubernetes·DB ephemeral 입력을 메모리 환경변수로 다시 전달한다. 저장 plan에는 인증정보가 없기 때문에 재주입 없이 apply가 실패하던 문제를 고친다.

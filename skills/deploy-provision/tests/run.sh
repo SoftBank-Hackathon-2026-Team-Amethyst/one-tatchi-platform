@@ -132,6 +132,19 @@ echo 'compliance: none' >> "$app/.deploy/plan.yaml"
 if bash "$check" "$app" >/dev/null 2>&1; then echo "plan의 보호 값을 놓쳤다" >&2; exit 1; fi
 cp "$tmp/plan-original.yaml" "$app/.deploy/plan.yaml"
 
+echo "== 장애 주입 플래그는 test 덧붙임 파일에만 (T35)"
+cp "$app/deploy/values-be.yaml" "$tmp/values-be-original.yaml"
+printf 'env:\n  CHAOS_ENABLED: "true"\n' >> "$app/deploy/values-be.yaml"
+if bash "$check" "$app" >"$tmp/check7.log" 2>&1; then echo "기본 값 파일의 CHAOS_ENABLED를 놓쳤다" >&2; cat "$tmp/check7.log" >&2; exit 1; fi
+grep -q 'CHAOS_ENABLED' "$tmp/check7.log"
+cp "$tmp/values-be-original.yaml" "$app/deploy/values-be.yaml"
+printf 'env:\n  CHAOS_ENABLED: "true"\n' > "$app/deploy/values-be.prod.yaml"
+if bash "$check" "$app" >/dev/null 2>&1; then echo "prod 덧붙임 파일의 CHAOS_ENABLED를 놓쳤다" >&2; exit 1; fi
+rm -f "$app/deploy/values-be.prod.yaml"
+printf 'env:\n  CHAOS_ENABLED: "true"\n' > "$app/deploy/values-be.test.yaml"
+bash "$check" "$app" >"$tmp/check8.log" 2>&1 || { echo "test 덧붙임 파일은 허용돼야 한다" >&2; cat "$tmp/check8.log" >&2; exit 1; }
+rm -f "$app/deploy/values-be.test.yaml"
+
 echo "== DB Secret을 받는데 PGSSL이 없으면 실패, 있으면 통과"
 cp "$app/deploy/values-be.yaml" "$tmp/values-be-original.yaml"
 printf 'envFromSecrets:\n  - demo-app-db\n' >> "$app/deploy/values-be.yaml"

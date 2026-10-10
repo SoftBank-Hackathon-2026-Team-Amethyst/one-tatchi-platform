@@ -34,7 +34,8 @@ on:
           [{"name":"demo-app-be","path":"be","values":"deploy/values-be.yaml","migration":"db/init.sql"},
            {"name":"demo-app-fe","path":"fe","values":"deploy/values-fe.yaml"}]
           배열 순서대로 하나씩 배포한다 (BE를 먼저).
-          deploy/<target>/values.yaml이 있으면 모든 서비스에 덧붙인다.
+          값 파일 순서(뒤가 앞을 덮어씀): values → deploy/<target>/values.yaml(있으면, 모든 서비스) →
+          <values 경로>.<environment>.yaml(있으면, 예: deploy/values-be.test.yaml). 환경별 파일은 scripts/values-files.sh가 정한다 (T35).
         type: string
         required: true
       cluster:
@@ -430,8 +431,10 @@ jobs:
             image="$(jq -er --arg r "$release" '.[$r].repository' <<<"$IMAGES")"
             digest="$(jq -er --arg r "$release" '.[$r].digest' <<<"$IMAGES")"
 
+            # 값 파일 순서는 .platform/scripts/values-files.sh 하나가 정한다: 기본 → deploy/<target>/values.yaml → <기본>.<environment>.yaml (T35)
+            mapfile -t files < <(bash .platform/scripts/values-files.sh "$(jq -r .values <<<"$svc")" "$TARGET" "$ENVIRONMENT")
             extra=()
-            if [ -f "deploy/$TARGET/values.yaml" ]; then extra+=(-f "deploy/$TARGET/values.yaml"); fi
+            for f in "${files[@]}"; do extra+=(-f "$f"); done
             if [ "$TARGET" = gcp ]; then extra+=(--set metrics.gcpManaged=true); fi
             migration="$(jq -r '.migration // ""' <<<"$svc")"
             if [ -n "$migration" ]; then extra+=(--set-file migration.sql="$migration"); fi
@@ -442,9 +445,7 @@ jobs:
             if [ "$TARGET" = aws ] && [ -n "$INGRESS_GROUP" ]; then extra+=(--set ingress.group="$INGRESS_GROUP"); fi
             if [ "$TARGET" = aws ] && [ -n "$HOST" ]; then extra+=(--set ingress.host="$HOST"); fi
             if [ -n "$PREVIEW_HOST" ]; then
-              files=("$(jq -r .values <<<"$svc")")
-              if [ -f "deploy/$TARGET/values.yaml" ]; then files+=("deploy/$TARGET/values.yaml"); fi
-              # 뒤 파일이 앞 파일을 덮어쓰는 Helm 순서대로 합쳐 본다.
+              # 뒤 파일이 앞 파일을 덮어쓰는 Helm 순서대로 합쳐 본다 (위와 같은 files).
               if [ "$(yq eval-all -r '. as $v ireduce ({}; . * $v) | .previewAuth.enabled // false' "${files[@]}")" = true ]; then
                 extra+=(--set previewAuth.host="$PREVIEW_HOST")
               fi
@@ -453,7 +454,6 @@ jobs:
             helm upgrade --install "$release" "$CHART" \
               --version "$CHART_VERSION" \
               --namespace "$NAMESPACE" \
-              -f "$(jq -r .values <<<"$svc")" \
               "${extra[@]}" \
               --set image.repository="$image" \
               --set image.tag="$TAG" \
