@@ -108,6 +108,16 @@ class GitHub:
     def run_url(self, run_id: int) -> str:
         return f"https://github.com/{self.repository}/actions/runs/{run_id}"
 
+    def approve_pull(self, number: int, user_token: str, body: str) -> None:
+        # 사용자 토큰(user-to-server)으로 제출해야 CODEOWNERS 리뷰로 인정된다.
+        # 봇 토큰을 쓰지 않는다.
+        response = self.client.post(
+            f"/repos/{self.repository}/pulls/{number}/reviews",
+            headers={"Authorization": f"Bearer {user_token}"},
+            json={"event": "APPROVE", "body": body},
+        )
+        response.raise_for_status()
+
     def review_protection_rule(
         self, run_id: int, environment: str, state: str, comment: str
     ) -> None:
@@ -117,3 +127,15 @@ class GitHub:
             f"/repos/{self.repository}/actions/runs/{run_id}/deployment_protection_rule",
             json={"environment_name": environment, "state": state, "comment": comment},
         )
+
+
+def error_message(error: httpx.HTTPError, limit: int = 300) -> str:
+    """GitHub 오류 응답의 message를 사람에게 보여 줄 한 줄로 만든다. 없으면 빈 문자열."""
+    if not isinstance(error, httpx.HTTPStatusError):
+        return ""
+    try:
+        message = error.response.json().get("message", "")
+    except ValueError:
+        return ""
+    message = " ".join(str(message).split())
+    return message[:limit]

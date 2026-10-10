@@ -19,6 +19,12 @@ class Settings(BaseSettings):
     github_app_client_id: str = ""
     github_app_private_key: str = ""
     github_token: str = ""
+    # 리뷰 승인 버튼: 사용자 GitHub 계정 연결(device flow).
+    # client secret은 토큰 갱신에만 쓴다(선택).
+    github_app_client_secret: str = ""
+    # 연결 저장 파일. 비우면 메모리에만 둔다.
+    # 파드의 /tmp는 재시작하면 비워지므로 그때는 다시 연결한다.
+    link_store_path: str = "/tmp/github-links.json"
 
     # 비어 있으면 채널에 있는 누구나 조작할 수 있습니다.
     allowed_user_ids: list[str] = []
