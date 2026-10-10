@@ -34,7 +34,7 @@
 | `oauth_revision` | OAuth 값을 바꿨을 때 올린다 |
 | `operator_chart_version` | `tailscale-operator` 차트 버전 (예: `1.102.4`) |
 | `publish` | `{ <tailnet 호스트명> = { target, port = 5432, tags = ["tag:db-onprem"] } }`. Service는 `tailscale/publish-<호스트명>`에 생긴다 |
-| `consume` | `{ <키> = { namespace, fqdn, name = <키>, port = 5432, tags = ["tag:app-aws"] } }`. Service 이름은 `name`(비우면 키) |
+| `consume` | `{ <키> = { namespace, fqdn, name = <키>, port = 5432, tags = ["tag:app-aws"], allow_from = [] } }`. Service 이름은 `name`(비우면 키). `allow_from = [{ namespace, pod_labels }]`를 적으면 egress 프록시 파드에 NetworkPolicy를 걸어 그 파드만 DB 포트에 닿는다(EKS는 VPC CNI `enableNetworkPolicy`가 켜져 있어야 함) |
 
 ## 출력
 

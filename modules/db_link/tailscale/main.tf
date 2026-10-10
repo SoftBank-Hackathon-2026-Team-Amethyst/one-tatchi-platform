@@ -113,3 +113,45 @@ resource "kubernetes_service_v1" "consume" {
 
   depends_on = [helm_release.operator]
 }
+
+# consume.allow_from가 있으면 egress 프록시 파드(operator가 tailscale.com/parent-resource=<Service 이름>으로 라벨을 단다)에
+# ingress 정책을 건다. 목록의 파드만 DB 포트로 들어올 수 있고, 다른 네임스페이스 · 파드는 거부된다. 프록시의 바깥 방향(tailnet)은 제한하지 않는다.
+resource "kubernetes_network_policy_v1" "consume" {
+  for_each = { for k, v in var.consume : k => v if length(v.allow_from) > 0 }
+
+  metadata {
+    name      = "db-link-${coalesce(each.value.name, each.key)}"
+    namespace = local.namespace
+  }
+
+  spec {
+    pod_selector {
+      match_labels = {
+        "tailscale.com/parent-resource"      = coalesce(each.value.name, each.key)
+        "tailscale.com/parent-resource-ns"   = each.value.namespace
+        "tailscale.com/parent-resource-type" = "svc"
+      }
+    }
+    policy_types = ["Ingress"]
+
+    ingress {
+      dynamic "from" {
+        for_each = each.value.allow_from
+        content {
+          namespace_selector {
+            match_labels = { "kubernetes.io/metadata.name" = from.value.namespace }
+          }
+          pod_selector {
+            match_labels = from.value.pod_labels
+          }
+        }
+      }
+      ports {
+        port     = each.value.port
+        protocol = "TCP"
+      }
+    }
+  }
+
+  depends_on = [kubernetes_service_v1.consume]
+}

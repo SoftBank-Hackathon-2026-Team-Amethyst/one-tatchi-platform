@@ -75,6 +75,12 @@ variable "consume" {
     name      = optional(string) # Service 이름. 비우면 키. 여러 네임스페이스에 같은 이름을 쓰려면 키를 다르게 하고 name을 같게
     port      = optional(number, 5432)
     tags      = optional(list(string), ["tag:app-aws"])
+    # 비우면 제한 없음. 적으면 egress 프록시 파드에 NetworkPolicy를 걸어 이 목록의 파드만 DB 포트에 닿는다 (T33).
+    # 클러스터에 NetworkPolicy 적용기가 있어야 한다 (EKS: VPC CNI enableNetworkPolicy, k3s: 기본).
+    allow_from = optional(list(object({
+      namespace  = string      # 호출하는 파드의 네임스페이스 (kubernetes.io/metadata.name 라벨)
+      pod_labels = map(string) # 호출하는 파드 라벨 (예: app.kubernetes.io/name = demo-app-be)
+    })), [])
   }))
   default = {}
 }
