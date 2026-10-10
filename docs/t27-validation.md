@@ -1,5 +1,7 @@
 # T27 검증 기록
 
+날짜별 누적 기록이다. 현재 판정은 마지막 실기 검증 항목을 따른다.
+
 검증일: 2026-10-09. 플랫폼 기준 main `fca944a`, demo-app 통합 기준 main `7893547`(T17 #40 포함).
 T17의 브랜치와 `t17-local`은 보존한다. 아직 두 기기의 T27 완료 기준 전체를 충족한 상태는 아니다.
 
@@ -36,7 +38,7 @@ Buildx의 wrapper index를 Trivy에 바로 주면 leaf digest를 찾지 못하�
 BE archive를 격리된 임시 레지스트리로 Skopeo `--all --preserve-digests` 복사한 뒤 원격 manifest를 읽었다.
 두 아키텍처가 함께 발행됐고 원격 index digest가 위 BE digest와 일치했다. hosted Actions 연동 검증은 별도로 남아 있다.
 
-## 남은 실기 검증
+## 2026-10-09 시점의 남은 실기 검증
 
 실제 hosted [검증 실행](https://github.com/SoftBank-Hackathon-2026-Team-Amethyst/demo-app/actions/runs/37924044466)에서
 두 아키텍처 검사 → 같은 run artifact 다운로드 → GHCR digest 보존 발행은 통과했다.
@@ -72,7 +74,7 @@ installer에도 실제 runner/work 경로 검사와 BOM이 있는 공식 설정 
 - 같은 복원 클론에서 DB를 내려 둔 상태로 BE를 시작했다. health 503/fallback-memory 이후 DB를 올리자 같은 BE 컨테이너가 재시작 0회로 health 200/connected와 기존 SQL 데이터를 반환했다.
 - Linux 컨테이너의 저장소 전체 scripts 회귀 검사 통과. 변경 루트 및 클러스터 모듈 Terraform fmt/init/validate 통과. 복구 실패·오래된 URL·이전 부팅·공통 마감시간·볼륨 보존·버전 기록 방지 검사 포함.
 
-실제 맥북 재부팅·로그인 관측은 별도다. 관측 결과가 나오기 전에는 재부팅 이슈 항목을 체크하지 않는다.
+이 구현 검증 당시에는 실제 맥북 재부팅·로그인 관측을 별도로 남겼다. 최종 실기 판정은 다음 항목에 기록한다.
 백업·원본 설정·상세 런타임 로그는 공개 저장소에 올리지 않는다.
 
 
@@ -81,3 +83,24 @@ installer에도 실제 runner/work 경로 검사와 BOM이 있는 공식 설정 
 노드 인증 Secret이 `k3s.cattle.io/node-password`로 전환된 뒤 exec kubeconfig 인증과 재등록이 정상이다.
 노드 IP 일치, Pod 19개 Ready, ExternalSecret 2개 Ready, 내부/외부 DNS, Metrics Server 및 과거/현재 Prometheus 조회 통과.
 교체 후 fatal 로그와 Docker 반복 종료는 0이었다. 일반 터미널에서 설치본 CLI를 호출할 때도 launchd와 같은 관리 PATH를 쓰도록 보완했다.
+
+
+## 2026-10-10 현재 맥북 재시작 실기 검증 완료
+
+사용자가 현재 `secondary` 맥북의 전원을 종료한 뒤 다시 시작하고 로그인했다.
+로그인과 Codex 실행 외에 Docker 수동 실행·복구 명령·앱 재배포를 하지 않았음을 확인했다.
+읽기 전용 관측기는 다음 승인 기준을 통과했다.
+
+- 로그인 LaunchAgent 시작부터 600초 이내 자동 복구, 이후 300초 이상 연속 정상 상태. 시간 기준은 실제 로그인 시각의 근사치다.
+- 이번 부팅의 복구 성공 기록과 runner의 새 연결 및 GitHub online 확인.
+- 실제 Docker IP 변경 후 Kubernetes Node IP 일치, 지정한 K3s 버전 유지.
+- test/prod의 기존 PVC·이미지·차트·인증정보 유지 및 SQL과 외부 API 양쪽에서 검증 데이터 확인.
+- 재시작으로 바뀐 test/prod Quick Tunnel URL을 자동 갱신하고 새 주소의 화면·API·DB health 확인.
+- 안정성 관측 구간의 앱·DB 추가 재시작 없이 운영되며 T17 중앙 지표 수신도 회복.
+
+T17 검증 후 남은 test의 중단된 배포는 재부팅 전에 기존 정상 배포와 정합화했다.
+prod·DB·PVC와 T17 중앙 수집 설정의 보존을 확인한 뒤 원래 T27 데이터 기준으로 관측했다.
+원본 관측 결과와 사용자 확인, 상세 검증 증거는 로컬 기록으로 보관한다.
+
+이번 결과는 현재 맥북의 재부팅 항목 완료 근거다. 기존 기본 기기의 state 이전이나 Linux 실기 검증까지 완료한 것으로 확대하지 않는다.
+DB 장기 불통 시 liveness 분리 문제는 별도 후속 #211로 유지한다.
