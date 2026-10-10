@@ -29,15 +29,15 @@ default='[{"method":"GET","path":"/health","expect":200}]'
 if [ -f "$SMOKE_FILE" ]; then
   if ! list="$(jq -ce --arg r "$RELEASE" '.[$r] // empty' "$SMOKE_FILE" 2>/dev/null)"; then
     if jq -e . "$SMOKE_FILE" >/dev/null 2>&1; then
-      echo "$SMOKE_FILE에 $RELEASE 항목이 없어 기본 요청(GET /health)을 쓴다"
+      echo "${SMOKE_FILE}에 $RELEASE 항목이 없어 기본 요청(GET /health)을 쓴다"
       list="$default"
     else
-      echo "::error::$SMOKE_FILE이 올바른 JSON이 아니다"
+      echo "::error::${SMOKE_FILE}이 올바른 JSON이 아니다"
       exit 1
     fi
   fi
 else
-  echo "$SMOKE_FILE이 없어 기본 요청(GET /health)을 쓴다"
+  echo "${SMOKE_FILE}이 없어 기본 요청(GET /health)을 쓴다"
   list="$default"
 fi
 jq -c '.[] | {method: ((.method // "GET") | ascii_upcase), path, expect: (.expect // 200), body}' <<<"$list" > "$requests"
