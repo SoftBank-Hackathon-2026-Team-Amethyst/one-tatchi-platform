@@ -10,11 +10,12 @@
 
 ## Unreleased
 
-## v2.4.1
+## v2.5.0
 
 - T17: GCP Helm 조회에서 `kubectl auth can-i`의 거절(exit 1 / no)을 전송·인증 오류와 구분하고 namespace를 알린다. stderr나 자격증명은 공개하지 않는다.
 - T17/T31: Cognito가 SAML metadata에서 생성하는 인증서·SSO/SLO 주소 3개를 유지해 관측 plan에서 불필요한 인증 변경을 없앤다. MetadataURL·IDPSignout·attribute mapping은 계속 Terraform으로 관리한다.
 - T17: 새 previewAuth.routes의 FE→BE 간접 경로도 매 실측 요청 전 private preview 검사에 포함한다.
+- T33: `modules/db_link/tailscale` 추가. Tailscale Kubernetes Operator로 클러스터 안 DB를 tailnet에만 publish하고, 다른 클러스터에서 ClusterIP Service로 consume한다(AWS 앱 → 온프레미스 DB, 반대 방향도 같은 모듈). OAuth 값은 ephemeral 입력 → write-only Secret.
 
 ## v2.4.0
 
