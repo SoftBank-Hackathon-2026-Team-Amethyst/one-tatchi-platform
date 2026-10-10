@@ -116,14 +116,19 @@ def connect(config_path, requested, mode):
                 if any(current.get(key) != state.get(key) for key in ("lineage", "serial")):
                     raise RuntimeError("device state changed during review; run a fresh plan")
                 ctl.check_ownership(config, ctl.cluster_exists(config))
-                ctl.prepare_kubeconfig(config)
+                auth = ctl.prepare_kubeconfig(config)
                 env["KUBECONFIG"] = os.environ["KUBECONFIG"]
+                # Ephemeral variables are deliberately absent from a saved plan.
+                # Supply fresh credentials only to Terraform, never to argv/files.
+                apply_env = dict(env)
+                apply_env["TF_VAR_onprem_auth"] = json.dumps(auth)
+                apply_env["TF_VAR_onprem_db_passwords"] = json.dumps(ctl.database_passwords(config))
                 command(["kubectl", "apply", "--server-side", "--field-manager=t17-metrics", "-f", "-"], env=env, input=payload)
                 # Apply only the private plan created and checked above. The general-purpose
                 # wrapper injects CLI variables, which cannot accompany a saved plan.
                 # Terraform also rejects this plan if the state changed after our check.
                 command(["terraform", f"-chdir={root}", "apply", "-input=false",
-                         "-lock-timeout=5m", plan_path], env=env)
+                         "-lock-timeout=5m", plan_path], env=apply_env)
                 keep_settings = True
                 command(["kubectl", "-n", "monitoring", "rollout", "restart", "deployment/deploy-metrics"], env=env)
                 command(["kubectl", "-n", "monitoring", "rollout", "status", "deployment/deploy-metrics", "--timeout=180s"], env=env)

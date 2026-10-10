@@ -10,6 +10,7 @@
 
 ## v2.7.0
 
+- T17: 기존 온프레미스 관측 설정의 저장 plan 적용 시 Kubernetes·DB ephemeral 입력을 메모리 환경변수로 다시 전달한다. 저장 plan에는 인증정보가 없기 때문에 재주입 없이 apply가 실패하던 문제를 고친다.
 - T17: GCP Grafana Workload Identity Pool의 표시 이름을 API 제한인 32자 이내로 줄여 실제 생성 실패를 고친다. 풀 ID와 신뢰 대상 및 읽기 권한은 유지한다.
 - T29: 선택형 AWS Cluster Autoscaler와 클러스터별 노드 확장 설정을 포함한다. 기존 클라우드의 v1 고정은 유지할 수 있다.
 - T27: 관리되는 온프레미스의 IP 변경·재부팅 복구와 최신 터널 검증을 포함한다.
