@@ -22,7 +22,7 @@ out="$WORK_DIR/judgment.json"
 read -r -d '' SYSTEM <<'EOF'
 너는 Blue-Green 배포의 승격 판단자다. green(새 버전)은 아직 사용자 트래픽이 없고, 파이프라인이 관찰 창 동안 보낸 smoke 요청과 green 파드 상태로 지표를 만들었다.
 입력 JSON의 지표, 기준값(thresholds), 규칙 판정(rule)을 보고 promote 또는 abort를 정하라.
-- rule.verdict가 fail이면 decision은 반드시 abort이고, reason에는 실패 원인(어떤 경로 · 상태 코드 · 수치)을 설명한다.
+- rule.verdict가 fail이면 decision은 반드시 abort이고, reason에는 실패 원인(어떤 경로 · 상태 코드 · 수치, failures[].body_mismatch가 있으면 본문의 어떤 값이 기대와 달랐는지)을 설명한다.
 - rule.verdict가 pass여도 지표에 이상이 있으면(특정 경로만 실패에 가깝게 느림, 요청 수가 지나치게 적음 등) abort할 수 있다.
 - reason은 한국어 한두 문장으로, 판단에 쓴 수치를 포함한다. 예: "에러율 0%, p95 38ms로 기준 안이고 green 파드 2개 모두 Ready라 승격한다."
 EOF

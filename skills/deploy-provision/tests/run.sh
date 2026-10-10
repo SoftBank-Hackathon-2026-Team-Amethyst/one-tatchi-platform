@@ -136,6 +136,14 @@ printf 'envFromSecrets:\n  - demo-app-db\nenv:\n  PGSSL: require\n' >> "$app/dep
 bash "$check" "$app" >"$tmp/check6.log" 2>&1 || { echo "PGSSL: require 인데 실패했다" >&2; cat "$tmp/check6.log" >&2; exit 1; }
 cp "$tmp/values-be-original.yaml" "$app/deploy/values-be.yaml"
 
+echo "== smoke.json의 expect_body는 객체여야 함"
+cp "$app/.deploy/smoke.json" "$tmp/smoke-original.json"
+jq '.["demo-app-be"][0].expect_body = "connected"' "$tmp/smoke-original.json" > "$app/.deploy/smoke.json"
+if bash "$check" "$app" >/dev/null 2>&1; then echo "expect_body 문자열을 놓쳤다" >&2; exit 1; fi
+jq '.["demo-app-be"][0].expect_body = {"database": "connected"}' "$tmp/smoke-original.json" > "$app/.deploy/smoke.json"
+bash "$check" "$app" >"$tmp/check7.log" 2>&1 || { echo "expect_body 객체인데 실패했다" >&2; cat "$tmp/check7.log" >&2; exit 1; }
+cp "$tmp/smoke-original.json" "$app/.deploy/smoke.json"
+
 echo "== 자리표시자가 남으면 실패"
 echo "host: @@HOST_TEST@@" >> "$app/deploy/onprem/values.yaml"
 if bash "$check" "$app" >/dev/null 2>&1; then echo "자리표시자 잔존을 놓쳤다" >&2; exit 1; fi

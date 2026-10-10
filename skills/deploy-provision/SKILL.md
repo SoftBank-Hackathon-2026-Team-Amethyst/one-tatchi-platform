@@ -39,7 +39,7 @@ description: 분석 결과(.deploy/plan.yaml, .deploy/report.md)로 대상 레�
    | `deploy/<대상>/values.yaml` | `templates/deploy/<대상>/values.yaml.tmpl` | 대상마다 |
    | `infra/envs/aws/*` | `templates/infra/envs/aws/*.tmpl` | `target: aws` |
    | `infra/envs/onprem/*` | `templates/infra/envs/onprem/*.tmpl` | `target: onprem` |
-   | `.deploy/smoke.json` | `templates/.deploy/smoke.json.tmpl` | 항상. 서비스 분석의 smoke 후보로 채운다 |
+   | `.deploy/smoke.json` | `templates/.deploy/smoke.json.tmpl` | 항상. 서비스 분석의 smoke 후보로 채운다. `database: true`인 서비스는 헬스 경로에 `expect_body`로 DB 연결 조건(예: `{"database": "connected"}`)을 넣는다 |
    | `.deploy/config.yaml` | 직접 편집 | 없을 때 `template_version` · 주석을 추가. 있으면 건드리지 않는다(CODEOWNERS 리뷰 대상). `compliance`는 `write_brief.py`만 쓴다 |
    | `.deploy/plan.yaml` | 읽기만 | `deploy-analyze`가 쓴 인계값 |
 4. **값 파일 다듬기.** 렌더한 `deploy/values-<서비스>.yaml`에 서비스별 값(`env`, `envFromSecrets`, `migration`, `ingress.paths`, `writablePaths`, `resources`)을 `plan.yaml`의 `services`와 코드베이스 분석대로 채운다. App Chart가 받는 키만 쓴다(`charts/app/values.yaml`이 기준). 비밀값은 쓰지 않는다.
