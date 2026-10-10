@@ -83,9 +83,9 @@ class CollectTest(unittest.TestCase):
         (self.judgment / "judgment.json").write_text(json.dumps(
             {"decision": decision, "reason": "묶음 근거", "services": services}))
 
-    def write_warnings(self, items, status="ok", detail=None):
+    def write_warnings(self, items, status="ok", detail=None, base="c" * 40):
         self.warnings.write_text(json.dumps({
-            "status": status, "detail": detail, "items": items,
+            "status": status, "detail": detail, "items": items, "base_sha": base,
             "scanner": {"name": "trivy", "version": "0.75.0", "db_updated_at": "2026-10-10T00:00:00Z"}}))
 
     def build(self, *extra, **override):
@@ -114,6 +114,7 @@ class CollectTest(unittest.TestCase):
         self.assertEqual(report["approval"]["status"], "required")
         self.assertEqual(report["judgment"]["decision"], "promote")
         self.assertEqual(report["collection"]["lint"]["status"], "not_collected")
+        self.assertEqual(report["collection"]["image"]["status"], "not_collected")
         self.assertEqual(report["debt"], {"open_issue": False, "reasons": []})
 
     def test_repairs_are_listed_without_history_file(self):
@@ -137,16 +138,29 @@ class CollectTest(unittest.TestCase):
         self.write_promotion(self.sha)
         self.assertEqual(self.build()["repairs"]["count"], 0)
 
-    def test_warnings_open_issue(self):
+    def test_new_warnings_open_issue(self):
         self.write_warnings([
             {"source": "vulnerability", "severity": "MEDIUM", "id": "CVE-1", "target": "be/pnpm-lock.yaml",
-             "package": "lib", "title": "x" * 500},
+             "package": "lib", "title": "x" * 500, "new_on_branch": True},
             {"source": "scan_exception", "severity": "UNKNOWN", "id": "CVE-2", "target": ".trivyignore",
-             "package": None, "title": "패치 대기"}])
+             "package": None, "title": "패치 대기", "new_on_branch": True},
+            {"source": "misconfiguration", "severity": "LOW", "id": "AWS-0033", "target": "infra/main.tf",
+             "package": None, "title": "main에 원래 있던 경고", "new_on_branch": False}])
         report = self.build()
-        self.assertEqual(report["warnings"]["total"], 2)
+        self.assertEqual((report["warnings"]["total"], report["warnings"]["new_total"]), (3, 2))
         self.assertEqual(len(report["warnings"]["items"][0]["title"]), 300)
-        self.assertEqual(report["debt"]["reasons"], ["차단하지 않은 경고 2건 (취약점 MEDIUM 1, 검사 예외 1)"])
+        self.assertEqual(report["debt"]["reasons"], ["이 브랜치가 새로 들여온 비차단 경고 2건 (취약점 MEDIUM 1, 검사 예외 1)"])
+
+    def test_existing_warnings_are_recorded_without_issue(self):
+        self.write_warnings([{"source": "misconfiguration", "severity": "MEDIUM", "id": "AWS-0038",
+                              "target": "infra/main.tf", "package": None, "title": "로그", "new_on_branch": False}])
+        report = self.build()
+        self.assertEqual((report["warnings"]["total"], report["warnings"]["new_total"]), (1, 0))
+        self.assertFalse(report["debt"]["open_issue"])
+
+    def test_warnings_without_base_is_a_failure(self):
+        self.write_warnings([], base=None)
+        self.assertEqual(self.build()["collection"]["warnings"]["status"], "failed")
 
     def test_missing_judgment_is_a_failure(self):
         report = self.build(**{"--judgment-dir": self.work / "없음"})
@@ -184,7 +198,9 @@ class CollectTest(unittest.TestCase):
         self.assertIsNone(report["warnings"]["scanner"])
 
     def test_malformed_warning_item(self):
-        self.write_warnings([{"source": "lint", "severity": "MEDIUM", "id": "x", "target": "y"}])
+        self.write_warnings([{"source": "lint", "severity": "MEDIUM", "id": "x", "target": "y", "new_on_branch": True}])
+        self.assertEqual(self.build()["collection"]["warnings"]["status"], "failed")
+        self.write_warnings([{"source": "license", "severity": "MEDIUM", "id": "x", "target": "y"}])  # new_on_branch 없음
         self.assertEqual(self.build()["collection"]["warnings"]["status"], "failed")
 
     def test_compliance_none_and_missing(self):

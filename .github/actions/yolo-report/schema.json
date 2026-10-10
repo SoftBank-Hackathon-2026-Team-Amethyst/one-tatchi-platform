@@ -63,25 +63,28 @@
       }
     },
     "warnings": {
-      "description": "배포를 막지 않은 경고 (차단 기준 HIGH 미만, 검사 예외)",
+      "description": "배포를 막지 않은 경고 (차단 기준 HIGH 미만, 수정판 없는 HIGH 이상, 검사 예외). main에 원래 있던 경고도 기록하되 이슈 조건은 new_on_branch만 센다",
       "type": "object",
       "additionalProperties": false,
-      "required": ["total", "items", "scanner"],
+      "required": ["total", "new_total", "base_sha", "items", "scanner"],
       "properties": {
         "total": {"type": "integer", "minimum": 0},
+        "new_total": {"description": "이 yolo 브랜치가 새로 들여온 경고 수 (이슈 조건)", "type": "integer", "minimum": 0},
+        "base_sha": {"description": "비교한 기준: yolo 브랜치가 갈라진 커밋. 수집 실패면 null", "anyOf": [{"$ref": "#/$defs/sha"}, {"type": "null"}]},
         "items": {
           "type": "array",
           "items": {
             "type": "object",
             "additionalProperties": false,
-            "required": ["source", "severity", "id", "target", "title"],
+            "required": ["source", "severity", "id", "target", "package", "title", "new_on_branch"],
             "properties": {
-              "source": {"enum": ["vulnerability", "license", "scan_exception"]},
+              "source": {"enum": ["vulnerability", "misconfiguration", "license", "scan_exception"]},
               "severity": {"enum": ["CRITICAL", "HIGH", "MEDIUM", "LOW", "UNKNOWN"]},
               "id": {"description": "CVE · 라이선스 이름 · 예외 항목", "type": "string", "minLength": 1},
               "target": {"description": "검사 대상 파일 또는 예외를 둔 파일", "type": "string", "minLength": 1},
               "package": {"type": ["string", "null"]},
-              "title": {"description": "짧은 설명. 예외는 사유 주석", "type": "string", "maxLength": 300}
+              "title": {"description": "짧은 설명. 예외는 사유 주석", "type": "string", "maxLength": 300},
+              "new_on_branch": {"description": "기준(base_sha)에 없던 경고인지. true만 이슈 조건이다", "type": "boolean"}
             }
           }
         },
@@ -166,18 +169,19 @@
       "description": "항목별 수집 상태. failed는 이슈 조건이다. not_collected는 범위 밖이라 일부러 모으지 않은 항목이다",
       "type": "object",
       "additionalProperties": false,
-      "required": ["deploy", "repairs", "warnings", "judgment", "approval", "lint"],
+      "required": ["deploy", "repairs", "warnings", "judgment", "approval", "lint", "image"],
       "properties": {
         "deploy": {"$ref": "#/$defs/collected"},
         "repairs": {"$ref": "#/$defs/collected"},
         "warnings": {"$ref": "#/$defs/collected"},
         "judgment": {"$ref": "#/$defs/collected"},
         "approval": {"$ref": "#/$defs/collected"},
-        "lint": {"$ref": "#/$defs/collected"}
+        "lint": {"$ref": "#/$defs/collected"},
+        "image": {"description": "이미지(OS 패키지) 비차단 취약점", "$ref": "#/$defs/collected"}
       }
     },
     "debt": {
-      "description": "yolo-debt 이슈를 열지. 경고 1건 이상 · AI 수정 1회 이상 · 수집 실패 1건 이상이면 연다",
+      "description": "yolo-debt 이슈를 열지. 새로 들여온 경고 1건 이상 · AI 수정 1회 이상 · 수집 실패 1건 이상이면 연다",
       "type": "object",
       "additionalProperties": false,
       "required": ["open_issue", "reasons"],

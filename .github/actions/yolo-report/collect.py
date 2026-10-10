@@ -16,11 +16,12 @@ import sys
 REPAIR_SUBJECT = re.compile(r"^\[yolo\] 검사 실패 자동 수정 ([1-3])/3$")
 HISTORY_FILE = re.compile(r"^\.deploy/log/[^/]+-yolo\.md$")
 SEVERITIES = {"CRITICAL", "HIGH", "MEDIUM", "LOW", "UNKNOWN"}
-WARNING_SOURCES = {"vulnerability", "license", "scan_exception"}
+WARNING_SOURCES = {"vulnerability", "misconfiguration", "license", "scan_exception"}
 NEAR_RATIO = 0.8
 LIMITS = {"repair_reason": 1000, "warning_title": 300, "judgment_reason": 2000,
           "service_reason": 1000, "detail": 300}
 LINT_DETAIL = "린트 경고는 구조화된 출력이 없어 수집 범위 밖"
+IMAGE_DETAIL = "이미지(OS 패키지) 비차단 취약점은 수집 범위 밖. 차단 검사는 checks.yml image-scan이 한다"
 
 
 class Missing(Exception):
@@ -131,24 +132,30 @@ def collect_repairs(args):
 
 
 def collect_warnings(args):
-    """비차단 경고 파일: {"status", "detail", "scanner", "items"} (README '비차단 경고 입력')."""
-    empty = {"total": 0, "items": [], "scanner": None}
+    """비차단 경고 파일: warnings.py 출력 (README '비차단 경고 입력')."""
+    empty = {"total": 0, "new_total": 0, "base_sha": None, "items": [], "scanner": None}
     try:
         data = read_json(args.warnings, "비차단 경고 결과")
         if data.get("status") != "ok":
             raise Missing(data.get("detail") or "비차단 경고 수집이 끝나지 않았다")
         items = []
         for raw in data.get("items", []):
-            if raw.get("source") not in WARNING_SOURCES or raw.get("severity") not in SEVERITIES:
+            if raw.get("source") not in WARNING_SOURCES or raw.get("severity") not in SEVERITIES \
+                    or not isinstance(raw.get("new_on_branch"), bool):
                 raise Missing("비차단 경고 항목 형식이 잘못됐다")
             items.append({"source": raw["source"], "severity": raw["severity"],
                           "id": str(raw["id"]), "target": str(raw["target"]),
                           "package": raw.get("package"),
-                          "title": clip(raw.get("title") or raw["id"], LIMITS["warning_title"])})
+                          "title": clip(raw.get("title") or raw["id"], LIMITS["warning_title"]),
+                          "new_on_branch": raw["new_on_branch"]})
         scanner = data.get("scanner")
         if scanner is not None and not (isinstance(scanner, dict) and scanner.get("name") == "trivy"):
             raise Missing("비차단 경고의 scanner 형식이 잘못됐다")
-        return {"total": len(items), "items": items, "scanner": scanner}, ok()
+        base = data.get("base_sha")
+        if not (isinstance(base, str) and re.fullmatch(r"[0-9a-f]{40}", base)):
+            raise Missing("비차단 경고의 비교 기준(base_sha)이 없다")
+        return {"total": len(items), "new_total": sum(i["new_on_branch"] for i in items),
+                "base_sha": base, "items": items, "scanner": scanner}, ok()
     except (Missing, KeyError, TypeError, AttributeError) as exc:
         detail = str(exc) if isinstance(exc, Missing) else "비차단 경고 항목 형식이 잘못됐다"
         return empty, failed(detail)
@@ -228,14 +235,16 @@ def decide_debt(report):
     reasons = []
     if report["repairs"]["count"]:
         reasons.append(f"AI 자동 수정 {report['repairs']['count']}회")
-    if report["warnings"]["total"]:
+    if report["warnings"]["new_total"]:
         counts = {}
         for item in report["warnings"]["items"]:
-            key = {"vulnerability": f"취약점 {item['severity']}", "license": "라이선스",
-                   "scan_exception": "검사 예외"}[item["source"]]
+            if not item["new_on_branch"]:
+                continue
+            key = {"vulnerability": f"취약점 {item['severity']}", "misconfiguration": f"IaC {item['severity']}",
+                   "license": "라이선스", "scan_exception": "검사 예외"}[item["source"]]
             counts[key] = counts.get(key, 0) + 1
         parts = ", ".join(f"{k} {v}" for k, v in counts.items())
-        reasons.append(f"차단하지 않은 경고 {report['warnings']['total']}건 ({parts})")
+        reasons.append(f"이 브랜치가 새로 들여온 비차단 경고 {report['warnings']['new_total']}건 ({parts})")
     for name, state in report["collection"].items():
         if state["status"] == "failed":
             reasons.append(f"수집 실패: {name} ({state['detail']})")
@@ -258,7 +267,8 @@ def build(args):
         "judgment": judgment, "approval": approval,
         "collection": {"deploy": deploy_state, "repairs": repairs_state,
                        "warnings": warnings_state, "judgment": judgment_state,
-                       "approval": approval_state, "lint": not_collected(LINT_DETAIL)},
+                       "approval": approval_state, "lint": not_collected(LINT_DETAIL),
+                       "image": not_collected(IMAGE_DETAIL)},
     }
     report["debt"] = decide_debt(report)
     return report

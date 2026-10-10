@@ -12,8 +12,8 @@ yolo는 사람 리뷰 없이 test(규제 대상이 아니면 prod까지) 가므�
 
 | 예시 | 상황 | 이슈 |
 |---|---|---|
-| [`examples/report-debt.json`](examples/report-debt.json) | AI 자동 수정 1회 + 차단하지 않은 경고 2건, 규제 대상 | 연다 |
-| [`examples/report-clean.json`](examples/report-clean.json) | 수정 · 경고 없음, 규제 대상 아님 | 열지 않는다 |
+| [`examples/report-debt.json`](examples/report-debt.json) | AI 자동 수정 1회 + 새로 들여온 경고 1건(main에 원래 있던 경고 2건은 기록만), 규제 대상 | 연다 |
+| [`examples/report-clean.json`](examples/report-clean.json) | 수정 없음, main에 원래 있던 예외 1건만, 규제 대상 아님 | 열지 않는다 |
 | [`examples/report-partial.json`](examples/report-partial.json) | 경고 스캔 · 판단 근거 수집 실패 | 연다 |
 
 예시의 CVE · 패키지 · 실행 ID는 설명용 합성 값이다.
@@ -25,7 +25,7 @@ yolo는 사람 리뷰 없이 test(규제 대상이 아니면 prod까지) 가므�
 | `report_id` | `<run_id>-<run_attempt>` | GitHub Actions 실행 정보 |
 | `deploy` | 실행자 · 브랜치 · SHA · 대상 · 환경 · compliance · template_version · 실행 링크 · test 승격 여부 | Actions 실행 정보, 배포한 커밋의 `.deploy/config.yaml`, test 승격 확인 결과(`yolo-promotion.json`, T8) |
 | `repairs` | AI 자동 수정 회차 · 파일 · 사유 · 수정 커밋, 이력 파일 | 수정 커밋 `[yolo] 검사 실패 자동 수정 N/3`(제목) · 사유(본문), `.deploy/log/<시각>-<SHA>-yolo.md` (yolo 수정 루프, T14) |
-| `warnings` | 배포를 막지 않은 경고: MEDIUM 이하 취약점, 라이선스, 검사 예외 | 비차단 Trivy 스캔(JSON), 대상 레포 `.trivyignore` 항목과 사유 주석 |
+| `warnings` | 배포를 막지 않은 경고와 그중 이 브랜치가 새로 들여온 것(`new_on_branch`) | `scan_warnings.py` (아래 "비차단 경고 수집") |
 | `judgment` | 묶음 결정 · 근거, 서비스별 결정 출처 · 지표 · 기준값 · 기준 근접 | artifact `promote-judgment-test`의 `judgment.json` · `<서비스>/metrics.json` · `<서비스>/judgment.json` (T7) |
 | `approval` | 운영 승인 필요 · 생략 · 미도달 | compliance(`regulated` · 값 없음 → `required`, `none` → `skipped`), test에서 승격하지 않았으면 `not_reached` |
 | `collection` | 항목별 수집 상태 `ok` · `failed` · `not_collected` | 수집 단계 |
@@ -38,12 +38,13 @@ yolo는 사람 리뷰 없이 test(규제 대상이 아니면 prod까지) 가므�
 
 아래 중 하나라도 해당하면 `open_issue: true`이고, 해당하는 것마다 `reasons`에 한 줄씩 적는다.
 
-- 차단하지 않은 경고가 1건 이상 (`warnings.total > 0`)
+- 이 yolo 브랜치가 새로 들여온 비차단 경고가 1건 이상 (`warnings.new_total > 0`)
 - AI 자동 수정이 1회 이상 (`repairs.count > 0`)
 - 수집 실패가 1건 이상 (`collection.*.status == "failed"`)
 
 수집 실패를 경고 0건으로 처리하지 않는다. 모르는 상태로 배포된 것도 안고 간 문제다.
-`not_collected`는 범위 밖이라 일부러 모으지 않은 항목(현재 `lint`)이며 이슈 조건이 아니다.
+main에 원래 있던 경고(`new_on_branch: false`)는 리포트에 기록하지만 이슈 조건으로 세지 않는다. 그 경고는 이미 main에 들어간 상태라 이번 yolo가 안고 들어온 문제가 아니고, 매 배포마다 같은 이슈가 열리는 것을 막는다.
+`not_collected`는 범위 밖이라 일부러 모으지 않은 항목(현재 `lint`, `image`)이며 이슈 조건이 아니다.
 판단이 `abort`인 것만으로는 이슈를 열지 않는다(문제 버전이 승격되지 않았으므로).
 
 ## 수집 (`collect.py`)
@@ -70,18 +71,38 @@ python3 collect.py --output report.json \
 
 수정 커밋은 제목이 정확히 `[yolo] 검사 실패 자동 수정 N/3`(N은 1~3)인 커밋만 센다. yolo 수정 루프(`skills/yolo-deploy/scripts/repair_loop.py`)가 만드는 형식이다. 변경 파일 중 `.deploy/log/*-yolo.md`는 `history_file`로 따로 둔다.
 
-### 비차단 경고 입력
+### 비차단 경고 수집 (`scan_warnings.py`)
 
-`--warnings` 파일은 경고 수집 단계가 만든다.
+`checks.yml`은 HIGH 이상 중 수정판이 있는 것만 막는다. 이 스크립트는 막지 않은 것을 Trivy로 다시 찾아 `--warnings` 파일을 만든다. 차단 검사의 동작은 바꾸지 않는다.
 
-```json
-{"status": "ok", "detail": null,
- "scanner": {"name": "trivy", "version": "0.75.0", "db_updated_at": "2026-10-10T00:00:00Z"},
- "items": [{"source": "vulnerability", "severity": "MEDIUM", "id": "CVE-…", "target": "be/pnpm-lock.yaml",
-            "package": "…", "title": "…"}]}
+| 출처 (`source`) | 넣는 것 | 스캔 |
+|---|---|---|
+| `vulnerability` | UNKNOWN · LOW · MEDIUM, 수정판이 없어 막지 않은 HIGH · CRITICAL | `trivy fs --scanners vuln,license <scan-path>` |
+| `license` | MEDIUM(상호주의 등 주의 등급). HIGH 이상은 checks가 막고, LOW · UNKNOWN은 일반 라이선스라 뺀다 | 위와 같은 실행 |
+| `misconfiguration` | IaC 설정 UNKNOWN · LOW · MEDIUM (FAIL만) | `trivy fs --scanners misconfig <iac-path>` |
+| `scan_exception` | `.trivyignore` 항목. 빈 줄 없이 바로 위에 붙은 주석 묶음이 사유이고, 연달은 항목은 같은 사유를 쓴다 | 파일 읽기 |
+
+각 트리는 자기 `.trivyignore`를 적용해 스캔한다(checks가 본 것과 같다). yolo 브랜치가 갈라진 커밋(`git merge-base <sha> <base-ref>`)을 임시 worktree로 꺼내 같은 방식으로 스캔하고, (출처 · ID · 대상 · 패키지)가 기준에 없던 경고에 `new_on_branch: true`를 붙인다. 스캔이 하나라도 실패하면 `status: failed`로 남기고 종료 코드는 0이다(리포트 수집은 계속한다).
+
+```bash
+python3 scan_warnings.py --output warnings.json --repo-root <대상 레포> --sha <배포 SHA> \
+  --base-ref origin/main --scan-path . --iac-path infra   # checks.yml의 scan-path · iac-path와 같게
 ```
 
-`status`가 `ok`가 아니거나 항목 형식이 틀리면 `warnings` 수집 실패이고 `detail`이 사유가 된다.
+결과 형식 (`collect.py --warnings` 입력):
+
+```json
+{"status": "ok", "detail": null, "base_sha": "<갈라진 커밋>",
+ "scanner": {"name": "trivy", "version": "0.75.0", "db_updated_at": "2026-10-10T01:03:02Z"},
+ "items": [{"source": "vulnerability", "severity": "MEDIUM", "id": "CVE-…", "target": "be/pnpm-lock.yaml",
+            "package": "…", "title": "…", "new_on_branch": true}]}
+```
+
+`status`가 `ok`가 아니거나, `base_sha`가 없거나, 항목 형식이 틀리면 `warnings` 수집 실패이고 `detail`이 사유가 된다.
+
+- Trivy 버전과 취약점 DB 갱신 시각을 남긴다. checks 시점과 리포트 시점의 DB가 다를 수 있다.
+- 이미지(OS 패키지)의 비차단 취약점은 모으지 않는다(`collection.image = not_collected`). 차단 검사는 checks `image-scan`이 한다.
+- pnpm lockfile만 있는 레포는 Trivy가 라이선스를 읽지 못해 라이선스 경고가 0건일 수 있다(설치된 `node_modules`가 필요).
 
 ### 테스트
 
@@ -89,7 +110,7 @@ python3 collect.py --output report.json \
 uv run --no-project --with jsonschema python -B -m unittest discover -s .github/actions/yolo-report/tests -v
 ```
 
-임시 git 레포와 가짜 artifact로 정상 · 수정 2회 · 경고 · 판단 없음 · 판단 미실행 · abort · SHA 불일치 · 경고 스캔 실패 · compliance 없음 · 기준 근접 · git 이력 오류를 확인하고, 모든 결과와 예시를 `schema.json`으로 검사한다. CI `scripts` 잡에서도 돈다. jsonschema 없이 `python3`로 돌리면 스키마 검사만 건너뛴다.
+임시 git 레포와 가짜 artifact · 가짜 trivy(`tests/fake-trivy`)로 확인한다. 수집: 정상 · 수정 2회 · 새 경고와 원래 있던 경고 · 판단 없음 · 판단 미실행 · abort · SHA 불일치 · 경고 스캔 실패 · compliance 없음 · 기준 근접 · git 이력 오류. 경고 스캔: 새 경고 표시 · 등급 거르기 · 예외 사유 주석 · 스캔 실패 · 임시 worktree 정리. 모든 리포트와 예시를 `schema.json`으로 검사한다. CI `scripts` 잡에서도 돈다. jsonschema 없이 `python3`로 돌리면 스키마 검사만 건너뛴다.
 
 ## 넣지 않는 것
 
