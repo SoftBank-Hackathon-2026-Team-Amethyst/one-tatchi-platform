@@ -10,6 +10,9 @@
 
 ## Unreleased
 
+- T28: service-base DB Secret의 `DATABASE_URL`을 `postgresql://…?sslmode=require`로 바꾼다(`PG_URL`과 같은 값). 전에는 `postgresql+psycopg://…`에 `sslmode`가 없어 클라우드 DB(TLS 강제)에 붙지 못했다. SQLAlchemy용으로 새 키 `SQLALCHEMY_URL`(`postgresql+psycopg://…?sslmode=require`)을 둔다. **SQLAlchemy로 `DATABASE_URL`을 읽던 앱은 `SQLALCHEMY_URL`로 바꾼다.** `checks.yml`의 Python job도 두 키를 준다.
+- T28: promote-judge smoke 요청에 `expect_body`(JSON 객체)를 추가한다. 응답 본문이 그 키 · 값을 모두 담아야 통과하고, 상태 코드가 맞아도 본문이 어긋나면 실패로 세어 규칙 판정이 fail이 된다(`smoke-results.jsonl` · `metrics.json`의 `failures[]`에 `body_mismatch`). DB가 끊겨도 `/health`가 200인 앱의 메모리 폴백을 승격 전에 잡는다. `check-artifacts.sh`가 `expect_body` 형식을 검사하고, deploy-provision은 DB를 쓰는 서비스의 헬스 경로에 조건을 넣는다. ADR 0016, 운영 확인 절차 `docs/db-check.md`.
+
 ## v2.3.0
 
 - T17: T31 SSO preview를 test 실측 동안 비활성화하고, v1 cloud pin과 v2 preview_auth 참조를 산출물 검사·버전 갱신에서 함께 유지한다.

@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # green(<release>-preview)에 관찰 창 동안 smoke 요청을 보내고 요청마다 결과를 한 줄씩 남긴다.
 # 결과: $WORK_DIR/smoke-results.jsonl
-#   {"pass":1,"method":"GET","path":"/health","expect":200,"status":200,"ms":12,"ok":true}
+#   {"pass":1,"method":"GET","path":"/health","expect":200,"status":200,"ms":12,"ok":true,"body_mismatch":null}
+#   expect_body가 있는 요청은 응답 본문(JSON)이 그 키 · 값을 모두 담아야 ok다. 어긋나면 body_mismatch에 무엇이 달랐는지 남긴다.
 # macOS runner의 기본 bash(3.2)에서도 돌도록 bash 4 문법은 쓰지 않는다.
 #
 # 환경변수
@@ -23,7 +24,7 @@ requests="$WORK_DIR/smoke-requests.jsonl"
 : > "$out"
 
 # ---------- 요청 목록 ----------
-# .deploy/smoke.json: { "<release>": [ {"method":"GET","path":"/health","expect":200,"body":{...}} ] }
+# .deploy/smoke.json: { "<release>": [ {"method":"GET","path":"/health","expect":200,"body":{...},"expect_body":{...}} ] }
 # 파일이나 이 서비스 항목이 없으면 GET /health → 200 하나로 확인한다.
 default='[{"method":"GET","path":"/health","expect":200}]'
 if [ -f "$SMOKE_FILE" ]; then
@@ -40,9 +41,13 @@ else
   echo "${SMOKE_FILE}이 없어 기본 요청(GET /health)을 쓴다"
   list="$default"
 fi
-jq -c '.[] | {method: ((.method // "GET") | ascii_upcase), path, expect: (.expect // 200), body}' <<<"$list" > "$requests"
+jq -c '.[] | {method: ((.method // "GET") | ascii_upcase), path, expect: (.expect // 200), body, expect_body}' <<<"$list" > "$requests"
 if [ ! -s "$requests" ]; then
   echo "::error::smoke 요청 목록이 비어 있다"
+  exit 1
+fi
+if ! jq -e 'all(.expect_body == null or (.expect_body | type == "object"))' -s "$requests" >/dev/null; then
+  echo "::error::expect_body는 JSON 객체여야 한다 (예: {\"database\": \"connected\"})"
   exit 1
 fi
 
@@ -77,15 +82,29 @@ fi
 
 # ---------- 관찰 창 ----------
 # 첫 바퀴는 목록 전체, 이후에는 GET만 반복한다 (POST 같은 쓰기 요청을 반복하지 않는다).
+response="$WORK_DIR/smoke-response.body"
 request() {
   local method="$1" path="$2" body="$3" result rc=0
-  local args=(-sS -A one-tatchi-smoke -o /dev/null -w '%{http_code} %{time_total}' --max-time "$REQUEST_TIMEOUT_SECONDS" -X "$method")
+  local args=(-sS -A one-tatchi-smoke -o "$response" -w '%{http_code} %{time_total}' --max-time "$REQUEST_TIMEOUT_SECONDS" -X "$method")
   if [ "$body" != null ]; then args+=(-H 'Content-Type: application/json' --data "$body"); fi
+  : > "$response"
   result="$(curl "${args[@]}" "$BASE_URL$path" 2>/dev/null)" || rc=$?
   # 연결 실패 · 시간 초과면 상태 코드는 000
   [ -n "$result" ] || result="000 $REQUEST_TIMEOUT_SECONDS"
   [ "$rc" -eq 0 ] || result="000 ${result#* }"
   echo "$result"
+}
+
+# 응답 본문이 expect_body의 키 · 값을 모두 담으면 빈 문자열, 아니면 어긋난 항목 설명을 돌려준다.
+# 본문이 JSON이 아니면 그것도 불일치다. 중첩 객체는 그 키 전체를 비교한다.
+body_mismatch() {
+  local want="$1"
+  [ "$want" != null ] || return 0
+  jq -r --argjson want "$want" '
+    . as $got
+    | [ $want | to_entries[] | select($got[.key] != .value)
+        | "\(.key)=\($got[.key] // "없음" | tojson) (기대 \(.value | tojson))" ]
+    | join(", ")' "$response" 2>/dev/null || echo "본문이 JSON이 아니다"
 }
 
 end=$((SECONDS + WINDOW_SECONDS))
@@ -101,11 +120,15 @@ while :; do
     path="$(jq -r .path <<<"$item")"
     expect="$(jq -r .expect <<<"$item")"
     body="$(jq -c .body <<<"$item")"
+    want="$(jq -c .expect_body <<<"$item")"
     read -r status secs <<<"$(request "$method" "$path" "$body")"
+    mismatch="$(body_mismatch "$want")"
     jq -nc --argjson pass "$pass" --arg method "$method" --arg path "$path" \
-      --argjson expect "$expect" --argjson status "$((10#$status))" --arg secs "$secs" '
+      --argjson expect "$expect" --argjson status "$((10#$status))" --arg secs "$secs" --arg mismatch "$mismatch" '
       {pass: $pass, method: $method, path: $path, expect: $expect, status: $status,
-       ms: (($secs | tonumber) * 1000 | round), ok: ($status == $expect)}' >> "$out"
+       ms: (($secs | tonumber) * 1000 | round),
+       body_mismatch: (if $mismatch == "" then null else $mismatch end)}
+      | .ok = (.status == .expect and .body_mismatch == null)' >> "$out"
   done < "$requests"
   [ "$SECONDS" -lt "$end" ] || break
   sleep 0.2

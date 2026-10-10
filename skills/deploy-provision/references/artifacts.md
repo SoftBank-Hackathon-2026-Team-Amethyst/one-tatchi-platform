@@ -72,7 +72,7 @@ App Chart(`charts/app/values.yaml`)가 받는 키만. 모든 배포 대상 공�
 
 - `image.repository`: `ghcr.io/<org 소문자>/<서비스>`. 파이프라인이 대상에 맞게 덮어쓴다(aws는 ECR). `image.tag`는 비운다(커밋 SHA).
 - `containerPort`, `service.port`(다른 서비스가 `http://<서비스>:<port>`로 부른다), `probe.path`.
-- `env`: 고정값만. `envFromSecrets`: DB를 쓰면 `[<앱>-db]`(Terraform이 만든 Secret, 키 `DATABASE_URL` · `PG_URL`).
+- `env`: 고정값만. `envFromSecrets`: DB를 쓰면 `[<앱>-db]`(Terraform이 만든 Secret, 키 `DATABASE_URL` · `PG_URL` = `postgresql://…?sslmode=require`, SQLAlchemy는 `SQLALCHEMY_URL` = `postgresql+psycopg://…?sslmode=require`).
 - DB를 쓰는 서비스는 `env.PGSSL: require`를 함께 넣는다. 클라우드 DB(RDS · Cloud SQL)는 TLS 없는 접속을 거부하고, 온프레미스 Postgres도 TLS를 켜 두었다. 드라이버가 이 변수를 스스로 읽지 않으면(Node `postgres`가 그렇다) 앱 코드가 `PGSSL`을 TLS 옵션으로 넘기는지 확인하고, 아니면 코드 수정 범위에 넣는다(libpq 계열은 `PGSSLMODE`를 바로 읽으므로 그 이름도 받는다). `check-artifacts.sh`가 빠졌는지 검사한다.
 - `migration.enabled: true` + `secretName: <앱>-db`면 파이프라인이 `--set-file migration.sql=<SQL>`로 배포마다 적용한다. SQL은 여러 번 실행해도 안전해야 한다(`IF NOT EXISTS`).
 - `ingress.enabled: true`는 외부에 열 서비스(보통 FE)만. BE는 FE가 프록시한다. `ingress.group` · `host`는 파이프라인이 넣는다.
@@ -106,8 +106,8 @@ platform 모듈을 `?ref=@@TEMPLATE_VERSION@@`로 참조하는 Terraform 루트.
 ```json
 {
   "demo-app-be": [
-    {"method": "GET", "path": "/health", "expect": 200},
-    {"method": "GET", "path": "/api/info", "expect": 200},
+    {"method": "GET", "path": "/health", "expect": 200, "expect_body": {"database": "connected"}},
+    {"method": "GET", "path": "/api/info", "expect": 200, "expect_body": {"dbConnected": true}},
     {"method": "POST", "path": "/api/guestbook", "expect": 201, "body": {"name": "smoke", "message": "smoke test"}}
   ],
   "demo-app-fe": [
@@ -117,6 +117,7 @@ platform 모듈을 `?ref=@@TEMPLATE_VERSION@@`로 참조하는 Terraform 루트.
 ```
 
 - `method` 기본 `GET`, `expect` 기본 `200`. 쓰기 요청은 관찰 창에서 한 번만 보내진다. 데이터가 남으므로 테스트용임이 드러나는 값으로.
+- `expect_body`(JSON 객체): 응답 본문(JSON)에 이 키 · 값이 모두 들어 있어야 통과한다. `database: true`인 서비스는 헬스 경로에 DB 연결 상태 조건을 넣는다. `/health`가 DB 없이도 200이면 상태 코드만으로는 메모리 폴백을 잡지 못한다 (T28).
 - FE green의 `/api`는 blue BE로 프록시되므로 FE 목록에는 FE 자체 경로만.
 - 파일이 없으면 `GET /health → 200`만 확인한다. 서비스 분석의 smoke 후보에서 읽기 요청 위주로 3~5개.
 

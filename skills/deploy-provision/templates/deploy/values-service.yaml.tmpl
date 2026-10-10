@@ -11,7 +11,7 @@ service:
 probe:
   path: @@HEALTH@@
 
-# 고정 환경변수만. DB 접속은 envFromSecrets: [<앱>-db] (Terraform이 만든 Secret, 키 DATABASE_URL · PG_URL)
+# 고정 환경변수만. DB 접속은 envFromSecrets: [<앱>-db] (Terraform이 만든 Secret, 키 DATABASE_URL · PG_URL · SQLALCHEMY_URL, 모두 sslmode=require)
 # DB를 쓰면 env에 PGSSL: require 를 넣는다 (클라우드 DB는 TLS 없는 접속을 거부한다. 앱이 이 값을 드라이버 TLS 옵션으로 넘겨야 한다)
 env: {}
 envFromSecrets: []

@@ -102,6 +102,8 @@ if [ -f .deploy/smoke.json ]; then
   if command -v jq >/dev/null; then
     jq -e 'type == "object" and all(.[]; type == "array" and all(.[]; has("path")))' .deploy/smoke.json >/dev/null 2>&1 \
       || fail ".deploy/smoke.json: {\"<서비스>\": [{\"path\": …}, …]} 형식이 아니다"
+    jq -e 'all(.[][]; (.expect_body // {}) | type == "object")' .deploy/smoke.json >/dev/null 2>&1 \
+      || fail ".deploy/smoke.json: expect_body 는 JSON 객체여야 한다 (예: {\"database\": \"connected\"})"
   else skip "jq가 없어 smoke.json 형식"; fi
 fi
 

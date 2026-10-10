@@ -65,8 +65,8 @@ Blue-Green 배포에서 green(새 버전)을 승격할지 버릴지 정한다 (T
 ```json
 {
   "demo-app-be": [
-    {"method": "GET", "path": "/health", "expect": 200},
-    {"method": "GET", "path": "/api/info", "expect": 200},
+    {"method": "GET", "path": "/health", "expect": 200, "expect_body": {"database": "connected"}},
+    {"method": "GET", "path": "/api/info", "expect": 200, "expect_body": {"dbConnected": true}},
     {"method": "POST", "path": "/api/guestbook", "expect": 200, "body": {"name": "smoke", "message": "hi"}}
   ],
   "demo-app-fe": [
@@ -76,15 +76,17 @@ Blue-Green 배포에서 green(새 버전)을 승격할지 버릴지 정한다 (T
 ```
 
 - `method` 기본 `GET`, `expect` 기본 `200`, `body`는 있으면 JSON으로 보낸다.
+- `expect_body`(JSON 객체, 선택): 응답 본문을 JSON으로 읽어 이 키 · 값이 **모두** 같아야 통과한다. 상태 코드가 맞아도 본문이 어긋나면 실패이고, 본문이 JSON이 아니어도 실패다. 중첩 객체는 그 키 전체를 비교한다. 객체가 아니면 smoke 단계가 실패하고 판단은 abort다. DB가 끊겨도 `/health`가 200인 앱의 메모리 폴백을 잡으려고 둔다 (T28, [ADR 0016](../../../docs/adr/0016-cloud-db-tls-and-memory-fallback.md)).
 - 관찰 창 동안 첫 바퀴는 목록 전체, 이후에는 `GET`만 반복한다. 쓰기 요청은 한 번만 보낸다.
 - 파일이 없거나 그 서비스 항목이 없으면 `GET /health → 200`만 확인한다. 파일이 올바른 JSON이 아니면 smoke 단계가 실패하고 판단은 abort다.
 - FE green의 `/api`는 blue BE로 프록시되므로 FE 목록에는 FE 자체 경로만 넣는다.
 - green 접속은 `kubectl port-forward svc/<release>-preview` ([ADR 0003](../../../docs/adr/0003-green-access-port-forward.md)).
 
-결과 `smoke-results.jsonl`은 요청마다 한 줄이다. 연결 실패 · 시간 초과는 `status: 0`.
+결과 `smoke-results.jsonl`은 요청마다 한 줄이다. 연결 실패 · 시간 초과는 `status: 0`. `expect_body`가 어긋나면 `body_mismatch`에 어떤 키가 어떻게 달랐는지 남는다.
 
 ```json
-{"pass":1,"method":"GET","path":"/health","expect":200,"status":200,"ms":12,"ok":true}
+{"pass":1,"method":"GET","path":"/health","expect":200,"status":200,"ms":12,"ok":true,"body_mismatch":null}
+{"pass":1,"method":"GET","path":"/health","expect":200,"status":200,"ms":14,"ok":false,"body_mismatch":"database=\"fallback-memory\" (기대 \"connected\")"}
 ```
 
 ## 지표와 규칙 판정
@@ -93,7 +95,7 @@ Blue-Green 배포에서 green(새 버전)을 승격할지 버릴지 정한다 (T
 
 | 지표 | 얻는 방법 |
 |---|---|
-| 요청 수 · 실패 수 · 에러율(%) · 실패 묶음 | `smoke-results.jsonl` |
+| 요청 수 · 실패 수 · 에러율(%) · 실패 묶음 | `smoke-results.jsonl`. 실패는 상태 코드 불일치 · 연결 실패 · `expect_body` 불일치(`body_mismatch`) 모두 |
 | p95 | 응답 시간 오름차순에서 ceil(0.95 × n)번째 값 (nearest-rank) |
 | green 파드 수 · Ready · 재시작 | kubectl. Rollout의 `status.blueGreen.previewSelector` 해시 라벨(`rollouts-pod-template-hash`)을 가진 파드 |
 
@@ -106,7 +108,7 @@ Blue-Green 배포에서 green(새 버전)을 승격할지 버릴지 정한다 (T
 
 ```json
 {"requests": 2, "failed": 1, "error_rate": 50, "p95_ms": 30, "max_ms": 30, "passes": 1,
- "failures": [{"method": "GET", "path": "/api/info", "expect": 200, "status": 500, "count": 1}],
+ "failures": [{"method": "GET", "path": "/api/info", "expect": 200, "status": 500, "body_mismatch": null, "count": 1}],
  "release": "demo-app-be", "green_hash": "green123", "pods": {"count": 2, "ready": 2, "restarts": 0},
  "thresholds": {"max_error_rate": 0, "max_p95_ms": 2000, "max_restarts": 0},
  "rule": {"verdict": "fail", "reasons": ["에러율 50% > 기준 0%"]}}

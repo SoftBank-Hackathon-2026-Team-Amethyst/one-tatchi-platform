@@ -35,8 +35,8 @@ count() { jq -s "[.[] | select($2)] | length" "$tmp/$1/smoke-results.jsonl"; }
 cat > "$tmp/smoke.json" <<'JSON'
 {
   "demo-app-be": [
-    {"method": "GET", "path": "/health", "expect": 200},
-    {"method": "GET", "path": "/api/info", "expect": 200},
+    {"method": "GET", "path": "/health", "expect": 200, "expect_body": {"database": "connected"}},
+    {"method": "GET", "path": "/api/info", "expect": 200, "expect_body": {"dbConnected": true}},
     {"method": "post", "path": "/api/guestbook", "expect": 201, "body": {"name": "smoke", "message": "hi"}}
   ]
 }
@@ -54,6 +54,26 @@ start_server fail
 smoke fail BASE_URL="$BASE_URL"
 [ "$(count fail '.path == "/api/info" and .status == 500 and (.ok | not)')" -ge 1 ] || fail "500이 기록되지 않았다"
 [ "$(count fail '.path == "/health" and (.ok | not)')" = 0 ] || fail "/health는 정상이어야 한다"
+
+echo "== DB 안 붙은 green: 상태 200이어도 expect_body가 어긋나면 실패, body_mismatch에 값이 남음"
+start_server memory
+smoke memory BASE_URL="$BASE_URL"
+[ "$(count memory '.path == "/health" and .status == 200 and (.ok | not)')" -ge 1 ] || fail "본문 불일치가 실패로 기록되지 않았다"
+[ "$(count memory '.path == "/api/info" and (.ok | not)')" -ge 1 ] || fail "dbConnected=false가 실패로 기록되지 않았다"
+jq -r 'select(.path == "/health") | .body_mismatch' "$tmp/memory/smoke-results.jsonl" | head -1 | grep -q 'database="fallback-memory" (기대 "connected")' \
+  || fail "body_mismatch 설명이 틀렸다: $(jq -r 'select(.path == "/health") | .body_mismatch' "$tmp/memory/smoke-results.jsonl" | head -1)"
+[ "$(count memory '.path == "/api/guestbook" and (.ok | not)')" = 0 ] || fail "expect_body가 없는 요청은 상태 코드만 봐야 한다"
+
+echo "== 본문이 JSON이 아니면 expect_body 불일치"
+start_server text
+smoke text BASE_URL="$BASE_URL"
+jq -r 'select(.path == "/health") | .body_mismatch' "$tmp/text/smoke-results.jsonl" | head -1 | grep -q 'JSON이 아니다' || fail "JSON 아님이 기록되지 않았다"
+
+echo "== expect_body가 객체가 아니면 실패로 끝남"
+echo '{"demo-app-be": [{"path": "/health", "expect_body": "connected"}]}' > "$tmp/badbody.json"
+if smoke badbody BASE_URL="$BASE_URL" SMOKE_FILE="$tmp/badbody.json" 2>/dev/null; then
+  fail "expect_body 문자열을 받아들였다"
+fi
 
 echo "== 느린 green: 제한 시간을 넘으면 상태 000, 실패"
 start_server slow
@@ -91,13 +111,15 @@ metrics() {
     || { cat "$tmp/m-$name.log" >&2; return 1; }
 }
 m() { jq -r "$2" "$tmp/m-$1/metrics.json"; }
-# results <이름> <ok 개수> <500 개수>: 응답 시간 1..n ms인 smoke 결과를 만든다
+# results <이름> <ok 개수> <500 개수> [본문 불일치 개수]: 응답 시간 1..n ms인 smoke 결과를 만든다
 results() {
   mkdir -p "$tmp/m-$1"
-  jq -nc --argjson ok "$2" --argjson bad "$3" '
-    range(1; $ok + $bad + 1) as $i
-    | if $i <= $ok then {pass: 1, method: "GET", path: "/health", expect: 200, status: 200, ms: $i, ok: true}
-      else {pass: 1, method: "GET", path: "/api/info", expect: 200, status: 500, ms: $i, ok: false} end
+  jq -nc --argjson ok "$2" --argjson bad "$3" --argjson mis "${4:-0}" '
+    range(1; $ok + $bad + $mis + 1) as $i
+    | if $i <= $ok then {pass: 1, method: "GET", path: "/health", expect: 200, status: 200, ms: $i, ok: true, body_mismatch: null}
+      elif $i <= $ok + $bad then {pass: 1, method: "GET", path: "/api/info", expect: 200, status: 500, ms: $i, ok: false, body_mismatch: null}
+      else {pass: 1, method: "GET", path: "/health", expect: 200, status: 200, ms: $i, ok: false,
+            body_mismatch: "database=\"fallback-memory\" (기대 \"connected\")"} end
   ' > "$tmp/m-$1/smoke-results.jsonl"
 }
 pods_json() {  # pods_json <파일> <restartCount> <Ready: True|False>
@@ -121,6 +143,13 @@ metrics bad
 [ "$(m bad .error_rate)" = 10 ] || fail "에러율이 10%가 아니다: $(m bad .error_rate)"
 [ "$(m bad '.failures[0] | "\(.path) \(.status) \(.count)"')" = "/api/info 500 2" ] || fail "실패 묶음이 틀렸다"
 m bad '.rule.reasons[]' | grep -q '에러율 10%' || fail "이유에 에러율이 없다"
+
+echo "== metrics 본문 불일치: 상태 200이어도 에러율에 들어가고 실패 묶음에 body_mismatch가 남음"
+results mismatch 18 0 2
+metrics mismatch
+[ "$(m mismatch .rule.verdict)" = fail ] || fail "본문 불일치가 있는데 fail이 아니다"
+[ "$(m mismatch '.failures[0] | "\(.path) \(.status) \(.count) \(.body_mismatch)"')" = '/health 200 2 database="fallback-memory" (기대 "connected")' ] \
+  || fail "본문 불일치 묶음이 틀렸다: $(m mismatch '.failures')"
 
 echo "== metrics 재시작 · Ready 아님: fail"
 results restart 20 0

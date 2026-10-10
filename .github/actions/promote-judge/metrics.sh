@@ -30,8 +30,8 @@ smoke="$(jq -s '
       p95_ms: (if length > 0 then $ms[((length * 0.95) | ceil) - 1] else null end),
       max_ms: ($ms | max),
       failures: (map(select(.ok | not))
-        | group_by([.method, .path, .status])
-        | map(.[0] + {count: length} | {method, path, expect, status, count}))
+        | group_by([.method, .path, .status, .body_mismatch])
+        | map(.[0] + {count: length} | {method, path, expect, status, body_mismatch, count}))
     }
   | .error_rate = (if .requests > 0 then (.failed * 10000 / .requests | round) / 100 else null end)
 ' "$results")" || smoke='{"requests":0,"failed":0,"passes":0,"p95_ms":null,"max_ms":null,"failures":[],"error_rate":null}'

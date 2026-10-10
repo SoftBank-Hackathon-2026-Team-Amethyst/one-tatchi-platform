@@ -66,7 +66,9 @@ jobs:
         ports: ["5432:5432"]
         options: --health-cmd "pg_isready -U demo" --health-interval 2s --health-retries 15
     env:
-      DATABASE_URL: postgresql+psycopg://demo:demo@localhost:5432/demo
+      # service-base Secret과 같은 키 이름 (CI의 Postgres는 TLS가 없어 sslmode는 뺀다)
+      DATABASE_URL: postgresql://demo:demo@localhost:5432/demo
+      SQLALCHEMY_URL: postgresql+psycopg://demo:demo@localhost:5432/demo
     steps:
       - uses: actions/checkout@v7
       - uses: astral-sh/setup-uv@v10.2.0
