@@ -43,17 +43,18 @@ publish · deploy job 실패
 | [`examples/evidence-image-publish.json`](examples/evidence-image-publish.json) · [`diagnosis-image-publish.json`](examples/diagnosis-image-publish.json) | [38066156334](https://github.com/SoftBank-Hackathon-2026-Team-Amethyst/demo-app/actions/runs/38066156334) | `existing tag has different digest`. 원인이 Actions 로그에 그대로 있다 |
 | [`examples/diagnosis-fallback.json`](examples/diagnosis-fallback.json) | — | Claude 시간 초과 → 오류 줄만 보여 준다 |
 
-## 수집 스크립트
+## 스크립트
 
 | 파일 | 어디서 | 하는 일 |
 |---|---|---|
 | [`cluster.sh`](cluster.sh) | 실패한 deploy job 안 (`if: failure()`, onprem은 맥북 러너) | Rollout 상태 · Warning 이벤트 40개 · Ready가 아니거나 재시작한 파드 10개의 로그 끝(재시작했으면 `--previous`) · `<서비스>-migration` Job 상태와 로그 → `cluster.json`. bash · kubectl · jq · sed만 쓴다 |
 | [`collect.py`](collect.py) | 진단 job (ubuntu) | 실행의 실패한 `deploy` · `publish` job(최대 3개) 로그를 API로 받아 실패 step · 오류 줄 · 첫 `##[error]` 앞뒤를 뽑고 `cluster.json`과 합쳐 `evidence.json`을 만든다. 로그 API에는 `actions: read` 토큰(봇 App 토큰)이 필요하다 |
-| [`redact.sed`](redact.sed) | 두 스크립트 공용 | 접속 문자열 비밀번호 · Bearer · GitHub/AWS/Slack/Anthropic 토큰 형태 · `password=` 류 값을 `***`로 가린다. 가린 뒤 JSON이 깨지면 내용을 버리고 수집 실패로 남긴다 |
+| [`diagnose.py`](diagnose.py) | 진단 job (ubuntu) | `evidence.json`을 Claude에 보내 `diagnosis.json`을 받는다. 승격 판단(T7 `judge.sh`)과 같은 방식: Messages API · 구조화 출력 · 제한 시간 60초 · 재시도 없음. 구조화 출력이 길이를 강제하지 않아 상한에 맞춰 자른다. 키 없음 · 호출 실패 · 시간 초과 · 거절 · 형식 오류면 실패 job · step과 오류 줄만 담은 fallback. prod는 `--allow-prod` 없이는 보내지 않는다. 종료 코드는 항상 0 |
+| [`redact.sed`](redact.sed) | 세 스크립트 공용 | 접속 문자열 비밀번호 · Bearer · GitHub/AWS/Slack/Anthropic 토큰 형태 · `password=` 류 값을 `***`로 가린다. 가린 뒤 JSON이 깨지면 내용을 버리고 수집 실패로 남긴다 |
 
 클러스터 상태는 실패한 job 안에서, Actions 로그는 진단 job에서 모으는 이유는 [ADR 0019](../../../docs/adr/0019-failure-evidence-collection.md).
 
-둘 다 하나가 실패해도 멈추지 않고 `collection`에 이유를 남긴다. 테스트: `uv run --no-project --with jsonschema python -B -m unittest discover -s .github/actions/failure-diagnosis/tests` (가짜 kubectl · gh, 실제 demo-app 실패 로그 일부를 `tests/fixtures`에 둔다).
+수집 스크립트는 하나가 실패해도 멈추지 않고 `collection`에 이유를 남긴다. `diagnose.py`는 모델 출력도 `redact.sed`로 한 번 더 가린다. 테스트: `uv run --no-project --with jsonschema python -B -m unittest discover -s .github/actions/failure-diagnosis/tests` (가짜 kubectl · gh · Claude API, 실제 demo-app 실패 로그 일부를 `tests/fixtures`에 둔다).
 
 ## 넣지 않는 것
 
