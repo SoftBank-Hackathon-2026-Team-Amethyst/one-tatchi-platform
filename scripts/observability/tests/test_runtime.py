@@ -74,6 +74,42 @@ class RuntimeTest(unittest.TestCase):
             with self.assertRaisesRegex(live.CheckFailed, "counters or buckets differ"):
                 self.client.runtime(self.session)
 
+    def test_onprem_context_and_canonical_bucket_bounds(self):
+        for service, count in (("be", 37), ("fe", 21)):
+            self.raw[service].update(live.metrics(f'app_http_response_time_seconds_hist_bucket{{le="1"}} {count}\n'))
+        self.session.evidence("traffic", {"snapshots": {"after": self.raw}})
+
+        def receiver(expr, **kwargs):
+            if 'min by(target,service)' not in expr:
+                self.assertIn('cluster="onetouch-hyeongrae"', expr)
+                self.assertNotIn('k3d-', expr)
+            values = self.prom(expr, **kwargs)
+            if 'sum by(le)' in expr:
+                values.append(sample(37 if 'demo-app-be' in expr else 21, {"le": "1.0"}))
+                # GCP returns a range; only its latest point represents the raw snapshot.
+                for value in values:
+                    value["data"]["values"] = [[999000, 1000000], [0, value["data"]["values"][1][0]]]
+            return values
+
+        def panel(model, start, end):
+            self.assertNotIn('k3d-', json.dumps(model))
+            return self.query(model, start, end)
+
+        with patch.dict(os.environ, {"TARGET": "onprem", "CLUSTER": "k3d-onetouch-hyeongrae"}), \
+                patch.object(self.client, "prom", side_effect=receiver), patch.object(self.client, "query", side_effect=panel), \
+                patch.object(grafana.time, "time", return_value=1000):
+            self.client.runtime(self.session)
+            self.assertEqual(os.environ["CLUSTER"], "k3d-onetouch-hyeongrae")
+
+    def test_bucket_bounds_reject_ambiguous_or_invalid_values(self):
+        for samples in ([("1", 1), ("1.0", 1)], [("NaN", 1)], [("invalid", 1)]):
+            with self.subTest(samples=samples), self.assertRaises(live.CheckFailed):
+                grafana.bucket_values(samples)
+
+    def test_cloud_cluster_names_are_not_rewritten(self):
+        for target in ("aws", "gcp"):
+            self.assertEqual(grafana.metrics_cluster(target, "k3d-example"), "k3d-example")
+
 
 if __name__ == "__main__":
     unittest.main()

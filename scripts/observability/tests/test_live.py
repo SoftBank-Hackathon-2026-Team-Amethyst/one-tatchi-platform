@@ -224,6 +224,15 @@ class GrafanaTest(unittest.TestCase):
             with self.assertRaises(live.CheckFailed):
                 self.client.query({"datasource": {"uid": "cloudwatch"}}, 100, 200)
 
+    def test_gcp_promql_survives_plugin_legacy_migration(self):
+        self.client.sources["cloud-monitoring"] = {"jsonData": {"defaultProject": "test-project"}}
+        with patch.object(self.client, "api", return_value={"results": {"A": {"frames": []}}}) as api:
+            self.client.prom("count(up)", uid="cloud-monitoring")
+        model = api.call_args.args[1]["queries"][0]
+        self.assertEqual(model["queryType"], "promQL")
+        self.assertEqual(model["promQLQuery"]["expr"], "count(up)")
+        self.assertEqual(model["timeSeriesList"], {})
+
     def test_saved_panels_receive_frontend_query_defaults(self):
         with patch.object(self.client, "api", return_value={"results": {"A": {"frames": []}}}) as api:
             self.client.query({"datasource": {"uid": "prometheus"}, "expr": "up"}, 100, 200)

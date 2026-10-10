@@ -34,7 +34,10 @@ def prom(expr, legend="{{target}} · {{service}} · {{environment}} · {{cluster
 
 
 def gcp(expr):
+    # Keep the inactive editor model: Cloud Monitoring's legacy migration
+    # otherwise treats a PromQL-only target as an old metric query.
     return {"datasource": GCP, "queryType": "promQL", "hide": "__GCP_HIDE__",
+            "timeSeriesList": {},
             "promQLQuery": {"projectName": "${gcp_project}", "expr": expr, "step": "30s"}}
 
 

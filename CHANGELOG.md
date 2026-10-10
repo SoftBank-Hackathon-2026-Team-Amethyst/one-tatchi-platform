@@ -10,6 +10,7 @@
 
 ## Unreleased
 
+- T17: Cloud Monitoring PromQL 쿼리가 구형 쿼리로 잘못 변환되지 않게 비활성 편집기 모델을 보존하고, ADC에 프로젝트 ID를 넣어 health 조회를 고친다. 온프레미스 검증은 k3d context와 수집 cluster 라벨을 구분하고, histogram 경계의 `1`/`1.0` 표기와 GCP 범위 응답의 최신 값을 올바르게 비교한다.
 - T9: `deploy.yml` green 대기 조회 간격 10초 → 3초, `yolo-pr` PR 검사 조회 간격 10초 → 5초(한도는 그대로). 스킬 `yolo-deploy`에 검증 선행(브랜치 생성 직후 이미지 빌드 · lint · test를 백그라운드로), `deploy-provision`에 `infra/` 변경이 없으면 `terraform init · validate` 생략, 실행 기록 세 개를 한 번에 만드는 `scripts/yolo_log.py` 추가.
 - T17: Grafana 차트의 `extraContainerVolumes`로 GCP 단기 토큰을 실제 projected volume으로 전달하고, Grafana 13의 Cloud Monitoring 플러그인에 ADC 환경변수를 전달한다. 빈 디렉터리 마운트와 기본 인증정보 누락으로 실제 GCP 조회가 실패하던 문제를 고친다.
 

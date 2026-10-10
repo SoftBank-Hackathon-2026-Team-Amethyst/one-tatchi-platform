@@ -88,6 +88,17 @@ run "integrated_dashboard_and_keyless_auth" {
     error_message = "GCP authentication must use projected identity, never a service account private key."
   }
   assert {
+    condition     = yamldecode(helm_release.gcp_credentials[0].values[0]).credentials.project_id == "test-project"
+    error_message = "ADC must identify the project for Grafana health and resource lookups."
+  }
+  assert {
+    condition = alltrue(flatten([for panel in jsondecode(local.dashboard_json).panels : [
+      for target in try(panel.targets, []) : contains(keys(target), "timeSeriesList")
+      if try(target.queryType, "") == "promQL"
+    ]]))
+    error_message = "PromQL targets must bypass the plugin's legacy metric migration."
+  }
+  assert {
     condition     = yamldecode(helm_release.grafana.values[0]).extraContainerVolumes[0].projected.sources[0].serviceAccountToken.audience == "https://iam.googleapis.com/projects/123/locations/global/workloadIdentityPools/grafana-eks/providers/eks-grafana" && yamldecode(helm_release.grafana.values[0]).extraVolumeMounts[0].mountPath == "/var/run/gcp"
     error_message = "The Grafana chart must preserve the projected token volume instead of rendering an emptyDir."
   }
