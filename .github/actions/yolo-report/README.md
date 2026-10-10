@@ -104,13 +104,31 @@ python3 scan_warnings.py --output warnings.json --repo-root <대상 레포> --sh
 - 이미지(OS 패키지)의 비차단 취약점은 모으지 않는다(`collection.image = not_collected`). 차단 검사는 checks `image-scan`이 한다.
 - pnpm lockfile만 있는 레포는 Trivy가 라이선스를 읽지 못해 라이선스 경고가 0건일 수 있다(설치된 `node_modules`가 필요).
 
+## 저장 · 요약 · 이슈 (`publish.py`)
+
+```bash
+GH_TOKEN=<봇 App 토큰> AUDIT_LOG_BUCKET=<버킷> python3 publish.py --report report.json
+```
+
+| 순서 | 하는 일 | 실패하면 |
+|---|---|---|
+| 1 | 감사 로그 버킷(Object Lock)에 `reports/yolo/YYYY/MM/DD/<생성 시각>-<SHA 12자>-<report_id>.json`으로 저장. 체크섬 SHA256 | 이슈 · 요약은 계속하고 종료 코드 1 |
+| 2 | `debt.open_issue`면 대상 레포에 `yolo-debt` 이슈. 본문 첫 줄의 표지(`<!-- yolo-debt repository=… branch=… -->`)로 같은 yolo 브랜치의 열린 이슈를 찾아, 있으면 코멘트만 단다 | 종료 코드 1 |
+| 3 | Actions 실행 요약(`GITHUB_STEP_SUMMARY`)에 표 | — |
+
+- 이슈 담당자는 실행자다. 지정할 수 없는 계정(봇 등)이면 담당자 없이 연다. 이슈는 자동으로 닫지 않는다.
+- 이슈 본문: 이유, 기한(`docs/tasks.md` 0단계의 현재 가정 "다음 janto 배포 전까지 해소"), 요약 표, AI 자동 수정, **새로 들여온 경고 상세**, 원래 있던 경고 건수, 수집 실패, 기준 근접 지표, 리포트 원본 위치, 실행 링크.
+- 출력(`GITHUB_OUTPUT`): `location`(S3 위치, 실패면 빈 값), `issue`(이슈 주소), `open-issue`.
+- 저장이나 이슈가 실패하면 종료 코드 1이다. 기록 없이 성공으로 보고하지 않는다. 이 단계 뒤에 main 자동 머지(T8)가 이어지지 않게 연결한다.
+- `gh`는 Issues 쓰기 권한이 있는 토큰(`one-tatchi-bot` App), `aws`는 감사 로그 버킷 쓰기 자격증명이 필요하다.
+
 ### 테스트
 
 ```bash
 uv run --no-project --with jsonschema python -B -m unittest discover -s .github/actions/yolo-report/tests -v
 ```
 
-임시 git 레포와 가짜 artifact · 가짜 trivy(`tests/fake-trivy`)로 확인한다. 수집: 정상 · 수정 2회 · 새 경고와 원래 있던 경고 · 판단 없음 · 판단 미실행 · abort · SHA 불일치 · 경고 스캔 실패 · compliance 없음 · 기준 근접 · git 이력 오류. 경고 스캔: 새 경고 표시 · 등급 거르기 · 예외 사유 주석 · 스캔 실패 · 임시 worktree 정리. 모든 리포트와 예시를 `schema.json`으로 검사한다. CI `scripts` 잡에서도 돈다. jsonschema 없이 `python3`로 돌리면 스키마 검사만 건너뛴다.
+임시 git 레포와 가짜 artifact · 가짜 trivy(`tests/fake-trivy`) · 가짜 aws · gh로 확인한다. 수집: 정상 · 수정 2회 · 새 경고와 원래 있던 경고 · 판단 없음 · 판단 미실행 · abort · SHA 불일치 · 경고 스캔 실패 · compliance 없음 · 기준 근접 · git 이력 오류. 경고 스캔: 새 경고 표시 · 등급 거르기 · 예외 사유 주석 · 스캔 실패 · 임시 worktree 정리. 저장 · 이슈: S3 키 · 이슈 생성 · 같은 브랜치 코멘트 · 문제 없음 · S3 실패 · 버킷 없음 · 담당자 지정 실패 · 이슈 실패 · 표 칸 이스케이프. 모든 리포트와 예시를 `schema.json`으로 검사한다. CI `scripts` 잡에서도 돈다. jsonschema 없이 `python3`로 돌리면 스키마 검사만 건너뛴다.
 
 ## 넣지 않는 것
 
