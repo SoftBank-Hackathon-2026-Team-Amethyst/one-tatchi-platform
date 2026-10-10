@@ -1,0 +1,144 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/SoftBank-Hackathon-2026-Team-Amethyst/one-tatchi-platform/.github/actions/failure-diagnosis/evidence.schema.json",
+  "title": "배포 실패 증거 묶음",
+  "description": "배포 단계가 실패했을 때 원인 요약에 넘기는 입력 (T12). 모든 문자열은 비밀값 가리기와 크기 제한을 거친 값이다.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "run", "deploy", "failed_jobs", "cluster", "collection"],
+  "properties": {
+    "schema_version": {"const": "1"},
+    "run": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["repository", "run_id", "run_attempt", "run_url", "sha", "ref", "event", "actor"],
+      "properties": {
+        "repository": {"type": "string", "pattern": "^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$"},
+        "run_id": {"type": "string", "pattern": "^[0-9]+$"},
+        "run_attempt": {"type": "string", "pattern": "^[0-9]+$"},
+        "run_url": {"type": "string", "pattern": "^https://"},
+        "sha": {"type": "string", "pattern": "^[0-9a-f]{40}$"},
+        "ref": {"type": "string"},
+        "event": {"type": "string"},
+        "actor": {"type": "string"}
+      }
+    },
+    "deploy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["target", "target_label", "environment", "namespace", "services"],
+      "properties": {
+        "target": {"enum": ["aws", "gcp", "onprem"]},
+        "target_label": {"type": "string"},
+        "environment": {"enum": ["test", "prod"]},
+        "namespace": {"type": "string"},
+        "services": {"type": "array", "items": {"type": "string"}}
+      }
+    },
+    "failed_jobs": {
+      "description": "실패한 job. 진단 job이 실행이 끝난 job의 로그를 API로 받아 채운다",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["name", "job_id", "failed_steps", "errors", "log_tail"],
+        "properties": {
+          "name": {"type": "string"},
+          "job_id": {"type": "string", "pattern": "^[0-9]+$"},
+          "failed_steps": {"type": "array", "items": {"type": "string"}},
+          "errors": {"description": "##[error] · Error: · level=error 줄", "type": "array", "maxItems": 30, "items": {"type": "string", "maxLength": 500}},
+          "log_tail": {"description": "실패 step 로그의 끝부분", "type": "string", "maxLength": 12000}
+        }
+      }
+    },
+    "cluster": {
+      "description": "실패 시점의 클러스터 상태. 실패한 job 안의 if: failure() 단계가 모은다. 클러스터에 접속하지 않는 job(publish)이면 비어 있다",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["rollouts", "events", "pods", "migration_jobs"],
+      "properties": {
+        "rollouts": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["name", "phase", "message"],
+            "properties": {
+              "name": {"type": "string"},
+              "phase": {"type": "string"},
+              "message": {"type": "string", "maxLength": 1000}
+            }
+          }
+        },
+        "events": {
+          "description": "네임스페이스의 Warning 이벤트, 최근 순",
+          "type": "array",
+          "maxItems": 40,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["reason", "object", "message", "count"],
+            "properties": {
+              "reason": {"type": "string"},
+              "object": {"type": "string"},
+              "message": {"type": "string", "maxLength": 500},
+              "count": {"type": "integer", "minimum": 0}
+            }
+          }
+        },
+        "pods": {
+          "description": "Ready가 아니거나 재시작한 파드",
+          "type": "array",
+          "maxItems": 10,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["name", "phase", "reason", "restarts", "log_tail"],
+            "properties": {
+              "name": {"type": "string"},
+              "phase": {"type": "string"},
+              "reason": {"type": "string"},
+              "restarts": {"type": "integer", "minimum": 0},
+              "log_tail": {"type": "string", "maxLength": 4000}
+            }
+          }
+        },
+        "migration_jobs": {
+          "type": "array",
+          "maxItems": 5,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["name", "status", "log_tail"],
+            "properties": {
+              "name": {"type": "string"},
+              "status": {"type": "string"},
+              "log_tail": {"type": "string", "maxLength": 4000}
+            }
+          }
+        }
+      }
+    },
+    "collection": {
+      "description": "항목별 수집 상태. 수집 실패를 '문제 없음'으로 보이지 않게 한다",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["actions_logs", "cluster"],
+      "properties": {
+        "actions_logs": {"$ref": "#/$defs/collected"},
+        "cluster": {"$ref": "#/$defs/collected"}
+      }
+    }
+  },
+  "$defs": {
+    "collected": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "detail"],
+      "properties": {
+        "status": {"enum": ["ok", "failed", "not_collected"]},
+        "detail": {"type": ["string", "null"], "maxLength": 300}
+      }
+    }
+  }
+}

@@ -1,0 +1,19 @@
+{
+  "schema_version": "1",
+  "source": "ai",
+  "model": "claude-sonnet-5-5",
+  "category": "migration",
+  "summary": "demo-app-be 배포 전에 도는 마이그레이션 Job이 3번 모두 실패해 helm upgrade가 중단됐다. Job 로그상 DB(demo-app-db-onprem) 5432 접속이 거부돼 마이그레이션 SQL이 실행되지 못했다.",
+  "evidence": [
+    "Error: UPGRADE FAILED: pre-upgrade hooks failed: resource Job/test/demo-app-be-migration not ready. status: Failed, message: Job Failed. failed: 3/1",
+    "Job/demo-app-be-migration BackoffLimitExceeded: Job has reached the specified backoff limit",
+    "psql: error: connection to server at \"demo-app-db-onprem.test.svc.cluster.local\" (10.43.0.12), port 5432 failed: Connection refused"
+  ],
+  "actions": [
+    "kubectl -n test logs job/demo-app-be-migration 로 전체 오류 확인",
+    "온프레미스 DB 통로(db_link)와 맥북 DB가 떠 있는지 확인 (docs/db-check.md)",
+    "통로를 복구한 뒤 같은 커밋으로 배포를 다시 실행"
+  ],
+  "confidence": "medium",
+  "error": null
+}

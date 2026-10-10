@@ -1,0 +1,52 @@
+{
+  "schema_version": "1",
+  "run": {
+    "repository": "SoftBank-Hackathon-2026-Team-Amethyst/demo-app",
+    "run_id": "38066156334",
+    "run_attempt": "1",
+    "run_url": "https://github.com/SoftBank-Hackathon-2026-Team-Amethyst/demo-app/actions/runs/38066156334/attempts/1",
+    "sha": "6ecd9f993b54c8502e2b92d9d084fdde8cb9b968",
+    "ref": "refs/heads/main",
+    "event": "workflow_dispatch",
+    "actor": "silano08"
+  },
+  "deploy": {
+    "target": "aws",
+    "target_label": "aws",
+    "environment": "test",
+    "namespace": "test",
+    "services": [
+      "demo-app-be",
+      "demo-app-fe"
+    ]
+  },
+  "failed_jobs": [
+    {
+      "name": "test / publish",
+      "job_id": "114254400958",
+      "failed_steps": [
+        "Run python3 .platform/.github/actions/image-push/publish.py"
+      ],
+      "errors": [
+        "##[error]existing tag has different digest: 993371732872.dkr.ecr.ap-northeast-2.amazonaws.com/demo-app-be:6ecd9f993b54c8502e2b92d9d084fdde8cb9b968"
+      ],
+      "log_tail": "  ECR_REGISTRY: 993371732872.dkr.ecr.ap-northeast-2.amazonaws.com\n  GH_TOKEN: ***\n##[endgroup]\n##[error]existing tag has different digest: 993371732872.dkr.ecr.ap-northeast-2.amazonaws.com/demo-app-be:6ecd9f993b54c8502e2b92d9d084fdde8cb9b968"
+    }
+  ],
+  "cluster": {
+    "rollouts": [],
+    "events": [],
+    "pods": [],
+    "migration_jobs": []
+  },
+  "collection": {
+    "actions_logs": {
+      "status": "ok",
+      "detail": null
+    },
+    "cluster": {
+      "status": "not_collected",
+      "detail": "publish job은 클러스터에 접속하지 않는다"
+    }
+  }
+}
