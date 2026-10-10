@@ -752,7 +752,7 @@ AWS/GCP/onprem에서 승격 전 공개 preview 경로 없음. 인증된 pipeline
 **목표** 승인자가 Slack 알림의 링크로 green을 열고, Identity Center 승인자 그룹이 아닌 사람과 인증되지 않은 요청은 green에 닿지 않는다.
 
 **할 일**
-- [ ] ADR 0015 합의(T30 담당자), 합의되면 ADR 0011에 보완 문단 추가
+- [ ] ADR 0015 합의(T30 담당자), 합의되면 ADR 0011(private-green-access)에 보완 문단 추가
 - [ ] `modules/preview_auth/aws`: Cognito User Pool · 도메인 · 앱 클라이언트 · SAML IdP. `terraform validate` · 테스트
 - [ ] `org/`: Identity Center 고객 관리형 SAML 앱과 승인자 그룹 할당. API로 안 되는 설정은 `org/README.md` 콘솔 설정 표에 기록
 - [ ] App Chart: `preview.auth` 입력과 oauth2-proxy Deployment · Service · Ingress. 인증 설정 없이는 preview Ingress를 렌더하지 않는 T30 회귀 테스트 유지, 인증 조합 테스트 추가
