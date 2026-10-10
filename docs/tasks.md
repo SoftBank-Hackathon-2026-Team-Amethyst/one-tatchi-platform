@@ -736,7 +736,7 @@ AWS/GCP/onprem에서 승격 전 공개 preview 경로 없음. 인증된 pipeline
 **할 일**
 - [x] AWS BE → 온프레미스 DB의 VPN 등 비공개 연결 방식, 주소 유지, 라우팅, DNS, 암호화와 접근 제한을 설계하고 테스트 환경에서 검증한다. DB 포트를 인터넷에 공개하지 않는다. 후보 비교(Cloudflare Tunnel TCP · Tailscale)와 결정을 ADR에
 - [ ] 맥북 재부팅 · 잠금 뒤에도 통로가 다시 서고 주소가 유지되는지 확인한다 (T27 자동 복구와 맞춤). 안 되면 복구 절차를 README에
-- [ ] 온프레미스 PostgreSQL의 데이터·자격증명을 유지하며 AWS 앱에서 사용할 접속 Secret을 구성한다. 비밀번호를 Git·Terraform state·로그에 평문으로 기록하지 않고 test·prod의 DB 데이터와 자격증명을 분리한다. `DATABASE_URL` · `PG_URL` 키와 `sslmode=require`는 service-base와 같게
+- [x] 온프레미스 PostgreSQL의 데이터·자격증명을 유지하며 AWS 앱에서 사용할 접속 Secret을 구성한다. 비밀번호를 Git·Terraform state·로그에 평문으로 기록하지 않고 test·prod의 DB 데이터와 자격증명을 분리한다. `DATABASE_URL` · `PG_URL` 키와 `sslmode=require`는 service-base와 같게
 - [ ] BE 파드만 DB에 닿도록 제한한다 (보안 그룹 · NetworkPolicy · Access 정책 중 통로에 맞는 것). 다른 네임스페이스 · 외부에서의 접속이 거부되는지 확인
 - [ ] 연결 끊김·재연결, 권한 없는 접근 차단, 비밀값 노출 여부를 검증한다. 끊긴 동안 BE가 메모리 폴백으로 조용히 넘어가지 않고 `/health`가 503을 내는지 확인. 연결·배포·정리 절차, 지원 조합, 온프레미스 DB 장애가 기존 앱에도 영향을 준다는 한계를 문서화하고 관련 Terraform·Helm·워크플로 검사를 통과한다
 
