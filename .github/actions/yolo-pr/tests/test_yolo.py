@@ -41,9 +41,9 @@ class PullRequestTest(unittest.TestCase):
             return json.dumps({"workflow_runs": self.runs})
         return ""
 
-    def run_pr(self):
+    def run_pr(self, reuse_push_checks=False):
         with patch.object(pr, "gh", self.gh):
-            return pr.run(self.report, "yolo/example", "org/app", timeout=0)
+            return pr.run(self.report, "yolo/example", "org/app", timeout=0, reuse_push_checks=reuse_push_checks)
 
     def merged(self):
         return [c for c in self.calls if c[:2] == ("pr", "merge")]
@@ -82,14 +82,14 @@ class PullRequestTest(unittest.TestCase):
             self.runs[0].update(status="completed", conclusion="success")
         with patch.object(pr, "gh", self.gh), patch.object(pr.time, "monotonic", side_effect=[0, 1200]), \
                 patch.object(pr.time, "sleep", side_effect=finish):
-            pr.run(self.report, "yolo/example", "org/app")
+            pr.run(self.report, "yolo/example", "org/app", reuse_push_checks=False)
         self.assertTrue(self.merged())
 
     def test_pr_ci_wait_remains_bounded(self):
         self.runs[0].update(status="in_progress", conclusion=None)
         with patch.object(pr, "gh", self.gh), patch.object(pr.time, "monotonic", side_effect=[0, 2701]):
             with self.assertRaisesRegex(RuntimeError, "시간 초과"):
-                pr.run(self.report, "yolo/example", "org/app")
+                pr.run(self.report, "yolo/example", "org/app", reuse_push_checks=False)
         self.assertFalse(self.merged())
 
     def test_missing_pr_run_does_not_merge(self):
@@ -109,6 +109,37 @@ class PullRequestTest(unittest.TestCase):
         with self.assertRaisesRegex(RuntimeError, "시간 초과"):
             self.run_pr()
         self.assertFalse(self.merged())
+
+    def test_reuse_push_checks_merges_without_pr_run(self):
+        self.runs = []
+        self.run_pr(reuse_push_checks=True)
+        self.assertTrue(self.merged())
+        self.assertFalse(any(c[0] == "api" and "actions/runs" in c[1] for c in self.calls))
+
+    def test_reuse_push_checks_still_waits_for_infra_plan(self):
+        self.files = [{"path": "infra/envs/aws/main.tf"}]
+        self.runs = []
+        with self.assertRaisesRegex(RuntimeError, "시간 초과"):
+            self.run_pr(reuse_push_checks=True)
+        self.assertFalse(self.merged())
+        self.runs = [dict(id=2, path=".github/workflows/infra.yml", head_branch="yolo/example",
+                          status="completed", conclusion="success", pull_requests=[{"number": 1}])]
+        self.calls = []
+        self.run_pr(reuse_push_checks=True)
+        self.assertTrue(self.merged())
+
+    def test_reuse_push_checks_env_default(self):
+        with patch.dict(os.environ, {}, clear=False):
+            os.environ.pop("REUSE_PUSH_CHECKS", None)
+            self.runs = []
+            with patch.object(pr, "gh", self.gh):
+                pr.run(self.report, "yolo/example", "org/app", timeout=0)
+            self.assertTrue(self.merged())
+        with patch.dict(os.environ, {"REUSE_PUSH_CHECKS": "false"}):
+            self.calls = []
+            with patch.object(pr, "gh", self.gh), self.assertRaisesRegex(RuntimeError, "시간 초과"):
+                pr.run(self.report, "yolo/example", "org/app", timeout=0)
+            self.assertFalse(self.merged())
 
     def test_unpromoted_report_rejected(self):
         self.report["promoted"] = False

@@ -19,10 +19,11 @@
 
 ```sh
 scripts/install-skills.sh            # ~/.claude/skills/<이름>, ~/.agents/skills/<이름> → 이 폴더
+scripts/install-skills.sh --auto     # main 전용 클론(~/.one-tatchi/platform-skills)에 링크 + 세션 시작마다 fast-forward 훅
 scripts/install-skills.sh --remove   # 링크만 지운다
 ```
 
-이 레포를 `git pull`하면 설치본도 같이 바뀐다. 대상 앱(demo-app) 폴더에서 `/janto-deploy` 또는 `/yolo-deploy`를 실행한다.
+`install`은 이 체크아웃을 가리키므로 `git pull`해야 설치본이 바뀐다. **`--auto`를 권장한다**: 작업 중인 브랜치와 무관한 main 전용 클론을 두고, Claude Code `SessionStart` 훅(`~/.claude/settings.json`)이 세션마다 `git pull --ff-only`를 돌려 main에 머지된 스킬 변경이 다음 세션부터 자동 반영된다. 훅은 20초 제한 · 비동기 · 실패해도 세션을 막지 않는다. 다시 실행해도 훅은 한 번만 등록된다. 대상 앱(demo-app) 폴더에서 `/janto-deploy` 또는 `/yolo-deploy`를 실행한다.
 
 ## 계약
 
