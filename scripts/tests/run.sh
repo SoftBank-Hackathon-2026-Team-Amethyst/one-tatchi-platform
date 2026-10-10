@@ -7,6 +7,18 @@ scripts="$(dirname "$here")"
 tmp="$(mktemp -d)"
 trap 'rm -rf "$tmp"' EXIT
 
+echo "== values-files: 기본 → 대상 → 환경 순서, 없는 파일은 건너뜀 (T35)"
+mkdir -p "$tmp/vf/deploy/aws"
+printf 'env: {}\n' > "$tmp/vf/deploy/values-be.yaml"
+vf() { (cd "$tmp/vf" && bash "$scripts/values-files.sh" "$@" | tr '\n' ' '); }
+[ "$(vf deploy/values-be.yaml aws prod)" = "deploy/values-be.yaml " ]
+printf 'replicas: 1\n' > "$tmp/vf/deploy/aws/values.yaml"
+printf 'env: {CHAOS_ENABLED: "true"}\n' > "$tmp/vf/deploy/values-be.test.yaml"
+[ "$(vf deploy/values-be.yaml aws test)" = "deploy/values-be.yaml deploy/aws/values.yaml deploy/values-be.test.yaml " ]
+[ "$(vf deploy/values-be.yaml aws prod)" = "deploy/values-be.yaml deploy/aws/values.yaml " ]
+[ "$(vf deploy/values-be.yaml onprem test)" = "deploy/values-be.yaml deploy/values-be.test.yaml " ]
+if (cd "$tmp/vf" && bash "$scripts/values-files.sh" deploy/values-be.yml aws test >/dev/null 2>&1); then echo ".yml 을 거부해야 한다" >&2; exit 1; fi
+
 echo "== bump-template-version: v1.0.0 → v1.1.0"
 cp -r "$here/bump-template-version/before" "$tmp/repo"
 bash "$scripts/bump-template-version.sh" v1.1.0 "$tmp/repo" >/dev/null

@@ -78,6 +78,12 @@ App Chart(`charts/app/values.yaml`)가 받는 키만. 모든 배포 대상 공�
 - `ingress.enabled: true`는 외부에 열 서비스(보통 FE)만. BE는 FE가 프록시한다. `ingress.group` · `host`는 파이프라인이 넣는다.
 - `deployStrategy`는 기본 `blueGreen`을 유지한다.
 
+### `deploy/values-<서비스>.<환경>.yaml` (선택)
+
+환경(test · prod)별 덧붙임. 파이프라인이 기본 → `deploy/<대상>/values.yaml` → 이 파일 순서로 합친다(뒤가 앞을 덮어쓴다, `scripts/values-files.sh`). 없으면 동작이 바뀌지 않는다.
+
+- 장애 주입 · 디버그 플래그(`CHAOS_*` · `FAULT_*` · `DEBUG` · `*_DEBUG`)는 **`values-<서비스>.test.yaml`에만** 둔다. 기본 · 대상별 · prod 파일에 있으면 `check-artifacts.sh`가 실패한다. prod에는 그 경로 자체가 없어야 한다.
+
 ### `deploy/<대상>/values.yaml`
 
 대상별 덮어쓰기. 파이프라인이 모든 서비스에 덧붙인다.

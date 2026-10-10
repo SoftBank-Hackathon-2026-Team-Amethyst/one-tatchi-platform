@@ -127,6 +127,13 @@ if [ -f "$plan" ] && command -v yq >/dev/null; then
         disable|false|0) fail "$name: $values 의 env.PGSSL=$sslmode 는 TLS를 끈다 (클라우드 DB는 접속을 거부한다)" ;;
       esac
     fi
+    # 장애 주입 · 디버그 플래그(CHAOS_* · DEBUG · *_DEBUG · FAULT_*)는 test 덧붙임 파일(values-<svc>.test.yaml)에만 둔다 (T35).
+    # 기본 파일 · 대상별 파일 · prod 덧붙임 파일에 있으면 prod에도 열린다.
+    for vf in "$values" deploy/*/values.yaml "${values%.yaml}.prod.yaml"; do
+      [ -f "$vf" ] || continue
+      bad="$(yq -r '(.env // {}) | keys[]' "$vf" 2>/dev/null | /usr/bin/grep -E '^(CHAOS_|FAULT_|DEBUG$|.*_DEBUG$)' || true)"
+      [ -z "$bad" ] || fail "$name: $vf 에 장애 주입 · 디버그 플래그가 있다 ($(echo "$bad" | tr '\n' ' ')). ${values%.yaml}.test.yaml 에만 둔다"
+    done
   done < <(yq -r '.services[]? | [.name, .path] | @tsv' "$plan" 2>/dev/null)
 else
   skip "yq가 없거나 plan.yaml이 없어 서비스별 Dockerfile 검사"

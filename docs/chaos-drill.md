@@ -45,7 +45,7 @@
 
 ### P2. `/api/chaos`는 prod에서 닫기
 
-`be/src/routes/chaos.ts`는 이미 `CHAOS_ENABLED=true`일 때만 `POST /api/chaos`를 등록한다. 그런데 `deploy/values-be.yaml` 한 파일을 test와 prod가 같이 쓰기 때문에, 지금은 prod에서도 열려 있다.
+`be/src/routes/chaos.ts`는 이미 `CHAOS_ENABLED=true`일 때만 `POST /api/chaos`를 등록한다. 전에는 `deploy/values-be.yaml` 한 파일을 test와 prod가 같이 써서 prod에서도 열려 있었다. T35로 아래를 적용했다.
 
 - platform `deploy.yml`에 **환경별 덧붙임 파일**을 추가한다. `deploy/values-be.yaml`을 쓰는 서비스라면 `deploy/values-be.<environment>.yaml`이 있을 때 그 파일을 뒤에 덧붙인다. 지금의 `deploy/<target>/values.yaml` 덧붙임과 같은 방식이다.
 - demo-app은 `deploy/values-be.yaml`에서 `CHAOS_ENABLED`를 빼고, `deploy/values-be.test.yaml`에만 `CHAOS_ENABLED: "true"`를 둔다.
