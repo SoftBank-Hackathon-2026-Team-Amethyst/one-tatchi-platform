@@ -8,4 +8,7 @@ s#(gh[pousr]_|github_pat_)[A-Za-z0-9_]{10,}#***#g
 s#AKIA[0-9A-Z]{16}#***#g
 s#xox[abprs]-[A-Za-z0-9-]{10,}#***#g
 s#sk-ant-[A-Za-z0-9_-]{10,}#***#g
+# GitHub 권한 이름 id-token(값 write · read)은 비밀값이 아니다. sed -E에는 lookbehind가 없어 잠시 다른 이름으로 바꿨다가 되돌린다.
+s#([Ii][Dd]-[Tt][Oo][Kk])([Ee][Nn][[:space:]]*:)#\1@T12PERM@\2#g
 s#([Pp][Aa][Ss][Ss][Ww]([Oo][Rr])?[Dd]|[Ss][Ee][Cc][Rr][Ee][Tt]|[Tt][Oo][Kk][Ee][Nn]|[Aa][Pp][Ii]_?[Kk][Ee][Yy])(\\?["']?[[:space:]]*[=:][[:space:]]*\\?["']?)[^[:space:]"'\\,}]{3,}#\1\3***#g
+s#@T12PERM@##g

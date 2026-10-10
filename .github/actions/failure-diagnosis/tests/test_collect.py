@@ -190,7 +190,8 @@ class CollectTest(unittest.TestCase):
         lines = [f"Error: step {i} failed " + "y" * 600 for i in range(40)]
         lines += ["x" * 200 for _ in range(100)]
         lines += ["DATABASE_URL=postgresql://app:pl41nPass@10.0.0.5:5432/app",
-                  "Authorization: Bearer abcdefghijklmnop.qrstuvwx", "##[error]Process completed with exit code 1."]
+                  "Authorization: Bearer abcdefghijklmnop.qrstuvwx", "permissions: id-token: write",
+                  "##[error]Process completed with exit code 1."]
         self.jobs(job(9, "test / deploy"))
         self.log(9, "\n".join(lines) + "\n")
         ev = self.collect()
@@ -202,6 +203,8 @@ class CollectTest(unittest.TestCase):
         self.assertNotIn("pl41nPass", text)
         self.assertNotIn("abcdefghijklmnop.qrstuvwx", text)
         self.assertIn("postgresql://***@10.0.0.5", failed["log_tail"])
+        # GitHub 권한 이름 id-token은 가리지 않는다 (E2E run 38077153897에서 "id-token: ***"로 바뀌었다)
+        self.assertIn("permissions: id-token: write", failed["log_tail"])
 
     def test_missing_run_info_fails_fast(self):
         env = {**os.environ, "PATH": self.path, "GITHUB_REPOSITORY": "", "GITHUB_RUN_ID": "", "GITHUB_SHA": ""}
