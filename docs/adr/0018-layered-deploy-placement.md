@@ -1,6 +1,6 @@
 # [ADR-0018] 계층별 배포 위치: `plan.yaml`의 `layers`와 `database_scope`
 
-* **상태 (Status):** 승인됨(Accepted). 계약만 정했다. 검사(`check-artifacts.sh`) · 템플릿 · 실제 연결 검증은 T32의 다음 작업이다.
+* **상태 (Status):** 승인됨(Accepted). 계약 · 검사(`check-artifacts.sh`) · AWS 루트 템플릿 · 스킬 문서 · 이전 절차는 T32에서 구현하고 로컬로 검증했다(PR #209). demo-app test에서의 실제 검증(CRUD · 재배포 뒤 보존 · 연결 실패 시 승격 차단)은 T33으로 이관했다(2026-10-11, 배규태 · 원가연 합의).
 * **날짜 (Date):** 2026-10-10
 * **관련:** T32 (#155), T33 (#160), T28 (#130), [ADR 0016](0016-cloud-db-tls-and-memory-fallback.md)(DB TLS), [ADR 0017](0017-db-link-tailscale.md)(DB 통로 `db_link`), 설계 문서 6.3 · 6.4 · FR-9
 
