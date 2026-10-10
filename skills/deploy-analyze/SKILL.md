@@ -50,6 +50,7 @@ description: 웹앱 배포 전에 사용자 수, 예산, 데이터 취급, 배�
 | 4 | 보안 | `references/analyzers/security.md` | `.deploy/analysis/security.md` | 배포를 막는 문제, 외부 노출 범위, 규제가 요구하는 설정 |
 | 5 | 예산 | `references/analyzers/budget.md` | `.deploy/analysis/budget.md` | 후보 대상별 예상 월 비용과 예산 대비 |
 
+- **재사용 조건(janto · yolo 공통).** 기존 `.deploy/analysis/<분석기>.md`가 7일 이내이고, 그 분석 커밋 이후의 변경이 해당 분석기의 결론(서비스 단위 · 포트 · 헬스체크 · 환경변수 · 데이터 · replicas · resources · 노출 범위 · 비용 자원)을 바꾸지 않으면 그 분석기는 돌리지 않고 결과를 재사용한다. 어떤 분석기를 왜 재사용했는지(기준 커밋, 확인한 diff 범위)를 기록에 남긴다. 호출한 스킬이 재사용을 지시하면 그대로 따른다. 브리프가 바뀌면 전부 다시 돌린다.
 - 서브에이전트를 사용할 수 있으면 코드베이스 · 서비스 · 트래픽 · 보안을 병렬로 실행하고, 예산은 트래픽 결과가 준비된 뒤 실행한다. 각 분석기에 지시 파일 · 브리프 · 결과 파일 경로를 준다. 병렬 실행이 없으면 위 순서로 진행한다. 예산을 기본 시나리오로 먼저 실행했다면 가정으로 표시하고 최종 트래픽 결과로 다시 계산한다.
 - 브리프에 없어서 추정한 값은 모두 각 결과의 **가정** 절에 근거와 함께 적는다.
 
@@ -63,6 +64,7 @@ description: 웹앱 배포 전에 사용자 수, 예산, 데이터 취급, 배�
 ### 비용 근거 확인과 보고서 갱신
 
 1. 예산 분석기의 [도구 실행 순서](references/analyzers/budget.md)를 따라 pricing-inventory.json → pricing-input.json · resource-assessment.json → prices.json → costs.json을 생성한다. report로 budget.md와 cost-summary.md를 같은 계산 결과에서 만든다.
+   - **비용 재사용.** 기존 `costs.json`이 있고 최종 `plan.yaml`의 target · services(replicas · resources · DB) · 환경 범위와 `infra/envs/<target>`의 과금 자원 목록이 그 계산의 `pricing-inventory.json`과 같으면 map → lookup → calculate → report를 다시 돌리지 않는다. 기존 `budget.md` · `cost-summary.md` · report.md 비용 블록을 그대로 두고, 기록에 "비용 재사용(원 조회 시각 …, 기준 커밋 …)"을 적는다. 자원 목록이 달라진 경우에만 2번 이후를 실행하며, 그때도 가격 조건이 같은 항목은 `reuse-prices`로 원본 단가를 재사용한다.
 2. 종합 결과의 target · services 크기 · DB · 공유 환경과 계산 구성을 대조한다. 최종 추천 크기가 바뀌면 자원 목록을 갱신하고 map → lookup → calculate → report를 다시 실행한다. 가격 조건·단위가 같고 사용량·수량만 바뀌는 경우에는 가격 계약의 reuse-prices로 원본 입력·단가를 대조하고 재사용 근거를 남길 수 있다. 원래 조회 시각을 보존하며 새 조회처럼 표시하지 않는다. replicas 변화만으로 노드를 늘리거나 줄이지 않는다.
 3. report.md를 위 형식으로 작성한 뒤 추천 candidate_id를 지정해 report 명령에 --report 경로를 전달한다. 그 비용 블록은 도구가 갱신하며 종합 단계에서 다른 금액을 만들어 넣지 않는다.
 4. 예산 초과·초과 가능·판정 미정, 부분 소계, 환율·조회 시각과 미산정 사유를 리뷰 지점 1에서 함께 설명한다. 별도 대안 견적이 없으면 절감액 미산정 사유를 남긴다. 도구 실패를 성공이나 최신 단가로 바꾸지 않는다.
