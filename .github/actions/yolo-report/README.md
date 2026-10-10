@@ -46,6 +46,51 @@ yolo는 사람 리뷰 없이 test(규제 대상이 아니면 prod까지) 가므�
 `not_collected`는 범위 밖이라 일부러 모으지 않은 항목(현재 `lint`)이며 이슈 조건이 아니다.
 판단이 `abort`인 것만으로는 이슈를 열지 않는다(문제 버전이 승격되지 않았으므로).
 
+## 수집 (`collect.py`)
+
+입력을 모아 위 형식의 리포트 한 개를 만든다. 표준 라이브러리만 쓴다. 입력이 없거나 깨져도 멈추지 않고 그 항목을 `collection.<항목> = failed`로 남긴다.
+
+```bash
+python3 collect.py --output report.json \
+  --repo-root <배포한 커밋을 전체 이력으로 checkout한 대상 레포> --base-ref origin/main \
+  --target aws --target-label aws \
+  --promotion yolo-promotion.json \
+  --judgment-dir promote-judge --judge-outcome success \
+  --warnings warnings.json
+```
+
+| 입력 | 없을 때 |
+|---|---|
+| Actions 실행 정보 (`GITHUB_SHA` · `GITHUB_REF_NAME` · `GITHUB_ACTOR` · `GITHUB_REPOSITORY` · `GITHUB_RUN_ID` · `GITHUB_RUN_ATTEMPT` · `GITHUB_SERVER_URL`, 같은 이름의 옵션으로도 줄 수 있다) | 실행 오류. `yolo/*` 브랜치가 아니어도 실행 오류 |
+| `--repo-root`의 `.deploy/config.yaml` | compliance · template_version이 `null`, 승인은 `required` |
+| `--repo-root`의 git 이력 (`--base-ref`와 갈라진 지점 ~ SHA) | `repairs` 수집 실패. checkout은 `fetch-depth: 0`이어야 한다 |
+| `--promotion` | 생략하면 test에서 승격하지 않은 배포(`promoted: false`, 승인 `not_reached`). SHA가 다르면 `deploy` 수집 실패 |
+| `--judgment-dir` | `--judge-outcome skipped`면 판단 미실행(`not_collected`), 아니면 `judgment` 수집 실패 |
+| `--warnings` | `warnings` 수집 실패 |
+
+수정 커밋은 제목이 정확히 `[yolo] 검사 실패 자동 수정 N/3`(N은 1~3)인 커밋만 센다. yolo 수정 루프(`skills/yolo-deploy/scripts/repair_loop.py`)가 만드는 형식이다. 변경 파일 중 `.deploy/log/*-yolo.md`는 `history_file`로 따로 둔다.
+
+### 비차단 경고 입력
+
+`--warnings` 파일은 경고 수집 단계가 만든다.
+
+```json
+{"status": "ok", "detail": null,
+ "scanner": {"name": "trivy", "version": "0.75.0", "db_updated_at": "2026-10-10T00:00:00Z"},
+ "items": [{"source": "vulnerability", "severity": "MEDIUM", "id": "CVE-…", "target": "be/pnpm-lock.yaml",
+            "package": "…", "title": "…"}]}
+```
+
+`status`가 `ok`가 아니거나 항목 형식이 틀리면 `warnings` 수집 실패이고 `detail`이 사유가 된다.
+
+### 테스트
+
+```bash
+uv run --no-project --with jsonschema python -B -m unittest discover -s .github/actions/yolo-report/tests -v
+```
+
+임시 git 레포와 가짜 artifact로 정상 · 수정 2회 · 경고 · 판단 없음 · 판단 미실행 · abort · SHA 불일치 · 경고 스캔 실패 · compliance 없음 · 기준 근접 · git 이력 오류를 확인하고, 모든 결과와 예시를 `schema.json`으로 검사한다. CI `scripts` 잡에서도 돈다. jsonschema 없이 `python3`로 돌리면 스키마 검사만 건너뛴다.
+
 ## 넣지 않는 것
 
 - 토큰 · 비밀번호 · 접속 문자열 같은 비밀값

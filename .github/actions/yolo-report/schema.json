@@ -123,7 +123,7 @@
                 "properties": {
                   "requests": {"type": "integer", "minimum": 0},
                   "failed": {"type": "integer", "minimum": 0},
-                  "error_rate": {"type": "number", "minimum": 0},
+                  "error_rate": {"description": "요청이 없으면 null", "type": ["number", "null"], "minimum": 0},
                   "p95_ms": {"type": ["number", "null"], "minimum": 0},
                   "restarts": {"type": ["integer", "null"], "minimum": 0}
                 }
