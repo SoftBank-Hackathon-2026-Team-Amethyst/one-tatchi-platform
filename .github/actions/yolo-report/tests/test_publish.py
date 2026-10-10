@@ -87,7 +87,9 @@ class PublishTest(unittest.TestCase):
         self.assertEqual(create[create.index("--label") + 1], "yolo-debt")
         body = self.bodies[-1]
         self.assertTrue(body.startswith(publish.marker(report)))
-        self.assertIn("다음 janto 배포 전까지 해소", body)
+        self.assertIn("**기한:** 다음 정석(janto) 배포 전까지", body)
+        self.assertIn("**담당자가 할 일**", body)
+        self.assertNotIn("빚", body)
         self.assertIn("CVE-2026-00001", body)              # 새 경고는 상세
         self.assertNotIn("CVE-2026-00002", body)           # 원래 있던 경고는 건수만
         self.assertIn("main에 원래 있던 비차단 경고 2건", body)
