@@ -69,10 +69,18 @@ cat > "$tmp/pinned-app/infra/envs/aws/pinned.tf" <<'EOF'
 module "preview_auth" {
   source = "git::https://github.com/example/one-tatchi-platform.git//modules/preview_auth/aws?ref=v1.9.0"
 }
+module "db_link" {
+  source = "git::https://github.com/example/one-tatchi-platform.git//modules/db_link/tailscale?ref=v1.9.0"
+}
 EOF
 # Existing fixture roots are rendered at v1.9.0. Pin those infrastructure modules only.
 find "$tmp/pinned-app/infra/envs/aws" -name '*.tf' ! -name pinned.tf -exec sed -i.bak 's/ref=v1.9.0/ref=v1.8.0/g' {} \;
 bash "$check" "$tmp/pinned-app" >"$tmp/pin.log" || { cat "$tmp/pin.log" >&2; exit 1; }
+sed -i.bak '/modules\/db_link\/tailscale/s/ref=v1.9.0/ref=v1.8.0/' "$tmp/pinned-app/infra/envs/aws/pinned.tf"
+if bash "$check" "$tmp/pinned-app" >"$tmp/db-pin-bad.log" 2>&1; then
+  echo "db_link가 cloud pin으로 내려간 것을 놓쳤다" >&2; exit 1
+fi
+mv "$tmp/pinned-app/infra/envs/aws/pinned.tf.bak" "$tmp/pinned-app/infra/envs/aws/pinned.tf"
 sed -i.bak 's/ref=v1.9.0/ref=v1.8.0/g' "$tmp/pinned-app/infra/envs/aws/pinned.tf"
 if bash "$check" "$tmp/pinned-app" >"$tmp/pin-bad.log" 2>&1; then
   echo "preview_auth가 cloud pin으로 내려간 것을 놓쳤다" >&2; exit 1

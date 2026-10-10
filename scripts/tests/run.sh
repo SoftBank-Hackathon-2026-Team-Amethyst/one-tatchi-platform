@@ -23,9 +23,13 @@ cat >> "$tmp/repo/infra/envs/aws/main.tf" <<'EOF'
 module "preview_auth" {
   source = "git::https://github.com/example/one-tatchi-platform.git//modules/preview_auth/aws?ref=v2.2.1"
 }
+module "db_link" {
+  source = "git::https://github.com/example/one-tatchi-platform.git//modules/db_link/tailscale?ref=v2.5.1"
+}
 EOF
-bash "$scripts/bump-template-version.sh" v2.3.0 "$tmp/repo" >/dev/null
-grep -q 'modules/preview_auth/aws?ref=v2.3.0' "$tmp/repo/infra/envs/aws/main.tf"
+bash "$scripts/bump-template-version.sh" v2.7.0 "$tmp/repo" >/dev/null
+grep -q 'modules/preview_auth/aws?ref=v2.7.0' "$tmp/repo/infra/envs/aws/main.tf"
+grep -q 'modules/db_link/tailscale?ref=v2.7.0' "$tmp/repo/infra/envs/aws/main.tf"
 grep -q '?ref=v1.1.0' "$tmp/repo/infra/envs/aws/main.tf"
 
 echo "== bump-template-version: 잘못된 버전은 거부"
