@@ -106,10 +106,13 @@ def pod_guard(state, name):
 
 def private_preview(name):
     # SSO users must not be able to reach the fault-injected green either.
+    # T31 routes allow the FE proxy to reach BE green, so check both services.
     for ingress in kube("ingress")["items"]:
-        require(name + "-preview" not in json.dumps(ingress["spec"]), "public preview ingress exists")
+        require(not any(service + "-preview" in json.dumps(ingress["spec"]) for service in SERVICES),
+                "public preview ingress exists")
     for service in kube("services")["items"]:
-        require(service["metadata"]["name"] != name + "-preview-auth", "SSO preview proxy still exists")
+        require(service["metadata"]["name"] not in {item + "-preview-auth" for item in SERVICES},
+                "SSO preview proxy still exists")
 
 
 @contextmanager

@@ -19,6 +19,10 @@ def releases(module):
 def read(args):
     result = subprocess.run(args, capture_output=True, text=True, timeout=90)
     if result.returncode:
+        # An ordinary authorization denial is exit 1 / no, not a transport failure.
+        if (args[:3] == ["kubectl", "auth", "can-i"] and result.returncode == 1
+                and re.match(r"^no(?:\s+-|$)", result.stdout.strip())):
+            return "no"
         raise RuntimeError(f"{args[0]} read failed; inspect this job's identity and cluster access")
     return result.stdout
 

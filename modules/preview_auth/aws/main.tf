@@ -46,6 +46,16 @@ resource "aws_cognito_identity_provider" "saml" {
   attribute_mapping = {
     email = var.saml_email_attribute
   }
+
+  # Cognito derives these from SAML metadata and returns them on refresh.
+  # MetadataURL, IDPSignout and attribute_mapping remain managed.
+  lifecycle {
+    ignore_changes = [
+      provider_details["ActiveEncryptionCertificate"],
+      provider_details["SLORedirectBindingURI"],
+      provider_details["SSORedirectBindingURI"],
+    ]
+  }
 }
 
 resource "aws_cognito_user_pool_client" "this" {

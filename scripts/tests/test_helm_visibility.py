@@ -44,6 +44,19 @@ class HelmVisibilityTests(unittest.TestCase):
                 visibility.read(["terraform", "show", "-json"])
             self.assertNotIn("private", str(error.exception))
 
+    def test_real_can_i_denial_reports_namespace(self):
+        for stdout in ("no\n", 'no - requires one of ["container.secrets.list"] permission(s).\n'):
+            results = [subprocess.CompletedProcess([], 0, self.state(), ""),
+                       subprocess.CompletedProcess([], 1, stdout, "private diagnostic")]
+            with self.subTest(stdout=stdout), patch.object(visibility.subprocess, "run", side_effect=results):
+                with self.assertRaisesRegex(RuntimeError, "cannot list Helm release records in namespace argo-rollouts"):
+                    visibility.verify("root")
+
+    def test_can_i_transport_or_authentication_failure_is_not_permission_denial(self):
+        with patch.object(visibility.subprocess, "run", return_value=subprocess.CompletedProcess([], 1, "", "private credential")):
+            with self.assertRaisesRegex(RuntimeError, "kubectl read failed"):
+                visibility.read(["kubectl", "auth", "can-i", "list", "secrets", "-n", "default"])
+
 
 if __name__ == "__main__":
     unittest.main()

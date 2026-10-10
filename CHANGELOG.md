@@ -10,6 +10,12 @@
 
 ## Unreleased
 
+## v2.4.1
+
+- T17: GCP Helm 조회에서 `kubectl auth can-i`의 거절(exit 1 / no)을 전송·인증 오류와 구분하고 namespace를 알린다. stderr나 자격증명은 공개하지 않는다.
+- T17/T31: Cognito가 SAML metadata에서 생성하는 인증서·SSO/SLO 주소 3개를 유지해 관측 plan에서 불필요한 인증 변경을 없앤다. MetadataURL·IDPSignout·attribute mapping은 계속 Terraform으로 관리한다.
+- T17: 새 previewAuth.routes의 FE→BE 간접 경로도 매 실측 요청 전 private preview 검사에 포함한다.
+
 ## v2.4.0
 
 - T28: service-base DB Secret의 `DATABASE_URL`을 `postgresql://…?sslmode=require`로 바꾼다(`PG_URL`과 같은 값). 전에는 `postgresql+psycopg://…`에 `sslmode`가 없어 클라우드 DB(TLS 강제)에 붙지 못했다. SQLAlchemy용으로 새 키 `SQLALCHEMY_URL`(`postgresql+psycopg://…?sslmode=require`)을 둔다. **SQLAlchemy로 `DATABASE_URL`을 읽던 앱은 `SQLALCHEMY_URL`로 바꾼다.** `checks.yml`의 Python job도 두 키를 준다.
