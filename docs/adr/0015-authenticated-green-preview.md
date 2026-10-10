@@ -1,6 +1,6 @@
 # [ADR-0015] 승인자용 green 미리보기: Identity Center SSO로 인증
 
-* **상태 (Status):** 제안(Proposed). T30 담당자와 합의 전
+* **상태 (Status):** 승인됨(Accepted). T30 담당자와 합의함. aws test 적용과 SSO 로그인 확인 완료(2026-10-10)
 * **날짜 (Date):** 2026-10-10
 * **관련:** T31, T30, T6, T2, T23, [ADR 0003](0003-green-access-port-forward.md), [ADR 0011](0011-private-green-access.md), [ADR 0001](0001-aws-account-structure.md), 설계 문서 FR-6
 

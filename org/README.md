@@ -29,6 +29,7 @@ API가 없어 콘솔에서 직접 바꾼 값. 바꾸면 이 표도 고친다.
 | Identity Center → Settings → Authentication | MFA | **끔** (ADR 0001) |
 | Identity Center → Settings → Authentication | Send email OTP for users created from API | 켬 |
 | Billing → Cost Explorer | 활성화 | 켬 |
+| Identity Center → Applications | green 미리보기 SAML 앱 (T31, ADR 0015) | 고객 관리형 SAML 2.0. ACS URL · Audience는 demo-app `infra/envs/aws` 출력 `preview_auth`의 `saml_acs_url` · `saml_audience`. 속성: Subject → `${user:email}`(emailAddress), `email` → `${user:email}`. 할당: `onetatchi-admin`. 메타데이터 URL은 demo-app `preview_saml_metadata_url` |
 
 ## 규칙
 

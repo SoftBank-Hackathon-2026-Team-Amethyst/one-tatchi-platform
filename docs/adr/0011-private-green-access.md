@@ -35,4 +35,8 @@
 
 port-forward는 한 파드로 연결되고 외부 LB 경로는 검사하지 않는다. BASE_URL은 기존 로컬 테스트 주입 인터페이스이며 Actions 호출부에서 사용하지 않는다. 최초 배포는 기존 Blue가 없으므로 Argo가 active로 연결할 수 있다. 최초 배포까지 사전 검증 없는 공개를 막는 요구는 별도 초기 트래픽 개방 절차가 필요하다.
 
+## T31 보완 (2026-10-10)
+
+이 문서가 막은 것은 인증 없는 공개 preview다. 승인자가 green을 보는 경로는 [ADR 0015](0015-authenticated-green-preview.md)를 따른다. App Chart `previewAuth`를 켜면 oauth2-proxy가 Identity Center SSO 로그인을 강제하고, 인증된 요청만 preview Service로 넘긴다. 인증 설정 없이 preview로 가는 Ingress는 여전히 렌더하지 않으며, 위 회귀 테스트도 유지한다. 승격 판단의 smoke는 계속 localhost port-forward를 쓴다.
+
 참고: [Kubernetes port-forward](https://kubernetes.io/docs/reference/kubectl/generated/kubectl_port-forward/), [NetworkPolicy](https://kubernetes.io/docs/concepts/services-networking/network-policies/), [Argo ephemeral metadata](https://argoproj.github.io/argo-rollouts/features/ephemeral-metadata/).
