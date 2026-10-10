@@ -1,0 +1,96 @@
+name: yolo-report
+description: >-
+  yolo 배포 리포트 (T10). 배포를 막지 않은 경고를 다시 스캔하고(scan_warnings.py), 실행 정보 · 수정 커밋 ·
+  test 승격 결과(T8) · AI 판단 근거(T7)와 묶어 리포트를 만든 뒤(collect.py), S3 감사 로그 저장 ·
+  실행 요약 · yolo-debt 이슈를 남긴다(publish.py). 저장이나 이슈가 실패하면 step이 실패한다.
+  호출 전에 대상 레포를 전체 이력으로 checkout하고(fetch-depth 0), 감사 로그 버킷 쓰기 자격증명을 준비한다.
+inputs:
+  target:
+    description: "배포 대상: aws | gcp | onprem"
+    required: true
+  target-label:
+    description: 기기 구분까지 포함한 대상 (예 onprem-secondary). 비우면 target
+    default: ""
+  promotion:
+    description: test 승격 확인 결과(yolo-promotion.json) 경로. 파일이 없으면 승격하지 않은 배포로 본다
+    default: ""
+  judgment-dir:
+    description: promote-judgment artifact 폴더
+    default: ""
+  judge-outcome:
+    description: 판단 단계 결과 (success | failure | skipped). skipped면 판단 미실행으로 기록한다
+    default: success
+  scan-path:
+    description: 비차단 취약점 · 라이선스 스캔 경로 (checks.yml scan-path와 같게)
+    default: "."
+  iac-path:
+    description: 비차단 IaC 경고 스캔 경로 (checks.yml iac-path와 같게). 비우면 모으지 않는다
+    default: ""
+  base-ref:
+    description: yolo 브랜치가 갈라진 지점을 찾을 기준
+    default: origin/main
+  bucket:
+    description: 감사 로그 버킷 (vars.AUDIT_LOG_BUCKET)
+    required: true
+  github-token:
+    description: yolo-debt 이슈를 만들 토큰 (Issues 쓰기, 봇 App)
+    required: true
+outputs:
+  location:
+    description: 저장한 리포트의 S3 위치. 실패면 빈 값
+    value: ${{ steps.publish.outputs.location }}
+  issue:
+    description: yolo-debt 이슈 주소. 문제가 없으면 빈 값
+    value: ${{ steps.publish.outputs.issue }}
+  open-issue:
+    description: 이슈를 열어야 하는 리포트인지 (true | false)
+    value: ${{ steps.publish.outputs.open-issue }}
+  report:
+    description: 리포트 JSON 경로
+    value: ${{ runner.temp }}/yolo-report/report.json
+runs:
+  using: composite
+  steps:
+    - uses: aquasecurity/setup-trivy@v0.3.1
+      with:
+        version: v0.75.0
+        cache: true
+
+    - name: 배포를 막지 않은 경고 (기준 커밋과 비교)
+      shell: bash
+      env:
+        OUT: ${{ runner.temp }}/yolo-report
+        SCAN_PATH: ${{ inputs.scan-path }}
+        IAC_PATH: ${{ inputs.iac-path }}
+        BASE_REF: ${{ inputs.base-ref }}
+      run: |
+        mkdir -p "$OUT"
+        python3 "$GITHUB_ACTION_PATH/scan_warnings.py" --output "$OUT/warnings.json" \
+          --sha "$GITHUB_SHA" --base-ref "$BASE_REF" --scan-path "$SCAN_PATH" --iac-path "$IAC_PATH"
+
+    - name: 리포트 만들기
+      shell: bash
+      env:
+        OUT: ${{ runner.temp }}/yolo-report
+        TARGET: ${{ inputs.target }}
+        TARGET_LABEL: ${{ inputs.target-label }}
+        PROMOTION: ${{ inputs.promotion }}
+        JUDGMENT_DIR: ${{ inputs.judgment-dir }}
+        JUDGE_OUTCOME: ${{ inputs.judge-outcome }}
+        BASE_REF: ${{ inputs.base-ref }}
+      run: |
+        args=(--output "$OUT/report.json" --base-ref "$BASE_REF" --target "$TARGET"
+              --target-label "${TARGET_LABEL:-$TARGET}" --judge-outcome "${JUDGE_OUTCOME:-success}"
+              --warnings "$OUT/warnings.json")
+        # 승격 확인 결과가 없으면 test에서 승격하지 않은 배포다 (abort · 실패).
+        [ -n "$PROMOTION" ] && [ -f "$PROMOTION" ] && args+=(--promotion "$PROMOTION")
+        [ -n "$JUDGMENT_DIR" ] && args+=(--judgment-dir "$JUDGMENT_DIR")
+        python3 "$GITHUB_ACTION_PATH/collect.py" "${args[@]}"
+
+    - id: publish
+      name: 저장 · 실행 요약 · yolo-debt 이슈
+      shell: bash
+      env:
+        GH_TOKEN: ${{ inputs.github-token }}
+        AUDIT_LOG_BUCKET: ${{ inputs.bucket }}
+      run: python3 "$GITHUB_ACTION_PATH/publish.py" --report "$RUNNER_TEMP/yolo-report/report.json"

@@ -6,6 +6,27 @@ yolo는 사람 리뷰 없이 test(규제 대상이 아니면 prod까지) 가므�
 리포트는 S3 감사 로그 버킷(Object Lock)에 JSON으로 남고, Actions 실행 요약에 표로 보인다.
 갚아야 할 문제(`debt`)가 있으면 대상 레포에 `yolo-debt` 라벨 이슈를 연다.
 
+## 파이프라인 연결
+
+재사용 `deploy.yml`의 `yolo-report` job이 이 액션(`action.yml`)을 부른다. 대상 레포 호출부는 고치지 않아도 된다.
+
+```
+deploy (test, yolo push, promote-mode auto)
+  ├─ 승격 → artifact yolo-promotion (T8) · promote-judgment-test (T7)
+  └─ abort → promote-judgment-test만
+        ↓ (성공 · 실패 모두)
+yolo-report  ── 경고 스캔 → 리포트 → S3 저장 · 실행 요약 · yolo-debt 이슈 → 감사 로그 한 줄(action yolo-report)
+        ↓ (성공해야)
+yolo-pr (main PR · 자동 머지, T8)
+```
+
+- 실행 조건: `yolo-auto-merge: true`, test 환경, `yolo/*` 브랜치 push, 승격 모드 auto, deploy job이 성공 또는 실패로 끝났을 때. janto · main 배포에는 돌지 않는다.
+- 리포트가 실패하면 `yolo-pr`이 돌지 않는다. 기록 없이 리뷰 없는 변경이 main에 들어가지 않게 한다.
+- `environment: test`로 돈다. 감사 로그 버킷에 쓰는 AWS Deploy 역할은 main 또는 environment가 있는 job만 받는다.
+- 토큰: 이슈는 봇 App(`vars.BOT_CLIENT_ID` · `secrets.BOT_PRIVATE_KEY`) 토큰으로 연다. App에 Issues 쓰기 권한이 있어야 한다.
+- 입력: `deploy.yml`의 `report-scan-path`(기본 `.`) · `report-iac-path`(기본 `infra`)를 checks의 `scan-path` · `iac-path`와 같게 둔다.
+- 결과 파일은 artifact `yolo-report`(`warnings.json` · `report.json`)로도 올린다.
+
 ## 리포트 형식
 
 형식은 [`schema.json`](schema.json)(JSON Schema 2020-12)이 기준이다. 예시:
