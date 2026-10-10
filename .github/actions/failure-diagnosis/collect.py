@@ -40,6 +40,18 @@ def gh(*args):
         raise Missing(f"gh {args[0]} 실패: {lines[-1] if lines else exc.returncode}") from None
 
 
+def job_log(repo, job_id):
+    """job 로그는 ANSI 색 코드를 담고 있다. 최신 gh는 그런 응답을 --allow-escape-sequences 없이 출력하지 않고,
+    옛 gh에는 그 옵션이 없다. 거절당했을 때만 옵션을 붙여 다시 받는다 (색 코드는 clean()이 지운다)."""
+    path = f"repos/{repo}/actions/jobs/{job_id}/logs"
+    try:
+        return gh("api", path)
+    except Missing as exc:
+        if "allow-escape-sequences" not in str(exc):
+            raise
+        return gh("api", "--allow-escape-sequences", path)
+
+
 def clean(log):
     return [ANSI.sub("", TIMESTAMP.sub("", line)) for line in log.splitlines()]
 
@@ -74,7 +86,7 @@ def failed_jobs(repo, run_id, attempt):
     chosen = [j for j in jobs if j.get("conclusion") == "failure" and is_deploy_step(j.get("name", ""))]
     result = []
     for job in chosen[:MAX_JOBS]:
-        lines = clean(gh("api", f"repos/{repo}/actions/jobs/{job['id']}/logs"))
+        lines = clean(job_log(repo, job["id"]))
         result.append({
             "name": job["name"], "job_id": str(job["id"]),
             "failed_steps": [s["name"] for s in job.get("steps") or [] if s.get("conclusion") == "failure"],

@@ -29,6 +29,9 @@ path = sys.argv[-1] if sys.argv[-2] != "--jq" else sys.argv[-3]
 if path.endswith("/jobs"):
     print(json.dumps(json.load(open(os.path.join(d, "jobs.json")))))
 elif path.endswith("/logs"):
+    # 최신 gh처럼 색 코드가 든 응답은 --allow-escape-sequences 없이 거절한다 (FAKE_GH_STRICT)
+    if os.environ.get("FAKE_GH_STRICT") and "--allow-escape-sequences" not in sys.argv:
+        sys.exit(print("the response contains terminal escape sequences; pass --allow-escape-sequences to output it anyway", file=sys.stderr) or 1)
     job = path.split("/")[-2]
     f = os.path.join(d, f"log-{job}.txt")
     if not os.path.exists(f):
@@ -113,6 +116,18 @@ class CollectTest(unittest.TestCase):
         self.assertEqual(ev["deploy"]["services"], ["demo-app-be", "demo-app-fe"])
         self.assertIn("api --paginate repos/SoftBank-Hackathon-2026-Team-Amethyst/demo-app/actions/runs/38070479286"
                       "/attempts/1/jobs --jq .jobs", self.calls())
+
+    def test_escape_sequence_refusal_is_retried(self):
+        """실제 러너(2026-10-11 run 38077153897)의 gh는 색 코드가 든 로그를 옵션 없이 출력하지 않았다."""
+        self.jobs(job(114254400958, "test / publish", failed_step="Push images"))
+        self.log(114254400958, (FIXTURES / "job-publish-digest.log").read_text())
+        ev = self.collect(FAKE_GH_STRICT="1")
+        self.assertEqual(ev["collection"]["actions_logs"]["status"], "ok")
+        self.assertTrue(any("existing tag has different digest" in e for e in ev["failed_jobs"][0]["errors"]))
+        calls = self.calls()
+        self.assertIn("api repos/SoftBank-Hackathon-2026-Team-Amethyst/demo-app/actions/jobs/114254400958/logs", calls)
+        self.assertIn("api --allow-escape-sequences repos/SoftBank-Hackathon-2026-Team-Amethyst/demo-app/actions/jobs/"
+                      "114254400958/logs", calls)
 
     def test_publish_failure_has_no_cluster_state(self):
         """실제 이미지 발행 실패 로그(run 38066156334). publish는 클러스터에 접속하지 않는다."""
