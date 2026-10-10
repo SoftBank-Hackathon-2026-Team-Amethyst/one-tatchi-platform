@@ -116,6 +116,15 @@ class ReplacementTests(unittest.TestCase):
 
 
 class ObserverTests(unittest.TestCase):
+    def test_unpowered_baseline_does_not_relax_live_acceptance_or_hide_data_loss(self):
+        power = "AC power is disconnected; continuous operation is not guaranteed"
+        current = {"ac_power": False, "errors": [power, "SQL/public API marker missing: prod"]}
+        errors, pending = reboot_observer.baseline_errors(current, True)
+        self.assertEqual(errors, ["SQL/public API marker missing: prod"])
+        self.assertEqual(pending, [power])
+        self.assertIn(power, reboot_observer.compare({}, current))
+        self.assertIn(power, reboot_observer.baseline_errors(current, False)[0])
+
     def test_http_success_cannot_replace_data_runner_and_boot_evidence(self):
         baseline = {"pvcs": ["uid"], "images": ["digest"], "charts": ["version"], "database": {"test": {"marker_count": 1}}}
         current = dict(baseline, errors=[], boot_id="new", last_restore={"boot_id": "old", "status": "ready"})

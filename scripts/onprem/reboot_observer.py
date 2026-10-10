@@ -93,6 +93,16 @@ def compare(baseline, current):
     return errors
 
 
+def baseline_errors(current, allow_unpowered=False):
+    # Preparing a data reference while unplugged must not relax reboot acceptance.
+    pending = []
+    if allow_unpowered and current.get("ac_power") is False:
+        pending = [error for error in current["errors"] if error in (
+            "AC power is disconnected; continuous operation is not guaranteed",
+            "the managed caffeinate assertion is absent")]
+    return [error for error in current["errors"] if error not in pending], pending
+
+
 def observe(config, directory, repository):
     started, began = time.time(), time.monotonic()
     baseline = json.loads((directory / "baseline.json").read_text())
@@ -116,7 +126,7 @@ def observe(config, directory, repository):
         ctl.write_json(directory / "started.json", launch)
     first_ready = None
     errors = ["not observed"]
-    number = 0
+    number = len(list(directory.glob("sample-*.json")))
     while time.monotonic() - began < (600 if first_ready is None else first_ready + 355):
         end = 600 if first_ready is None else first_ready + 355
         try:
@@ -156,7 +166,11 @@ def main():
     parser.add_argument("--repository", required=True)
     parser.add_argument("--test-marker", default="T27-lock10-test-20261010")
     parser.add_argument("--prod-marker", default="T27-lock10-prod-20261010")
+    parser.add_argument("--allow-unpowered-baseline", action="store_true",
+                        help="save only a data baseline before AC is connected; observe still requires AC")
     args = parser.parse_args()
+    if args.allow_unpowered_baseline and args.mode != "baseline":
+        parser.error("--allow-unpowered-baseline is only valid with baseline")
     if not re.fullmatch(r"[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+", args.repository):
         parser.error("invalid repository")
     config = ctl.load_config(args.config)
@@ -166,14 +180,17 @@ def main():
     markers = {"test": args.test_marker, "prod": args.prod_marker}
     with budget(90):
         current = sample(config, markers, args.repository, int(ctl.boot_id().split("-")[-1]))
-    if current["errors"]:
-        raise RuntimeError("baseline/probe failed: " + "; ".join(current["errors"]))
+    errors, pending = baseline_errors(current, args.allow_unpowered_baseline)
+    if errors:
+        raise RuntimeError("baseline/probe failed: " + "; ".join(errors))
     current["markers"] = markers
+    current["preconditions_pending"] = pending
     if args.mode == "baseline":
         if (args.evidence / "baseline.json").exists():
             raise RuntimeError("baseline exists; preserve previous evidence")
         ctl.write_json(args.evidence / "baseline.json", current)
-    print(json.dumps({"result": "ready", "urls": current["urls"], "database": current["database"], "runner_online": current["runner_online"]}))
+    print(json.dumps({"result": "data-baseline-only" if pending else "ready", "preconditions_pending": pending,
+                      "urls": current["urls"], "database": current["database"], "runner_online": current["runner_online"]}))
 
 
 if __name__ == "__main__":
