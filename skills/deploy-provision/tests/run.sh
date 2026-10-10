@@ -108,6 +108,18 @@ echo 'compliance: none' >> "$app/.deploy/plan.yaml"
 if bash "$check" "$app" >/dev/null 2>&1; then echo "plan의 보호 값을 놓쳤다" >&2; exit 1; fi
 cp "$tmp/plan-original.yaml" "$app/.deploy/plan.yaml"
 
+echo "== DB Secret을 받는데 PGSSL이 없으면 실패, 있으면 통과"
+cp "$app/deploy/values-be.yaml" "$tmp/values-be-original.yaml"
+printf 'envFromSecrets:\n  - demo-app-db\n' >> "$app/deploy/values-be.yaml"
+if bash "$check" "$app" >"$tmp/check5.log" 2>&1; then echo "PGSSL 누락을 놓쳤다" >&2; cat "$tmp/check5.log" >&2; exit 1; fi
+grep -q 'PGSSL' "$tmp/check5.log"
+printf 'env:\n  PGSSL: disable\n' >> "$app/deploy/values-be.yaml"
+if bash "$check" "$app" >/dev/null 2>&1; then echo "PGSSL=disable을 놓쳤다" >&2; exit 1; fi
+cp "$tmp/values-be-original.yaml" "$app/deploy/values-be.yaml"
+printf 'envFromSecrets:\n  - demo-app-db\nenv:\n  PGSSL: require\n' >> "$app/deploy/values-be.yaml"
+bash "$check" "$app" >"$tmp/check6.log" 2>&1 || { echo "PGSSL: require 인데 실패했다" >&2; cat "$tmp/check6.log" >&2; exit 1; }
+cp "$tmp/values-be-original.yaml" "$app/deploy/values-be.yaml"
+
 echo "== 자리표시자가 남으면 실패"
 echo "host: @@HOST_TEST@@" >> "$app/deploy/onprem/values.yaml"
 if bash "$check" "$app" >/dev/null 2>&1; then echo "자리표시자 잔존을 놓쳤다" >&2; exit 1; fi

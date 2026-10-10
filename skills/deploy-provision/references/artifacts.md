@@ -69,6 +69,7 @@ App Chart(`charts/app/values.yaml`)가 받는 키만. 모든 배포 대상 공�
 - `image.repository`: `ghcr.io/<org 소문자>/<서비스>`. 파이프라인이 대상에 맞게 덮어쓴다(aws는 ECR). `image.tag`는 비운다(커밋 SHA).
 - `containerPort`, `service.port`(다른 서비스가 `http://<서비스>:<port>`로 부른다), `probe.path`.
 - `env`: 고정값만. `envFromSecrets`: DB를 쓰면 `[<앱>-db]`(Terraform이 만든 Secret, 키 `DATABASE_URL` · `PG_URL`).
+- DB를 쓰는 서비스는 `env.PGSSL: require`를 함께 넣는다. 클라우드 DB(RDS · Cloud SQL)는 TLS 없는 접속을 거부하고, 온프레미스 Postgres도 TLS를 켜 두었다. 드라이버가 이 변수를 스스로 읽지 않으면(Node `postgres`가 그렇다) 앱 코드가 `PGSSL`을 TLS 옵션으로 넘기는지 확인하고, 아니면 코드 수정 범위에 넣는다(libpq 계열은 `PGSSLMODE`를 바로 읽으므로 그 이름도 받는다). `check-artifacts.sh`가 빠졌는지 검사한다.
 - `migration.enabled: true` + `secretName: <앱>-db`면 파이프라인이 `--set-file migration.sql=<SQL>`로 배포마다 적용한다. SQL은 여러 번 실행해도 안전해야 한다(`IF NOT EXISTS`).
 - `ingress.enabled: true`는 외부에 열 서비스(보통 FE)만. BE는 FE가 프록시한다. `ingress.group` · `host`는 파이프라인이 넣는다.
 - `deployStrategy`는 기본 `blueGreen`을 유지한다.
