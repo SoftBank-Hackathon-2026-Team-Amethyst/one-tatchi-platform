@@ -27,6 +27,7 @@ case "$1 $2" in
     case "$1" in promote|abort) [ -n "${FAKE_ACT_FAIL:-}" ] && { echo 'Error: forbidden' >&2; exit 1; } ;; esac
     exit 0 ;;
   port-forward*)
+    [ "$2" = --address ] && [ "$3" = 127.0.0.1 ] || { echo "port-forward must bind loopback" >&2; exit 1; }
     mode="${FAKE_MODE:-ok}"
     case "$*" in *"svc/${FAKE_FAIL_RELEASE:-없음}-preview"*) mode=fail ;; esac
     exec python3 "$here/fake_server.py" "$mode" ;;

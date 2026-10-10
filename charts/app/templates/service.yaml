@@ -14,6 +14,7 @@ metadata:
     {{- toYaml . | nindent 4 }}
   {{- end }}
 spec:
+  type: ClusterIP
   selector:
     {{- include "app.selector" $ | nindent 4 }}
   ports:

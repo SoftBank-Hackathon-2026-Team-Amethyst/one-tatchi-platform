@@ -65,8 +65,7 @@ ingress:
   # 비우면 host 없이 HTTP(80)만 연다 (도메인이 없는 환경).
   host: ""
   sslPolicy: ELBSecurityPolicy-TLS13-1-2-2021-06
-  # blueGreen일 때 green을 이 포트로 미리 볼 수 있다. host가 있으면 HTTPS로 연다.
-  previewPort: 8080
+  # Green has no public Ingress. Legacy previewPort values are ignored.
 
 migration:
   enabled: false

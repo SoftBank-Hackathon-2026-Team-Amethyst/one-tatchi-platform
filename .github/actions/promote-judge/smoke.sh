@@ -57,7 +57,7 @@ if [ -z "${BASE_URL:-}" ]; then
   svc_port="$($KUBECTL get svc "$svc" -n "$NAMESPACE" -o jsonpath='{.spec.ports[0].port}')"
   pf_log="$WORK_DIR/port-forward.log"
   # 로컬 포트는 비어 있는 것을 kubectl이 고른다. 고른 포트는 로그의 "Forwarding from 127.0.0.1:<포트>"에서 읽는다.
-  $KUBECTL port-forward "svc/$svc" -n "$NAMESPACE" ":$svc_port" > "$pf_log" 2>&1 &
+  $KUBECTL port-forward --address 127.0.0.1 "svc/$svc" -n "$NAMESPACE" ":$svc_port" > "$pf_log" 2>&1 &
   pf_pid=$!
   local_port=""
   for _ in $(seq 1 50); do

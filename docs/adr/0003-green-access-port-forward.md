@@ -61,3 +61,7 @@
 * Ingress · 로드밸런서 구간은 판단 범위에서 빠진다. 그 구간은 승격 후 active 주소로 확인한다.
 * p95 기준값은 port-forward 경유 지연을 감안해 느슨하게 둔다(`max-p95-ms` 2000, 잠정).
 * port-forward가 열리지 않거나 도중에 끊기면 smoke 결과가 없거나 실패로 남아 판단은 abort가 된다.
+
+## T30 보완 (2026-10-10)
+
+기존 차트의 공개 preview Ingress는 제거한다. 공개 preview 포트를 다시 사용하는 선택은 폐기한다. 현재 접근 경계와 기존 설치 마이그레이션은 [ADR 0011](0011-private-green-access.md)을 따른다. port-forward 사용 자체가 클러스터 내부 접근을 차단하거나 Agent만 허용한다는 뜻은 아니다.
