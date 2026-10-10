@@ -10,7 +10,9 @@
 
 ## Unreleased
 
-## v2.1.4
+## v2.1.5
+
+- T9: checks 워크플로우의 image-scan에서 PR 변경사항이 없는 서비스 디렉토리는 도커 빌드 및 Trivy 스캔을 건너뛰어 PR 검사 시간을 획기적으로 단축한다.
 
 - T9: checks 워크플로우 각 job 및 deploy/rollout에 timeout-minutes를 설정해 빌드 hang 및 러너 고갈을 방지한다.
 - T9: image-push build.sh에 Docker Buildx GHA 캐시(--cache-from, --cache-to)를 적용해 반복 빌드 시간을 단축한다.
