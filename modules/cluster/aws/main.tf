@@ -43,7 +43,8 @@ module "eks" {
   kms_key_administrators = var.admin_principal_arns
 
   addons = {
-    vpc-cni                = { before_compute = true }
+    # NetworkPolicy 적용(T30 · T33). 켜도 정책이 없으면 전처럼 모두 허용이다.
+    vpc-cni                = { before_compute = true, configuration_values = jsonencode({ enableNetworkPolicy = "true" }) }
     eks-pod-identity-agent = { before_compute = true }
     kube-proxy             = {}
     coredns                = {}
