@@ -542,7 +542,7 @@ Claude Code는 `/todo-task`, Codex는 `$todo-task`로 이 순서를 따르는 �
 
 **만들 것** 워크플로 최적화: BE · FE 병렬 matrix, buildx GHA 캐시, 의존성 캐시. 단계별 소요 시간 측정 기록.
 
-- **우선순위** P0 · **영역** 파이프라인 (platform 재사용 워크플로) · **담당** 배준범
+- **우선순위** P0 · **영역** 파이프라인 (platform 재사용 워크플로) · **담당** 배준범, 원가연
 - **선행** `T5` · **후속** `T19` · **설계 문서** NFR-1
 
 **목표** yolo push부터 test 반영까지 2분대.
@@ -594,7 +594,7 @@ Claude Code는 `/todo-task`, Codex는 `$todo-task`로 이 순서를 따르는 �
 **할 일**
 - [x] GitHub Actions가 test 실제 승격 확인 뒤 main PR을 생성한다 (ADR 0010)
 - [x] GHA라면 GitHub App 토큰(기본 토큰으로 만든 PR은 워크플로를 실행하지 않음)
-- [ ] `gh pr create` + `gh pr merge --auto --rebase`
+- [x] `gh pr create` + `gh pr merge --auto --rebase`
 - [x] PR 본문에 yolo 배포 리포트, 라벨 `yolo`
 
 **완료 기준** yolo 배포가 test 승격 후 자동으로 main에 머지된다.
