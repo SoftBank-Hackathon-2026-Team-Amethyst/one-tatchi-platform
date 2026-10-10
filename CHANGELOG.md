@@ -10,8 +10,11 @@
 
 ## Unreleased
 
-- T33: `db_link/tailscale`에 `create_oauth_secret`(false면 External Secrets가 만든 `operator-oauth`를 쓴다) · `manage_namespace` · `consume[*].name`을 추가한다. CI에서 apply하는 클라우드 루트가 OAuth 값을 Terraform에 주지 않고도 operator를 올릴 수 있다. 기본값은 이전과 같다.
 - 스킬: `yolo-deploy` · `deploy-analyze`에 분석 · 비용 재사용 조건을 추가한다. 최근(7일 이내) 분석 이후 서비스 계약 · 과금 자원이 바뀌지 않았으면 분석기 5개와 가격 조회 체인을 다시 돌리지 않는다(10~15분 단축). 로컬 검증은 그대로 수행한다.
+
+## v2.5.1
+
+- T33: `db_link/tailscale`에 `create_oauth_secret`(false면 External Secrets가 만든 `operator-oauth`를 쓴다) · `manage_namespace` · `consume[*].name`을 추가한다. CI에서 apply하는 클라우드 루트가 OAuth 값을 Terraform에 주지 않고도 operator를 올릴 수 있다. 기본값은 이전과 같다.
 
 ## v2.5.0
 
