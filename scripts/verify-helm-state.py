@@ -32,8 +32,12 @@ def verify(root):
     namespaces = sorted({namespace for _, namespace, _ in owned})
     for namespace in namespaces:
         # can-i exits 1 when the answer is "no"; that is a permission result, not a read failure.
-        if read(["kubectl", "auth", "can-i", "list", "secrets", "-n", namespace], ok=(0, 1)).strip() != "yes":
+        # Exit 1 without a "no" answer is a transport or authentication failure.
+        answer = read(["kubectl", "auth", "can-i", "list", "secrets", "-n", namespace], ok=(0, 1)).strip()
+        if re.match(r"^no(?:\s+-|$)", answer):
             raise RuntimeError(f"CI identity cannot list Helm release records in namespace {namespace}")
+        if answer != "yes":
+            raise RuntimeError("kubectl read failed; inspect this job's identity and cluster access")
     for address, namespace, name in owned:
         # Helm 4 lists every status by default and no longer accepts --all.
         found = json.loads(read(["helm", "list", "--namespace", namespace,
