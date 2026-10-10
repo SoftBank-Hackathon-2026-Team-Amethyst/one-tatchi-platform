@@ -1,0 +1,66 @@
+name: approval-timeout
+
+# 운영 승인 요청이 max-wait-minutes 안에 처리되지 않은 실행을 취소하고 Slack에 알린다 (T6 · T9).
+# 대상 레포가 schedule로 호출한다. 승인 대기 자체는 approve job이 받아 동시성 차선을 막지 않지만,
+# 잊힌 요청이 며칠씩 남지 않게 정리한다. 취소된 배포를 다시 올리려면 deploy를 main에서 수동 실행한다.
+on:
+  workflow_call:
+    inputs:
+      template-ref:
+        description: one-tatchi-platform 태그 (액션 체크아웃용)
+        type: string
+        required: true
+      max-wait-minutes:
+        description: 승인 대기를 허용하는 시간(분). 넘으면 실행을 취소한다
+        type: number
+        default: 60
+      workflow:
+        description: 검사할 워크플로 파일 이름
+        type: string
+        default: deploy.yml
+      dry-run:
+        description: true면 취소하지 않고 대상만 적는다
+        type: boolean
+        default: false
+    secrets:
+      SLACK_BOT_TOKEN:
+        required: false
+
+permissions:
+  actions: write   # 실행 취소
+  contents: read
+
+jobs:
+  reap:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          repository: SoftBank-Hackathon-2026-Team-Amethyst/one-tatchi-platform
+          ref: ${{ inputs.template-ref }}
+          path: .platform
+          sparse-checkout: |
+            .github/actions/approval-timeout
+            .github/actions/slack-notify
+          persist-credentials: false
+      - id: reap
+        name: 승인 대기 시간 초과 실행 취소
+        env:
+          GH_TOKEN: ${{ github.token }}
+          MAX_WAIT_MINUTES: ${{ inputs.max-wait-minutes }}
+          WORKFLOW: ${{ inputs.workflow }}
+          DRY_RUN: ${{ inputs.dry-run }}
+        run: python3 .platform/.github/actions/approval-timeout/reap.py
+      - if: steps.reap.outputs.count != '0'
+        uses: ./.platform/.github/actions/slack-notify
+        with:
+          token: ${{ secrets.SLACK_BOT_TOKEN }}
+          channel: ${{ vars.SLACK_CHANNEL_ID }}
+          action: deploy
+          target: all@prod
+          environment: prod
+          result: cancelled
+          stage: 운영 승인 시간 초과
+          next-action: 그 커밋을 아직 올리고 싶으면 deploy 워크플로를 main에서 수동 실행(target · environment=prod)하고 새 승인 요청을 처리하세요. 아니면 할 일이 없어요.
+          details: ${{ steps.reap.outputs.details }}

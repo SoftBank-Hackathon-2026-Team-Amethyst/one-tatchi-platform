@@ -156,6 +156,7 @@ platform 재사용 워크플로를 **호출만** 한다. 검사 단계를 끄는
 - v1.14.0부터 test 호출에 `yolo-auto-merge: true`, test/prod에 `promote-mode: branch`를 넘긴다. yolo 승격 뒤 PR 검사 → rebase 자동 머지, main에서는 새 SHA로 test 재검증 → 같은 이미지로 prod 배포한다. janto main은 manual을 유지한다. `render.sh`는 이전 버전에서 이 입력을 조정한다.
 - `infra.yml`(aws): `infra/**` PR → plan 코멘트, main → apply.
 - `template-update.yml`: 새 태그 알림 → 버전 올리는 PR.
+- `approval-timeout.yml`: 15분마다 운영 승인 대기가 60분을 넘긴 deploy 실행을 취소하고 Slack에 알린다. 호출부는 `max-wait-minutes`만 바꾼다. 승인 대기 자체는 platform `deploy.yml`의 `approve` job이 받아 배포 동시성 차선을 막지 않는다.
 - 호출부의 `with:` 값만 바꾼다. 새 job을 끼워 검사를 건너뛰게 만들지 않는다.
 
 ### `.github/CODEOWNERS`

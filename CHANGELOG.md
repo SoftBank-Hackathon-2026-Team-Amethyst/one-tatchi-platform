@@ -10,6 +10,7 @@
 
 ## Unreleased
 
+- T6 · T9: 운영 승인을 `deploy.yml`의 별도 `approve` job(environment `prod`)으로 분리한다. 승인 대기가 deploy의 동시성 차선을 잡아 뒤의 운영 배포가 전부 취소되던 문제를 없앤다. 승인 뒤 deploy job은 `prod-auto`(main 전용)로 돈다. Slack 승인 버튼 · 감사 로그 표지는 그대로. 새 재사용 워크플로 `approval-timeout.yml`(+ `deploy-provision` 템플릿): 승인 대기가 `max-wait-minutes`(기본 60)를 넘긴 실행을 취소하고 Slack에 알린다.
 - T9: `deploy.yml`이 서비스를 두 단계로 배포한다 — 배열 순서대로 `helm upgrade`를 모두 보낸 뒤 green 대기를 서비스마다 한다(green 기동이 겹쳐 약 30초 단축). 새 입력 `yolo-pr-reuse-checks`(기본 true): yolo PR 자동 머지 전에 같은 SHA의 push `checks` 통과를 인정하고 `pull_request` 검사 실행을 기다리지 않는다(약 1분 단축). infra 변경은 전처럼 plan 실행을 기다린다. false면 이전 동작.
 - 스킬 설치: `scripts/install-skills.sh --auto`가 main 전용 클론에 링크하고 Claude Code `SessionStart` 훅으로 세션마다 fast-forward한다. main에 머지된 스킬 변경이 각 기기에 자동 반영된다.
 ## v2.11.0

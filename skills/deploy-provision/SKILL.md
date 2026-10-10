@@ -33,6 +33,7 @@ description: 분석 결과(.deploy/plan.yaml, .deploy/report.md)로 대상 레�
    |---|---|---|
    | `.github/workflows/deploy.yml` | `templates/.github/workflows/deploy.yml.tmpl` | 항상 |
    | `.github/workflows/template-update.yml` | `templates/.github/workflows/template-update.yml.tmpl` | 항상 |
+   | `.github/workflows/approval-timeout.yml` | `templates/.github/workflows/approval-timeout.yml.tmpl` | `template_version`에 `approval-timeout.yml` 재사용 워크플로가 있을 때(v2.12.0 이후 태그). 그 전 버전이면 만들지 않는다 |
    | `.github/workflows/infra.yml` | `templates/.github/workflows/infra.yml.tmpl` | `target: aws` |
    | `.github/CODEOWNERS` | `templates/.github/CODEOWNERS.tmpl` | 없을 때만. 있으면 건드리지 않는다 |
    | `deploy/values-<서비스>.yaml` | `templates/deploy/values-service.yaml.tmpl` | 서비스마다 |
