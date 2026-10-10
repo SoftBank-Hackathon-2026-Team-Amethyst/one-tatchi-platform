@@ -76,6 +76,7 @@ python3 scripts/onprem/onpremctl.py --config /absolute/path/config.json install
 | refresh-urls | 현재 test/prod 터널과 화면·API·DB health를 검사하고 endpoints.json을 원자적으로 갱신 |
 | terraform | 소유권과 DB 비밀번호를 확인한 뒤 Terraform 실행 |
 | migrate-state | 암호화 복구 백업을 검증한 뒤 기존 평문 state를 이전 |
+| audit-state | 현재 DB·k3d·관측·선택형 Tailscale 인증정보와 state/plan/backup을 메모리에서 대조. 발견/조회 실패는 실패 |
 
 로그인 시 `restore`가 Docker Desktop을 열고, 준비를 기다린 뒤 **기존** k3d → API 프록시 → Kubernetes API·노드 → DB·앱 → cloudflared → 외부 HTTP 순서로 확인한다.
 기존 프록시는 nginx가 시작할 때 해석한 서버 IP를 보관하므로, 해당 프로필의 serverlb만 재시작해 새 IP를 해석한다.
@@ -107,6 +108,20 @@ python3 scripts/onprem/onpremctl.py --config /absolute/path/config.json terrafor
 평문 파일 삭제는 SSD에서 과거 블록의 물리적 완전 삭제를 보장하지 않는다. FileVault와 기존 백업 보존 정책은 유지한다.
 
 이후 plan에서 DB/Secret/PVC 교체, 삭제, 비밀번호 변경이 나오면 apply하지 않는다. 정상 이전은 기존 Secret/데이터가 유지되고 재apply가 무변경이어야 한다.
+
+이전 전후에는 `audit-state`로 원본 state·백업·plan ZIP 내부·Terraform JSON 사본·tfvars·관리 설정을 검사한다.
+JSON 이스케이프, base64, URL 인코딩된 알려진 값과 기존 Secret/random_password/인증 저장 필드를 확인한다.
+현재 Secret 조회가 실패하면 깨끗한 state로 판정하지 않는다. 기본 맥북의 실제 이전은 secondary 검증으로 대신하지 않는다.
+
+```bash
+python3 scripts/onprem/onpremctl.py --config /absolute/path/config.json audit-state
+# 루트 밖의 plan·복사본도 지정한다. 파일을 삭제하거나 state를 바꾸지 않는다.
+python3 scripts/onprem/onpremctl.py --config /absolute/path/config.json audit-state \
+  --file /absolute/path/review.tfplan
+```
+
+이 검사는 지정된 파일과 현재 인증정보/알려진 저장 형식의 대조다. 머신 전체·Time Machine·과거 디스크 블록의 검사로 해석하지 않는다.
+다른 기기에서의 구체적인 작업 순서와 T17/T33 설정 보존 항목은 [state 이전 실행 절차](../../docs/t27-state-migration.md)를 따른다.
 
 ## 배포·터널·이미지
 

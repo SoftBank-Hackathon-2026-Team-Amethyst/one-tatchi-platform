@@ -535,7 +535,7 @@ def _status(config):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--config", type=Path, required=True)
-    parser.add_argument("command", choices=["doctor", "install", "start", "stop", "status", "terraform", "migrate-state", "uninstall", "restore", "runner", "refresh-urls"])
+    parser.add_argument("command", choices=["doctor", "install", "start", "stop", "status", "terraform", "migrate-state", "audit-state", "uninstall", "restore", "runner", "refresh-urls"])
     parser.add_argument("args", nargs=argparse.REMAINDER)
     a = parser.parse_args()
     config = load_config(a.config)
@@ -565,6 +565,9 @@ def main():
     elif a.command == "migrate-state":
         from state_migration import migrate
         return migrate(config, a.args)
+    elif a.command == "audit-state":
+        from state_audit import audit
+        return audit(config, a.args)
     return 0
 
 

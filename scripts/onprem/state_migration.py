@@ -12,6 +12,7 @@ import tarfile
 from pathlib import Path
 
 from onpremctl import check_ownership, cluster_exists, prepare_kubeconfig, run, state_path
+from state_audit import contains_secret, artifact_files
 
 
 def scrub(state):
@@ -67,12 +68,8 @@ def secret_values(state):
 
 
 def assert_clean(data, values):
-    for value in values:
-        for encoded in (value.encode(), base64.b64encode(value.encode())):
-            if encoded in data:
-                raise RuntimeError("secret material remains; no files removed")
-    if re.search(rb"-----BEGIN (?:RSA |EC |OPENSSH )?PRIVATE KEY-----", data):
-        raise RuntimeError("private key remains; no files removed")
+    if contains_secret(data, values):
+        raise RuntimeError("secret material remains; no files removed")
 
 
 def archived_equivalent(data, archived):
@@ -149,21 +146,7 @@ def migrate(config, args):
     assert_clean(payload, values)
     if (root / ".terraform.tfstate.lock.info").exists():
         raise RuntimeError("another Terraform operation holds the state lock")
-    candidates = [source, *root.glob("*.tfstate.backup*"), *root.glob("*.tfplan"), *a.plan_file]
-    # Terraform's saved plans are ZIP archives even when the filename has no extension.
-    import zipfile
-    for path in root.iterdir():
-        if path.is_file() and not path.is_symlink() and zipfile.is_zipfile(path):
-            with zipfile.ZipFile(path) as archive:
-                if "tfplan" in archive.namelist():
-                    candidates.append(path)
-        elif path.is_file() and path.suffix == ".json":
-            try:
-                data = json.loads(path.read_bytes())
-                if isinstance(data, dict) and "terraform_version" in data and ("planned_values" in data or "values" in data):
-                    candidates.append(path)
-            except (ValueError, UnicodeDecodeError):
-                pass
+    candidates = artifact_files(root, a.plan_file)
     files = {}
     for path in candidates:
         if path.is_symlink():
