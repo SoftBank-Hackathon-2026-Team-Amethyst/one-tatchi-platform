@@ -20,11 +20,13 @@
 
 원본은 [`docs/assets/architecture.drawio`](docs/assets/architecture.drawio) (draw.io로 연다).
 
-스킬을 실행한 뒤 뒷단이 어떻게 움직이는지는 두 장으로 따로 그렸다. 원본은 [`docs/assets/deploy-flow.drawio`](docs/assets/deploy-flow.drawio)(페이지 2개).
+스킬을 실행한 뒤 뒷단이 어떻게 움직이는지는 따로 그렸다. 원본은 [`docs/assets/deploy-flow.drawio`](docs/assets/deploy-flow.drawio)(페이지 3개: 배포 흐름 · 전체 아키텍처 · 브랜치 흐름).
 
-| 브랜치 흐름 | 전체 동작 흐름 (Slack 봇 포함) |
+| 배포 흐름 | 전체 아키텍처 (Slack 봇 포함) |
 |---|---|
-| ![브랜치 흐름](docs/assets/deploy-flow-0.png) | ![전체 동작 흐름](docs/assets/deploy-flow-1.png) |
+| ![배포 흐름](docs/assets/deploy-flow-0.png) | ![전체 아키텍처](docs/assets/deploy-flow-1.png) |
+
+브랜치 흐름(main · janto · yolo/* 레인)은 [`docs/assets/deploy-flow-2.png`](docs/assets/deploy-flow-2.png).
 
 ## 구성
 
