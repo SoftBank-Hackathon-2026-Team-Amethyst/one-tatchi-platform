@@ -10,6 +10,8 @@
 
 ## Unreleased
 
+- T33: `db_link/tailscale` consume에 `allow_from`(네임스페이스 · 파드 라벨)을 적으면 egress 프록시에 NetworkPolicy를 걸어 그 파드만 DB 포트에 닿는다. `cluster/aws`의 VPC CNI에 `enableNetworkPolicy`를 켠다(정책이 없으면 전처럼 모두 허용, T30 · T33).
+
 ## v2.10.0
 
 - T31: `deploy.yml`에 `preview-auth` 입력(기본 true)을 추가한다. false면 values와 관계없이 승인자용 green 미리보기를 끈다. 같은 values를 쓰지만 미리보기 호스트 · 터널이 없는 클러스터(onprem 보조 기기)에 쓴다.
