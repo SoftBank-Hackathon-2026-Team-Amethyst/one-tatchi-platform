@@ -19,7 +19,8 @@ tmp="$(mktemp -d)"; trap 'rm -rf "$tmp"' EXIT
 status=ok detail=""
 problem() { status=failed; detail="${detail:+$detail; }$1"; }
 first_line() { head -n 1 "$1" | cut -c1-160; }
-k() { $KUBECTL "$@" 2>"$tmp/err"; }
+# 클러스터에 닿지 않을 때 오래 매달리지 않게 요청마다 시간 제한을 둔다.
+k() { $KUBECTL "$@" --request-timeout=20s 2>"$tmp/err"; }
 
 # 1. 서비스별 Rollout 상태
 rollouts='[]'

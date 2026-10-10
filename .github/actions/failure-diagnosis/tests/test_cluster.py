@@ -85,7 +85,7 @@ class ClusterTest(unittest.TestCase):
         self.assertIn("postgresql://***@db.internal", job["log_tail"])
         self.assertEqual(result["cluster"]["events"][0]["object"], "Job/demo-app-be-migration")
         # fe는 마이그레이션 Job이 없다(NotFound는 실패가 아니다).
-        self.assertIn("get job demo-app-fe-migration -n test -o json", self.calls_made())
+        self.assertIn("get job demo-app-fe-migration -n test -o json --request-timeout=20s", self.calls_made())
 
     def test_degraded_rollout_reads_previous_logs(self):
         """재시작한 파드는 직전 컨테이너 로그(--previous)를, Ready만 아닌 파드는 현재 로그를 읽는다."""
@@ -105,7 +105,7 @@ class ClusterTest(unittest.TestCase):
         self.assertIn("missing env DB_HOST", pods["be-crash"]["log_tail"])
         self.assertIn("listening on :8080", pods["be-slow"]["log_tail"])
         self.assertEqual(result["cluster"]["rollouts"][0]["phase"], "Degraded")
-        self.assertIn("get pods -n test -l app.kubernetes.io/name in (demo-app-be,demo-app-fe) -o json",
+        self.assertIn("get pods -n test -l app.kubernetes.io/name in (demo-app-be,demo-app-fe) -o json --request-timeout=20s",
                       self.calls_made())
         self.assertEqual(result["collection"]["status"], "ok")
 
@@ -150,7 +150,7 @@ class ClusterTest(unittest.TestCase):
         """서비스 목록이 비어도(bash 3.2의 빈 배열 포함) 이벤트만 모으고 끝난다."""
         result = self.run_script(releases="")
         self.assertEqual(result["collection"]["status"], "ok")
-        self.assertEqual(self.calls_made(), ["get events -n test --field-selector type=Warning -o json"])
+        self.assertEqual(self.calls_made(), ["get events -n test --field-selector type=Warning -o json --request-timeout=20s"])
 
     def test_secrets_in_events_and_messages(self):
         self.put("rollout-demo-app-be.json", {"status": {"phase": "Degraded",

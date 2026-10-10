@@ -1,0 +1,95 @@
+name: failure-diagnosis
+description: >-
+  배포 실패 원인 진단 (T12). 실패한 publish · deploy job의 로그를 받아 클러스터 상태(cluster.sh 결과)와 묶고(collect.py),
+  Claude로 원인을 요약해(diagnose.py) 실행 요약 · PR 코멘트 · Slack 새 메시지로 남긴다(publish.py).
+  배포가 실패한 뒤에 도는 진단 job(ubuntu)에서 쓴다. 어느 단계가 실패해도 경고만 남긴다.
+  클러스터 상태는 실패한 deploy job 안에서 cluster.sh로 모아 artifact로 넘긴다 (ADR 0019).
+inputs:
+  target:
+    description: "배포 대상: aws | gcp | onprem"
+    required: true
+  target-label:
+    description: 기기 구분까지 포함한 대상 (예 onprem-secondary). 비우면 target
+    default: ""
+  environment:
+    description: test | prod
+    required: true
+  namespace:
+    description: 배포 네임스페이스
+    required: true
+  services:
+    description: deploy.yml의 services JSON 배열
+    required: true
+  cluster-file:
+    description: 실패한 deploy job이 올린 cluster.json 경로. 없으면 수집 실패(deploy) 또는 해당 없음(publish)으로 남긴다
+    default: ""
+  github-token:
+    description: 실패 job 로그 읽기(actions read) · PR 코멘트(pull requests 쓰기) 토큰 (봇 App)
+    required: true
+  anthropic-api-key:
+    description: Claude API 키. 없으면 오류 줄만 담은 fallback으로 남긴다
+    default: ""
+  model:
+    description: 원인 요약 모델
+    default: claude-sonnet-5-5
+  allow-prod:
+    description: prod 실패도 Claude로 요약한다 (기본은 외부 LLM으로 보내지 않는다)
+    default: "false"
+  slack-token:
+    description: Slack 봇 토큰. 없으면 Slack을 건너뛴다
+    default: ""
+  slack-channel:
+    description: Slack 채널 ID
+    default: ""
+outputs:
+  category:
+    description: 원인 분류
+    value: ${{ steps.diagnose.outputs.category }}
+  source:
+    description: ai | fallback
+    value: ${{ steps.diagnose.outputs.source }}
+  pr-comment:
+    description: PR 코멘트 주소. PR이 없거나 실패하면 빈 값
+    value: ${{ steps.publish.outputs.pr-comment }}
+runs:
+  using: composite
+  steps:
+    - name: 실패 증거 묶기 (실패 job 로그 + 클러스터 상태)
+      shell: bash
+      env:
+        OUT: ${{ runner.temp }}/failure-diagnosis
+        GH_TOKEN: ${{ inputs.github-token }}
+        TARGET: ${{ inputs.target }}
+        TARGET_LABEL: ${{ inputs.target-label }}
+        ENVIRONMENT: ${{ inputs.environment }}
+        NAMESPACE: ${{ inputs.namespace }}
+        SERVICES: ${{ inputs.services }}
+        CLUSTER_FILE: ${{ inputs.cluster-file }}
+      run: |
+        mkdir -p "$OUT"
+        names="$(jq -r '[.[].name] | join(" ")' <<<"$SERVICES" 2>/dev/null || true)"
+        python3 "$GITHUB_ACTION_PATH/collect.py" --output "$OUT/evidence.json" --cluster "$CLUSTER_FILE" \
+          --target "$TARGET" --target-label "$TARGET_LABEL" --environment "$ENVIRONMENT" \
+          --namespace "$NAMESPACE" --services "$names"
+
+    - id: diagnose
+      name: 원인 요약 (Claude)
+      shell: bash
+      env:
+        OUT: ${{ runner.temp }}/failure-diagnosis
+        ANTHROPIC_API_KEY: ${{ inputs.anthropic-api-key }}
+        MODEL: ${{ inputs.model }}
+        ALLOW_PROD: ${{ inputs.allow-prod }}
+      run: |
+        python3 "$GITHUB_ACTION_PATH/diagnose.py" --evidence "$OUT/evidence.json" --output "$OUT/diagnosis.json" \
+          $([ "$ALLOW_PROD" = true ] && echo --allow-prod)
+
+    - id: publish
+      name: 실행 요약 · PR 코멘트 · Slack
+      shell: bash
+      env:
+        OUT: ${{ runner.temp }}/failure-diagnosis
+        GH_TOKEN: ${{ inputs.github-token }}
+        SLACK_BOT_TOKEN: ${{ inputs.slack-token }}
+        SLACK_CHANNEL_ID: ${{ inputs.slack-channel }}
+      run: python3 "$GITHUB_ACTION_PATH/publish.py" --evidence "$OUT/evidence.json" --diagnosis "$OUT/diagnosis.json"

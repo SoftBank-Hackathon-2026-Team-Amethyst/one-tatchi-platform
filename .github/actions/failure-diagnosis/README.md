@@ -43,6 +43,17 @@ publish · deploy job 실패
 | [`examples/evidence-image-publish.json`](examples/evidence-image-publish.json) · [`diagnosis-image-publish.json`](examples/diagnosis-image-publish.json) | [38066156334](https://github.com/SoftBank-Hackathon-2026-Team-Amethyst/demo-app/actions/runs/38066156334) | `existing tag has different digest`. 원인이 Actions 로그에 그대로 있다 |
 | [`examples/diagnosis-fallback.json`](examples/diagnosis-fallback.json) | — | Claude 시간 초과 → 오류 줄만 보여 준다 |
 
+## 연결 (`deploy.yml`)
+
+| 위치 | 조건 | 하는 일 |
+|---|---|---|
+| `deploy` job 안 `failure-cluster` 단계 | `failure()`이고 의도한 AI abort(`steps.judge.outputs.executed == abort`)가 아님 | `cluster.sh` → artifact `failure-cluster-<대상>-<환경>-<시도>` |
+| `failure-diagnosis` job (ubuntu) | `publish` 실패, 또는 `deploy` 실패이고 출력 `executed`가 `abort`가 아님 | artifact를 받아 이 액션(`action.yml`: collect → diagnose → publish) 실행, 결과를 artifact `failure-diagnosis-<대상>-<환경>-<시도>`로 남김 |
+
+- 단계 · job 모두 `continue-on-error`라 진단이 실패해도 배포 결과는 바뀌지 않는다. 기존 실패 알림은 deploy job에서 그대로 먼저 간다.
+- 로그 · PR 코멘트에는 봇 App 토큰(`BOT_CLIENT_ID` · `BOT_PRIVATE_KEY`)을 쓴다. 토큰을 만들지 못하면 `github.token`으로 시도한다(호출부에 `actions: read`가 없으면 로그 수집은 failed로 남는다).
+- 호출부(demo-app) 변경은 없다. `secrets: inherit`로 `ANTHROPIC_API_KEY` · `BOT_PRIVATE_KEY` · `SLACK_BOT_TOKEN`이 이미 넘어온다.
+
 ## 스크립트
 
 | 파일 | 어디서 | 하는 일 |
