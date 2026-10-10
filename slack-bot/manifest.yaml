@@ -11,6 +11,10 @@ features:
       description: "Blue-Green 승격, 취소, 되돌리기 (예: promote all@aws.test)"
       usage_hint: "promote|abort|undo <서비스|all>@<대상>.<환경>"
       should_escape: false
+    - command: /github-link
+      description: "리뷰 승인 버튼에 쓸 GitHub 계정을 연결합니다 (reset으로 다시 연결)"
+      usage_hint: "[reset]"
+      should_escape: false
 oauth_config:
   scopes:
     bot:

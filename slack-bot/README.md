@@ -4,7 +4,7 @@
 
 - **알림**: 워크플로가 `.github/actions/slack-notify`로 배포, 승격, 되돌리기, 인프라 반영 결과를 채널에 올립니다.
 - **Blue-Green 조작**: 알림의 승격 · 취소 · 되돌리기 버튼이나 `/rollout` 명령을 봇이 받아 대상 레포의 rollout 워크플로를 실행합니다. 그 워크플로는 platform 재사용 워크플로 `rollout.yml`을 호출합니다.
-- **PR 머지**: janto PR 알림의 머지 버튼을 누르면 봇이 PR을 머지하고, 누른 사람을 PR 코멘트로 남깁니다. 필수 검사 등 머지 규칙은 GitHub 브랜치 보호가 그대로 지킵니다.
+- **PR 리뷰 승인 · 머지**: janto PR 알림의 리뷰 승인 버튼은 누른 사람이 연결한 **자기 GitHub 계정**으로 Approve 리뷰를 남깁니다(CODEOWNERS 리뷰는 봇 신원으로는 인정되지 않아서). 머지 버튼은 봇이 PR을 머지하고 누른 사람을 PR 코멘트로 남깁니다. 필수 검사 등 머지 규칙은 GitHub 브랜치 보호가 그대로 지키고, 거부되면 GitHub의 사유를 그대로 보여 줍니다.
 
 봇은 클러스터 권한이 없습니다. 실제 반영은 배포 파이프라인만 하고, 요청한 Slack 사용자는 감사 로그의 `requested_by`에 남습니다.
 
@@ -58,6 +58,8 @@ Socket Mode를 쓰므로 봇이 Slack으로 연결을 겁니다. 공개 엔드�
 | `GITHUB_REF` | rollout 워크플로를 실행할 브랜치 | `main` |
 | `MERGE_METHOD` | 머지 방식 (`squash` · `merge` · `rebase`) | `squash` |
 | `ALLOWED_USER_IDS` | 조작할 수 있는 Slack 사용자 ID. 예 `'["U0123", "U0456"]'` | `[]` (채널의 누구나) |
+| `GITHUB_APP_CLIENT_SECRET` | 리뷰 승인용 사용자 토큰을 만료 전에 갱신할 때만 필요 (선택). 없으면 만료 뒤 다시 연결 | 빈 값 |
+| `LINK_STORE_PATH` | Slack 사용자 → GitHub 계정 연결 저장 파일. 비우면 메모리만. 파드 `/tmp`는 재시작하면 비워진다 | `/tmp/github-links.json` |
 
 ## 로컬 실행
 
@@ -77,14 +79,15 @@ uv run python -m app.main
 | 버튼 | `action_id` | `value` |
 |---|---|---|
 | 승격 · 취소 · 되돌리기 | `rollout_promote`, `rollout_abort`, `rollout_undo` | `<서비스|all>@<대상>.<환경>` (예 `demo-app-be@aws.test`). 알림의 `target`과 같다 |
+| 리뷰 승인 | `pr_approve` | 대상 레포의 PR 번호. 누른 사람의 GitHub 계정으로 Approve 리뷰를 남긴다 |
 | 머지 | `pr_merge` | 대상 레포의 PR 번호 |
 | 운영 승인 · 거절 | `deploy_approve`, `deploy_reject` | `<워크플로 실행 ID>@<GitHub environment>` (예 `123456@prod`). `deploy.yml`의 gate가 regulated 운영 배포마다 올린다 |
 
-명령: `/rollout <promote|abort|undo> <서비스|all>@<대상>.<환경>` (예 `/rollout promote all@aws.test`)
+명령: `/rollout <promote|abort|undo> <서비스|all>@<대상>.<환경>` (예 `/rollout promote all@aws.test`), `/github-link [reset]`(리뷰 승인용 GitHub 계정 연결)
 
 ## PR 준비 알림
 
-janto PR의 검사가 통과하면 재사용 워크플로 `pr-ready.yml`이 PR 제목 · 작성자 · 변경 규모와 머지 버튼을 올립니다. draft, `yolo/**` 브랜치(T8 자동 머지), fork PR은 알리지 않습니다. 대상 레포의 PR 워크플로에서 검사 job 뒤에 붙입니다.
+janto PR의 검사가 통과하면 재사용 워크플로 `pr-ready.yml`이 PR 제목 · 작성자 · 변경 규모와 **리뷰 승인 · 머지** 버튼을 올립니다. draft, `yolo/**` 브랜치(T8 자동 머지), fork PR은 알리지 않습니다. 대상 레포의 PR 워크플로에서 검사 job 뒤에 붙입니다.
 
 ```yaml
   pr-ready:
@@ -96,6 +99,16 @@ janto PR의 검사가 통과하면 재사용 워크플로 `pr-ready.yml`이 PR �
     secrets:
       SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
 ```
+
+## 리뷰 승인 버튼 설정 (한 번만)
+
+`.deploy/config.yaml` · `CODEOWNERS`를 바꾸는 PR은 코드 오너 리뷰(T6)가 있어야 머지됩니다. 봇은 GitHub App이라 봇이 남긴 리뷰는 코드 오너 리뷰가 아닙니다. 그래서 리뷰 승인 버튼은 **누른 사람의 GitHub 계정**으로 리뷰를 제출합니다.
+
+1. GitHub App 설정 → General → **Enable Device Flow**를 켭니다. 공개 콜백 주소가 필요 없는 방식입니다. 권한은 기존 **Pull requests** 쓰기로 충분합니다(사용자 토큰은 앱 권한 ∩ 사용자 권한).
+2. (선택) 사용자 토큰 만료가 켜져 있으면(기본 8시간) 봇 Secret에 `GITHUB_APP_CLIENT_SECRET`을 넣어야 봇이 만료 전에 갱신합니다. 없으면 만료 뒤 버튼을 눌렀을 때 다시 연결합니다. 토큰 만료 자체를 끄는 것(Optional features → User-to-server token expiration)도 됩니다.
+3. Slack 앱 매니페스트에 `/github-link` 명령을 추가합니다(선택. 버튼을 누르면 연결 안내가 나오므로 없어도 됩니다).
+
+처음 버튼을 누르면 봇이 코드와 주소(`https://github.com/login/device`)를 본인에게만 보여 줍니다. 입력하면 "연결했어요" 알림이 오고, 버튼을 다시 누르면 승인됩니다. 연결은 `LINK_STORE_PATH` 파일에 남지만 파드 `/tmp`라 재시작하면 다시 연결합니다. PR 작성자 본인이 누르면 GitHub이 거부하고(`Can not approve your own pull request`) 그 사유가 그대로 표시됩니다.
 
 ## 운영 승인 버튼 설정 (한 번만)
 

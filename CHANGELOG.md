@@ -10,6 +10,7 @@
 
 ## Unreleased
 
+- T26: PR 준비 알림에 **리뷰 승인** 버튼을 추가한다. 봇(GitHub App)의 리뷰는 CODEOWNERS 조건을 채우지 못하므로, 버튼을 누른 사람이 GitHub App device flow로 연결한 자기 GitHub 계정으로 Approve 리뷰를 제출한다(`/github-link`로 미리 연결 가능). 머지 · 승인 · 승격 버튼이 실패하면 GitHub이 거부한 사유(`message`)를 그대로 보여 준다. GitHub App 설정에서 Device Flow를 켜야 하고, 선택 설정 `GITHUB_APP_CLIENT_SECRET`(토큰 갱신) · `LINK_STORE_PATH`를 받는다.
 - T28: DB Secret을 받는 서비스의 값 파일에 `env.PGSSL: require`를 요구한다(`check-artifacts.sh`, 템플릿 · artifacts.md). 클라우드 DB(RDS · Cloud SQL)는 TLS 없는 접속을 거부해 AWS BE가 메모리 폴백으로 돌았다. 앱 쪽 수정(postgres.js가 `PGSSL`을 읽지 않음)은 demo-app #51.
 
 ## v2.1.2

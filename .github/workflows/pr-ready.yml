@@ -1,8 +1,8 @@
 name: pr-ready
 
 # 재사용 워크플로: janto PR의 검사가 통과하면 Slack에 "PR 준비" 알림과 머지 버튼을 올린다 (T26).
-# 버튼을 누르면 slack-bot이 PR을 머지하고 누른 사람을 PR 코멘트로 남긴다. 머지 규칙(CODEOWNERS 리뷰 등)은
-# GitHub 브랜치 보호가 그대로 지킨다. 대상 레포의 검사 job 뒤에 needs로 붙여 pull_request에서 호출한다.
+# 리뷰 승인 버튼은 누른 사람이 연결한 GitHub 계정으로 Approve 리뷰를 남기고(CODEOWNERS 리뷰 충족),
+# 머지 버튼은 slack-bot이 PR을 머지하고 누른 사람을 PR 코멘트로 남긴다. 머지 규칙은 GitHub 브랜치 보호가 그대로 지킨다. 대상 레포의 검사 job 뒤에 needs로 붙여 pull_request에서 호출한다.
 # draft PR, yolo/** 브랜치(T8 자동 머지), fork PR(시크릿 없음)은 알리지 않는다.
 on:
   workflow_call:
@@ -52,6 +52,7 @@ jobs:
             echo "<$URL|$title>"
             echo "\`$HEAD\` → \`$BASE\` · @$AUTHOR · 파일 $FILES개 (+$ADDITIONS / -$DELETIONS)"
             echo "검사를 모두 통과했어요. 인프라 변경이 있으면 plan 결과는 PR 코멘트에 있어요."
+            echo "\`.deploy/config.yaml\` · \`CODEOWNERS\` 변경이 있으면 작성자가 아닌 코드 오너가 *리뷰 승인*을 먼저 눌러야 머지돼요."
             echo "END"
           } >> "$GITHUB_OUTPUT"
       - uses: ./.platform/.github/actions/slack-notify
@@ -63,5 +64,5 @@ jobs:
           version: ${{ github.event.pull_request.head.sha }}
           result: success
           details: ${{ steps.pr.outputs.details }}
-          buttons: merge
+          buttons: review merge
           pr: ${{ github.event.pull_request.number }}
