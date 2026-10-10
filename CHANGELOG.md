@@ -8,7 +8,12 @@
 
 릴리스 방법: 이 파일에 항목을 추가하고 main에 머지한 뒤 `git tag vX.Y.Z && git push origin vX.Y.Z`. `release.yml`이 차트를 GHCR에 올리고 메이저 태그(`v1`)를 옮긴 뒤, 대상 레포(demo-app)에 알려 버전 업데이트 PR이 열리게 한다. 버전 항목 제목은 `## vX.Y.Z` 형식을 지킨다(PR 본문에 그 구간이 붙는다).
 
-## Unreleased
+## v2.7.0
+
+- T17: GCP Grafana Workload Identity Pool의 표시 이름을 API 제한인 32자 이내로 줄여 실제 생성 실패를 고친다. 풀 ID와 신뢰 대상 및 읽기 권한은 유지한다.
+- T29: 선택형 AWS Cluster Autoscaler와 클러스터별 노드 확장 설정을 포함한다. 기존 클라우드의 v1 고정은 유지할 수 있다.
+- T27: 관리되는 온프레미스의 IP 변경·재부팅 복구와 최신 터널 검증을 포함한다.
+- T22: v2 릴리스도 대상 앱에 버전 업데이트 PR을 알리며, 클라우드별 infra_versions 고정값을 보존한다.
 
 - T17: `verify-helm-state`가 `kubectl auth can-i`의 권한 거절("no")과 전송 · 인증 실패(종료 코드 1, 응답 없음)를 구분한다. 전에는 둘 다 권한 부족으로 보고했다.
 - T17: `scripts/observability/live.py`의 private preview 검사가 FE · BE 두 서비스의 preview 경로를 함께 확인한다. T31 `previewAuth.routes`로 FE 프록시가 BE green에 닿을 수 있기 때문이다.
