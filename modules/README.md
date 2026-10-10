@@ -11,6 +11,7 @@
 | database | `host`, `port`, `database_name`, `credentials_secret_id` | RDS와 username/password JSON 시크릿 식별자 | Cloud SQL과 username/password JSON을 담은 Secret Manager 시크릿 식별자 |
 | observability | `dashboard_path` | Ingress 주소에 붙일 Grafana 경로 | Google Cloud Console 기준 대시보드 경로 (`dashboard_url`도 제공) |
 | ci_identity | `plan_identity`, `deploy_identity` | plan/apply가 사용할 IAM 역할 ARN | plan/apply가 사용할 서비스 계정 이메일 |
+| db_link | `published`, `consumed` | 구현체 `tailscale` 하나로 모든 클러스터에서 같다. 앱과 DB가 다른 클러스터에 있을 때 DB를 tailnet에 publish하고 앱 쪽에서 ClusterIP Service로 consume한다 (T33) | 같음 |
 
 AWS의 `node_security_group_id`, onprem의 `kube_context` 등은 벤더별 연결에 쓰는 추가 출력이다. `ci_identity/aws`의 기존 `plan_role_arn`, `deploy_role_arn`은 bootstrap 호환성을 위해 유지한다. GCP 고유 입력은 각 모듈 README에 기록한다.
 
