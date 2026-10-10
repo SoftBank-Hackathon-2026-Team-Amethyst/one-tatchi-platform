@@ -582,7 +582,7 @@
           "hide": ${gcp_hidden},
           "promQLQuery": {
             "projectName": "${gcp_project}",
-            "expr": "sum by(cluster_name,namespace_name,pod_name) (rate({\"kubernetes.io/container/cpu/core_usage_time\",monitored_resource=\"k8s_container\",namespace_name=~\"$${environment:regex}\",cluster_name=~\"$cluster\",container_name=\"app\"}[5m]))",
+            "expr": "sum by(cluster_name,namespace_name,pod_name) (rate({\"kubernetes.io/container/cpu/core_usage_time\",monitored_resource=\"k8s_container\",namespace_name=~\"$${environment:regex}\",cluster_name=~\"$cluster\",pod_name=~\"($${service:raw})-.*\",container_name=\"app\"}[5m]))",
             "step": "30s"
           },
           "refId": "A"
@@ -633,7 +633,7 @@
           "hide": ${gcp_hidden},
           "promQLQuery": {
             "projectName": "${gcp_project}",
-            "expr": "sum by(cluster_name,namespace_name,pod_name) ({\"kubernetes.io/container/memory/used_bytes\",monitored_resource=\"k8s_container\",namespace_name=~\"$${environment:regex}\",cluster_name=~\"$cluster\",container_name=\"app\"})",
+            "expr": "sum by(cluster_name,namespace_name,pod_name) ({\"kubernetes.io/container/memory/used_bytes\",monitored_resource=\"k8s_container\",namespace_name=~\"$${environment:regex}\",cluster_name=~\"$cluster\",pod_name=~\"($${service:raw})-.*\",container_name=\"app\"})",
             "step": "30s"
           },
           "refId": "A"

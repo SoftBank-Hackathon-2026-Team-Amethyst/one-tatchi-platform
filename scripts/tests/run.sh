@@ -18,6 +18,16 @@ bash "$scripts/bump-template-version.sh" v2.0.0 "$tmp/repo" >/dev/null
 grep -q 'template_version: v2.0.0' "$tmp/repo/.deploy/config.yaml"
 grep -q '?ref=v1.1.0' "$tmp/repo/infra/envs/aws/main.tf"
 
+echo "== v1 cloud pin과 v2 preview_auth 앱 계약을 함께 유지"
+cat >> "$tmp/repo/infra/envs/aws/main.tf" <<'EOF'
+module "preview_auth" {
+  source = "git::https://github.com/example/one-tatchi-platform.git//modules/preview_auth/aws?ref=v2.2.1"
+}
+EOF
+bash "$scripts/bump-template-version.sh" v2.3.0 "$tmp/repo" >/dev/null
+grep -q 'modules/preview_auth/aws?ref=v2.3.0' "$tmp/repo/infra/envs/aws/main.tf"
+grep -q '?ref=v1.1.0' "$tmp/repo/infra/envs/aws/main.tf"
+
 echo "== bump-template-version: 잘못된 버전은 거부"
 if bash "$scripts/bump-template-version.sh" 1.1.0 "$tmp/repo" 2>/dev/null; then
   echo "v 없는 버전을 받아들였다" >&2
@@ -62,3 +72,5 @@ python3 -B -m unittest discover -s "$(dirname "$scripts")/.github/actions/publis
 bash "$(dirname "$scripts")/.github/actions/image-push/tests/run.sh"
 
 python3 -B -m unittest discover -s "$(dirname "$scripts")/scripts/onprem/tests"
+python3 -B -m unittest discover -s "$(dirname "$scripts")/scripts/tests" -p 'test_*.py'
+python3 -B -m unittest discover -s "$(dirname "$scripts")/scripts/observability/tests"

@@ -46,4 +46,8 @@ for scope in aws gcp onprem; do
   fi
 done
 
+# New preview authentication follows the app contract, even in a pinned v1 cloud root.
+find . -type f -name '*.tf' -not -path '*/.terraform/*' -print0 |
+  xargs -0 -r sed -E -i "s#(one-tatchi-platform(\.git)?//modules/preview_auth/aws\?ref=)${semver}#\1${new}#g"
+
 echo "템플릿 버전 → ${new}"
