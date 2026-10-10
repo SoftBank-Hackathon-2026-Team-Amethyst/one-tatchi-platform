@@ -67,7 +67,9 @@ resource "helm_release" "grafana" {
     extraVolumeMounts = var.gcp_monitoring == null ? [] : [{
       name = "gcp-token", mountPath = "/var/run/gcp", readOnly = true
     }]
-    extraVolumes = var.gcp_monitoring == null ? [] : [{
+    # Grafana's extraVolumes renders unknown volume kinds as emptyDir.
+    # Pass the full Kubernetes projected volume through unchanged instead.
+    extraContainerVolumes = var.gcp_monitoring == null ? [] : [{
       name = "gcp-token"
       projected = { sources = [{ serviceAccountToken = {
         audience          = "https://iam.googleapis.com/${var.gcp_monitoring.workload_provider}"
@@ -82,6 +84,9 @@ resource "helm_release" "grafana" {
       }
       # 누구나 대시보드를 볼 수 있게 익명 읽기 전용. 관리자 비밀번호는 차트가 만든 k8s Secret에 있다.
       "auth.anonymous" = { enabled = true, org_role = "Viewer" }
+      # Grafana 13 runs Cloud Monitoring in an isolated plugin process. Its ADC
+      # path must reach that process as well as the Grafana container.
+      plugins = { forward_host_env_vars = var.gcp_monitoring == null ? "" : "stackdriver" }
     }
 
     ingress = {
