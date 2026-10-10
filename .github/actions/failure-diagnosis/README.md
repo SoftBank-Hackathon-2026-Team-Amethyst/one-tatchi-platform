@@ -51,6 +51,8 @@ publish · deploy job 실패
 | [`collect.py`](collect.py) | 진단 job (ubuntu) | 실행의 실패한 `deploy` · `publish` job(최대 3개) 로그를 API로 받아 실패 step · 오류 줄 · 첫 `##[error]` 앞뒤를 뽑고 `cluster.json`과 합쳐 `evidence.json`을 만든다. 로그 API에는 `actions: read` 토큰(봇 App 토큰)이 필요하다 |
 | [`redact.sed`](redact.sed) | 두 스크립트 공용 | 접속 문자열 비밀번호 · Bearer · GitHub/AWS/Slack/Anthropic 토큰 형태 · `password=` 류 값을 `***`로 가린다. 가린 뒤 JSON이 깨지면 내용을 버리고 수집 실패로 남긴다 |
 
+클러스터 상태는 실패한 job 안에서, Actions 로그는 진단 job에서 모으는 이유는 [ADR 0019](../../../docs/adr/0019-failure-evidence-collection.md).
+
 둘 다 하나가 실패해도 멈추지 않고 `collection`에 이유를 남긴다. 테스트: `uv run --no-project --with jsonschema python -B -m unittest discover -s .github/actions/failure-diagnosis/tests` (가짜 kubectl · gh, 실제 demo-app 실패 로그 일부를 `tests/fixtures`에 둔다).
 
 ## 넣지 않는 것
