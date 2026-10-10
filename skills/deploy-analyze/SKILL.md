@@ -59,7 +59,7 @@ description: 웹앱 배포 전에 사용자 수, 예산, 데이터 취급, 배�
 다섯 결과를 읽고 [references/report-format.md](references/report-format.md)대로 두 파일을 쓴다.
 
 - `.deploy/report.md`: 사람이 리뷰 지점 1에서 읽는 분석 보고서. 결론(추천)이 맨 위.
-- `.deploy/plan.yaml`: `target`, `services`. 스킬 사이의 인계값이라 통째로 다시 쓴다. **`.deploy/config.yaml`은 건드리지 않는다**(`compliance`는 1단계 스크립트가, `template_version`은 `deploy-provision` · `template-update`가 쓴다. CODEOWNERS 리뷰 대상).
+- `.deploy/plan.yaml`: `target`, `services`, 하이브리드면 `layers` · `database_scope`(아래 추천 규칙 6). 스킬 사이의 인계값이라 통째로 다시 쓰되, 기존 `database_scope`는 보존한다. **`.deploy/config.yaml`은 건드리지 않는다**(`compliance`는 1단계 스크립트가, `template_version`은 `deploy-provision` · `template-update`가 쓴다. CODEOWNERS 리뷰 대상).
 
 ### 비용 근거 확인과 보고서 갱신
 
@@ -72,13 +72,19 @@ description: 웹앱 배포 전에 사용자 수, 예산, 데이터 취급, 배�
 
 ### 배포 대상 추천 규칙
 
-`aws` · `onprem` · `gcp` 중 하나를 추천한다. 하이브리드(클라우드 + 온프레미스 동시)는 비목표라 추천하지 않는다.
+`aws` · `onprem` · `gcp` 중 하나를 추천한다. 계층별 배포 위치(하이브리드)는 지원 조합 하나만 추천할 수 있다(규칙 6). 그 밖의 조합(FE=GCP 등, DB를 다른 클라우드에 두기)은 추천하지 않는다.
 
 1. **규제가 먼저다.** 브리프의 민감 데이터 답변이 `yes`이고 서비스 분석이 데이터 국내 · 사내 보관을 요구하면 `onprem`. 규제가 있어도 보관 위치 요구가 없으면 클라우드도 가능하다(운영 승인은 `compliance`가 따로 강제한다).
 2. **선호가 있으면 따른다.** `preferred_target`이 `aws` · `gcp` · `onprem`이면 그 값. 규제 규칙과 충돌하면 보고서에 충돌을 적고 규제를 따른다.
 3. **`auto`면** 코드에 남은 흔적(클라우드 SDK · 설정), 같은 범위에서 완전하게 계산한 비용 비교 순으로 정한다. 부분 소계를 가장 저렴한 전체 비용처럼 비교하지 않는다. 비용 우열을 확정하지 못하면 확인 조건을 적고, 근거가 없으면 `aws`를 기본 후보로 둔다.
 4. **GCP 구현체(T4)를 제공한다.** `gcp`를 추천할 때는 대상 앱의 프로젝트·리전·CI 인증·GKE 접속·레지스트리·DB 구성과 템플릿 참조를 확인하고 준비되지 않은 조건을 보고서에 적는다. 가격 조회 성공만으로 배포 준비가 완료됐다고 판단하지 않는다.
 5. **온프레미스는 클러스터가 있어야 한다.** 브리프 · 레포에 self-hosted runner와 kube context 정보가 없으면 `onprem`을 추천하지 않고 보고서에 조건을 적는다.
+6. **하이브리드(앱은 AWS, DB는 온프레미스, T32 · ADR 0018).** 아래가 모두 맞을 때만 `target: aws` + `layers: {fe: aws, be: aws, db: onprem}`을 추천한다. 하나라도 빠지면 단일 대상을 추천하고 빠진 조건을 보고서에 적는다.
+   - 데이터는 사내에 있어야 하지만(규칙 1의 보관 위치 요구) 앱은 클라우드에 둘 이유가 있다: `preferred_target`이 `aws`이거나, 트래픽 · 가용성 분석이 온프레미스 기기 하나로 앱을 받기 어렵다고 본다.
+   - 규칙 5의 온프레미스 클러스터가 있다. DB 가용성이 그 기기에 묶인다는 한계(기기가 꺼지면 클라우드 앱도 DB를 잃는다)를 보고서 "보안 · 규제"나 "가정"에 적는다.
+   - DB 통로(`modules/db_link/tailscale`, ADR 0017)의 준비물을 사람이 갖출 수 있다: tailnet과 ACL, Secrets Manager의 Tailscale OAuth와 환경별 DB 자격증명. 준비 여부를 모르면 "사람이 할 일"로 보고서에 적는다.
+   - `database_scope`: 새 앱은 생략한다(모든 환경). 대상 레포의 `infra/envs/aws`에 이미 `module "database"`가 있거나 기존 `plan.yaml`에 `database_scope`가 있으면 그 값을 유지하고, 처음 하이브리드로 바꾸는 운영 중인 앱은 `[test]`로 시작한다. 운영 데이터 이전은 자동화하지 않는다.
+   - 비용: 예산 분석기는 단일 대상만 계산한다. 하이브리드 후보의 비용은 "미산정(계층별 배포 위치는 비용 도구 범위 밖)"으로 표시하고, 참고로 같은 앱의 AWS 단일 견적과 RDS를 뺀 차이를 설명할 수 있다(금액을 새로 추정하지 않는다).
 
 추천에는 이유 한 줄과, 검토했다가 버린 대안마다 한 줄을 붙인다.
 

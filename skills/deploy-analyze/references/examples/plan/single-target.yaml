@@ -1,0 +1,18 @@
+# 단일 대상 (기존). layers가 없으면 모든 계층이 target에 있다.
+target: aws
+services:
+  - name: demo-app-be
+    path: be
+    runtime: node
+    port: 8000
+    health: /health
+    public: false
+    database: true
+    migration: db/init.sql
+  - name: demo-app-fe
+    path: fe
+    runtime: node
+    port: 3000
+    health: /
+    public: true
+    database: false

@@ -145,6 +145,119 @@ printf 'env:\n  CHAOS_ENABLED: "true"\n' > "$app/deploy/values-be.test.yaml"
 bash "$check" "$app" >"$tmp/check8.log" 2>&1 || { echo "test 덧붙임 파일은 허용돼야 한다" >&2; cat "$tmp/check8.log" >&2; exit 1; }
 rm -f "$app/deploy/values-be.test.yaml"
 
+echo "== 계층별 배포 위치 (T32): 지원 조합만 통과, 그 밖은 인프라 변경 전에 실패"
+examples="$(dirname "$skill")/deploy-analyze/references/examples/plan"
+cp "$examples/single-target.yaml" "$app/.deploy/plan.yaml"
+bash "$check" "$app" >"$tmp/layers.log" 2>&1 || { echo "single-target 예시가 실패했다" >&2; cat "$tmp/layers.log" >&2; exit 1; }
+# 하이브리드 예시는 plan 자체에 오류가 없어야 한다. AWS 루트와의 일치는 아래 C3 검사에서 본다.
+for ok in layers-all layers-test-only; do
+  cp "$examples/$ok.yaml" "$app/.deploy/plan.yaml"
+  bash "$check" "$app" >"$tmp/layers.log" 2>&1 || true
+  if grep -F '.deploy/plan.yaml:' "$tmp/layers.log"; then echo "$ok 예시에 plan 오류가 있다" >&2; exit 1; fi
+done
+expect_layer_failure() {  # <설명> <기대 문구> <plan 내용>
+  printf '%s\n' "$3" > "$app/.deploy/plan.yaml"
+  if bash "$check" "$app" >"$tmp/layers.log" 2>&1; then echo "$1 을(를) 놓쳤다" >&2; exit 1; fi
+  grep -qF "$2" "$tmp/layers.log" || { echo "$1: 기대한 문구가 없다: $2" >&2; cat "$tmp/layers.log" >&2; exit 1; }
+}
+cp "$examples/layers-unsupported.yaml" "$app/.deploy/plan.yaml"
+if bash "$check" "$app" >"$tmp/layers.log" 2>&1; then echo "지원하지 않는 조합(db gcp)을 놓쳤다" >&2; exit 1; fi
+grep -qF '지원하지 않는 계층 조합: fe aws · be aws · db gcp' "$tmp/layers.log"
+services_yaml='services:
+  - {name: demo-app-be, path: be, database: true}
+  - {name: demo-app-fe, path: fe, database: false}'
+expect_layer_failure "fe가 target과 다름" "layers.fe · layers.be는 target(aws)과 같아야 한다" \
+  "target: aws
+layers: {fe: gcp, be: aws, db: onprem}
+$services_yaml"
+expect_layer_failure "앱 대상이 aws가 아닌 하이브리드" "지원하지 않는 계층 조합: fe gcp · be gcp · db onprem" \
+  "target: gcp
+layers: {fe: gcp, be: gcp, db: onprem}
+$services_yaml"
+expect_layer_failure "layers 키 누락" "layers.db 이 없다" \
+  "target: aws
+layers: {fe: aws, be: aws}
+$services_yaml"
+expect_layer_failure "DB를 쓰는 서비스 없음" "database: true 인 서비스가 없다" \
+  "target: aws
+layers: {fe: aws, be: aws, db: onprem}
+services:
+  - {name: demo-app-be, path: be, database: false}
+  - {name: demo-app-fe, path: fe, database: false}"
+expect_layer_failure "database_scope 알 수 없는 환경" "database_scope에 알 수 없는 환경: staging" \
+  "target: aws
+layers: {fe: aws, be: aws, db: onprem}
+database_scope: [staging]
+$services_yaml"
+expect_layer_failure "database_scope 중복" "database_scope에 중복된 환경이 있다" \
+  "target: aws
+layers: {fe: aws, be: aws, db: onprem}
+database_scope: [test, test]
+$services_yaml"
+expect_layer_failure "layers 없이 database_scope" "database_scope는 layers.db가 target과 다를 때만 쓴다" \
+  "target: aws
+database_scope: [test]
+$services_yaml"
+cp "$tmp/plan-original.yaml" "$app/.deploy/plan.yaml"
+bash "$check" "$app" >/dev/null || { echo "plan을 되돌린 뒤 통과해야 한다" >&2; exit 1; }
+
+echo "== 계층별 배포 위치 (T32 C3): AWS 루트 렌더와 plan의 일치"
+aws_tmpl="$skill/templates/infra/envs/aws"
+cp -r "$app/infra/envs/aws" "$tmp/aws-single"
+render_aws() {  # <출력 폴더> [추가 KEY=값 …]
+  local out="$1"; shift
+  for f in main.tf variables.tf outputs.tf terraform.tfvars; do
+    # common[0..1]은 앞 구간에서 다른 버전으로 바뀌었을 수 있어 고정 버전을 쓴다.
+    bash "$render" "$aws_tmpl/$f.tmpl" "$out/$f" TEMPLATE_VERSION=v1.9.0 CHART_VERSION=1.9.0 "${common[@]:2}" "$@" >/dev/null
+  done
+}
+link_test='{
+  test = { fqdn = "demo-app-db-test.example.ts.net", secret_name = "demo-app-db-onprem-test" }
+}'
+link_all='{
+  test = { fqdn = "demo-app-db-test.example.ts.net", secret_name = "demo-app-db-onprem-test" }
+  prod = { fqdn = "demo-app-db-prod.example.ts.net", secret_name = "demo-app-db-onprem-prod" }
+}'
+# 단일 대상 렌더에는 조건부 블록이 남지 않고 db_link가 없다 (기존 결과 그대로).
+! grep -q 'db_link\|\[if\|\[end\]' "$tmp/aws-single/main.tf" "$tmp/aws-single/variables.tf" "$tmp/aws-single/terraform.tfvars"
+grep -q '^module "database"' "$tmp/aws-single/main.tf"
+# test만 온프레미스: RDS와 db_link가 함께 있다.
+render_aws "$app/infra/envs/aws" DB_LINK=true TAILNET=example.ts.net "DB_LINK_HCL=$link_test"
+grep -q '^module "database"' "$app/infra/envs/aws/main.tf"; grep -q '^module "db_link"' "$app/infra/envs/aws/main.tf"
+! grep -q '\[if\|\[end\]' "$app/infra/envs/aws/main.tf"
+cp "$examples/layers-test-only.yaml" "$app/.deploy/plan.yaml"
+bash "$check" "$app" >"$tmp/layers.log" 2>&1 || { echo "test만 온프레미스 렌더가 실패했다" >&2; cat "$tmp/layers.log" >&2; exit 1; }
+cp "$examples/layers-all.yaml" "$app/.deploy/plan.yaml"
+if bash "$check" "$app" >"$tmp/layers.log" 2>&1; then echo "scope 생략인데 RDS가 남은 것을 놓쳤다" >&2; exit 1; fi
+grep -qF 'RDS(module "database")가 남아 있다' "$tmp/layers.log"
+grep -qF 'db_link 환경(test)이 plan.yaml database_scope(prod test)와 다르다' "$tmp/layers.log"
+# 모든 환경 온프레미스: RDS가 빠진다.
+render_aws "$app/infra/envs/aws" DB_LINK=true NO_RDS=true TAILNET=example.ts.net "DB_LINK_HCL=$link_all"
+! grep -q '^module "database"' "$app/infra/envs/aws/main.tf"
+! grep -q 'module.database' "$app/infra/envs/aws/main.tf" "$app/infra/envs/aws/outputs.tf"
+bash "$check" "$app" >"$tmp/layers.log" 2>&1 || { echo "모든 환경 온프레미스 렌더가 실패했다" >&2; cat "$tmp/layers.log" >&2; exit 1; }
+cp "$examples/layers-test-only.yaml" "$app/.deploy/plan.yaml"
+if bash "$check" "$app" >"$tmp/layers.log" 2>&1; then echo "scope가 test인데 RDS가 빠진 것을 놓쳤다" >&2; exit 1; fi
+grep -qF '운영 DB를 빼지 않는다' "$tmp/layers.log"
+# layers가 있는데 단일 대상으로 렌더된 루트
+rm -rf "$app/infra/envs/aws"; cp -r "$tmp/aws-single" "$app/infra/envs/aws"
+if bash "$check" "$app" >"$tmp/layers.log" 2>&1; then echo "db_link 없는 루트를 놓쳤다" >&2; exit 1; fi
+grep -qF 'module "db_link"가 없다' "$tmp/layers.log"
+cp "$tmp/plan-original.yaml" "$app/.deploy/plan.yaml"
+bash "$check" "$app" >/dev/null || { echo "plan · 루트를 되돌린 뒤 통과해야 한다" >&2; exit 1; }
+
+echo "== render.sh 조건부 블록: 중첩 · 기본 false · 짝 오류"
+printf 'a\n# [if X]\nb\n  # [if !Y]\nc\n  # [end]\n# [end]\nd\n' > "$tmp/cond.tmpl"
+bash "$render" "$tmp/cond.tmpl" "$tmp/cond.out" >/dev/null; [ "$(cat "$tmp/cond.out")" = "$(printf 'a\nd')" ]
+bash "$render" "$tmp/cond.tmpl" "$tmp/cond.out" X=true >/dev/null; [ "$(cat "$tmp/cond.out")" = "$(printf 'a\nb\nc\nd')" ]
+bash "$render" "$tmp/cond.tmpl" "$tmp/cond.out" X=true Y=true >/dev/null; [ "$(cat "$tmp/cond.out")" = "$(printf 'a\nb\nd')" ]
+printf '# [if X]\n@@MISSING@@\n# [end]\n' > "$tmp/cond2.tmpl"
+bash "$render" "$tmp/cond2.tmpl" "$tmp/cond2.out" >/dev/null   # 빠진 블록의 자리표시자는 요구하지 않는다
+printf 'a\n# [if X]\nb\n' > "$tmp/cond3.tmpl"
+if bash "$render" "$tmp/cond3.tmpl" "$tmp/cond3.out" 2>/dev/null; then echo "닫히지 않은 [if]를 놓쳤다" >&2; exit 1; fi
+printf 'a\n# [end]\n' > "$tmp/cond4.tmpl"
+if bash "$render" "$tmp/cond4.tmpl" "$tmp/cond4.out" 2>/dev/null; then echo "짝 없는 [end]를 놓쳤다" >&2; exit 1; fi
+
 echo "== DB Secret을 받는데 PGSSL이 없으면 실패, 있으면 통과"
 cp "$app/deploy/values-be.yaml" "$tmp/values-be-original.yaml"
 printf 'envFromSecrets:\n  - demo-app-db\n' >> "$app/deploy/values-be.yaml"

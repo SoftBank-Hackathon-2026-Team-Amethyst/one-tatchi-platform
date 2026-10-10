@@ -1,0 +1,22 @@
+# 지원하지 않는 조합: DB를 GCP에 둔다. check-artifacts.sh가 인프라 변경 전에 오류로 멈춘다.
+target: aws
+layers:
+  fe: aws
+  be: aws
+  db: gcp
+services:
+  - name: demo-app-be
+    path: be
+    runtime: node
+    port: 8000
+    health: /health
+    public: false
+    database: true
+    migration: db/init.sql
+  - name: demo-app-fe
+    path: fe
+    runtime: node
+    port: 3000
+    health: /
+    public: true
+    database: false

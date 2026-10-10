@@ -1,0 +1,23 @@
+# 하이브리드, 이미 운영 데이터가 있는 앱: test만 온프레미스 DB, prod는 기존 RDS를 계속 쓴다.
+target: aws
+layers:
+  fe: aws
+  be: aws
+  db: onprem
+database_scope: [test]
+services:
+  - name: demo-app-be
+    path: be
+    runtime: node
+    port: 8000
+    health: /health
+    public: false
+    database: true
+    migration: db/init.sql
+  - name: demo-app-fe
+    path: fe
+    runtime: node
+    port: 3000
+    health: /
+    public: true
+    database: false

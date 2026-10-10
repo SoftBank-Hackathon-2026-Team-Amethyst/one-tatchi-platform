@@ -42,6 +42,29 @@ if [[ "$tmpl" == */.github/workflows/deploy.yml.tmpl ]] && [[ "$version" =~ ^v1\
   fi
 fi
 
+# 조건부 블록: `# [if FLAG]` · `# [if !FLAG]` ~ `# [end]` 줄 사이를 FLAG 값에 따라 남기거나 뺀다(중첩 가능).
+# FLAG는 KEY=true로 켠다. 주지 않은 FLAG는 false다(기존 호출은 그대로). 표지 줄은 항상 지운다.
+# 예: 계층별 배포 위치(T32) — DB_LINK=true면 db_link 연결을 넣고, NO_RDS=true면 RDS 블록을 뺀다.
+if printf '%s' "$content" | /usr/bin/grep -Eq '^[[:space:]]*#[[:space:]]*\[(if|end)'; then
+  flags=" "
+  for kv in "$@"; do [ "${kv#*=}" != true ] || flags="$flags${kv%%=*} "; done
+  content="$(printf '%sx' "$content" | awk -v flags="$flags" '
+    function on(name) { return index(flags, " " name " ") > 0 }
+    /^[[:space:]]*#[[:space:]]*\[if !?[A-Z][A-Z0-9_]*\][[:space:]]*$/ {
+      cond = $0; sub(/^[[:space:]]*#[[:space:]]*\[if /, "", cond); sub(/\][[:space:]]*$/, "", cond)
+      neg = (substr(cond, 1, 1) == "!"); if (neg) cond = substr(cond, 2)
+      depth++; keep[depth] = (neg ? !on(cond) : on(cond)); next
+    }
+    /^[[:space:]]*#[[:space:]]*\[end\][[:space:]]*$/ {
+      if (depth == 0) { print "render: 짝이 없는 [end]" > "/dev/stderr"; bad = 1; exit 1 }
+      depth--; next
+    }
+    { show = 1; for (i = 1; i <= depth; i++) if (!keep[i]) show = 0; if (show) print }
+    END { if (!bad && depth != 0) { print "render: 닫히지 않은 [if]" > "/dev/stderr"; exit 1 } }
+  ')" || { echo "조건부 블록 오류: $tmpl" >&2; exit 1; }
+  content="${content%x}"
+fi
+
 if left="$(printf '%s' "$content" | /usr/bin/grep -o '@@[A-Z][A-Z0-9_]*@@' | sort -u)" && [ -n "$left" ]; then
   echo "값이 없는 자리표시자: $(echo "$left" | tr '\n' ' ')" >&2; exit 1
 fi

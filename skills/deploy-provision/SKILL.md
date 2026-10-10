@@ -5,11 +5,11 @@ description: 분석 결과(.deploy/plan.yaml, .deploy/report.md)로 대상 레�
 
 # deploy-provision
 
-`.deploy/plan.yaml`의 `target` · `services`로 배포 산출물을 만들어 작업 트리에 둔다. **apply · push · PR은 하지 않는다**(호출한 스킬이 한다). 템플릿 본문은 platform 레포에 있고, 여기서는 변수 값과 호출부만 만든다.
+`.deploy/plan.yaml`의 `target` · `services`(하이브리드면 `layers` · `database_scope`도)로 배포 산출물을 만들어 작업 트리에 둔다. **apply · push · PR은 하지 않는다**(호출한 스킬이 한다). 템플릿 본문은 platform 레포에 있고, 여기서는 변수 값과 호출부만 만든다.
 
 ## 입력
 
-- `.deploy/plan.yaml`(`target`, `services`), `.deploy/config.yaml`(`template_version`, `compliance`), `.deploy/report.md`. `plan.yaml` · `report.md`가 없으면 `deploy-analyze`를 먼저 하라고 알리고 멈춘다.
+- `.deploy/plan.yaml`(`target`, `services`, 선택 `layers` · `database_scope`), `.deploy/config.yaml`(`template_version`, `compliance`), `.deploy/report.md`. `plan.yaml` · `report.md`가 없으면 `deploy-analyze`를 먼저 하라고 알리고 멈춘다.
 - `.deploy/analysis/codebase.md`(필요한 코드 수정, 검사 입력), `.deploy/analysis/service.md`(smoke 요청 후보).
 - 이 스킬의 `templates/`(산출물 원형)과 [references/artifacts.md](references/artifacts.md)(파일별 규칙과 자리표시자 표).
 - 모드(janto · yolo)는 로컬 검증 실패 때 사람에게 물을지(janto) 바로 고칠지(yolo)만 가른다.
@@ -37,7 +37,7 @@ description: 분석 결과(.deploy/plan.yaml, .deploy/report.md)로 대상 레�
    | `.github/CODEOWNERS` | `templates/.github/CODEOWNERS.tmpl` | 없을 때만. 있으면 건드리지 않는다 |
    | `deploy/values-<서비스>.yaml` | `templates/deploy/values-service.yaml.tmpl` | 서비스마다 |
    | `deploy/<대상>/values.yaml` | `templates/deploy/<대상>/values.yaml.tmpl` | 대상마다 |
-   | `infra/envs/aws/*` | `templates/infra/envs/aws/*.tmpl` | `target: aws` |
+   | `infra/envs/aws/*` | `templates/infra/envs/aws/*.tmpl` | `target: aws`. `layers.db: onprem`이면 `DB_LINK=true`, `database_scope`를 생략했으면 `NO_RDS=true`도 준다(artifacts.md "조건부 블록") |
    | `infra/envs/onprem/*` | `templates/infra/envs/onprem/*.tmpl` | `target: onprem` |
    | `.deploy/smoke.json` | `templates/.deploy/smoke.json.tmpl` | 항상. 서비스 분석의 smoke 후보로 채운다. `database: true`인 서비스는 헬스 경로에 `expect_body`로 DB 연결 조건(예: `{"database": "connected"}`)을 넣는다 |
    | `.deploy/config.yaml` | 직접 편집 | 없을 때 `template_version` · 주석을 추가. 있으면 건드리지 않는다(CODEOWNERS 리뷰 대상). `compliance`는 `write_brief.py`만 쓴다 |
@@ -69,3 +69,4 @@ description: 분석 결과(.deploy/plan.yaml, .deploy/report.md)로 대상 레�
 - Environments: `test`, `prod`(승인자 지정), `prod-auto`(main만)
 - 온프레미스: 기본 self-hosted runner 라벨은 기존 `onprem`을 유지한다. 추가 기기는 `onprem-<profile>`로 구분한다. v2는 `scripts/onprem/README.md`에 따라 `onpremctl.py terraform`으로 인증정보를 메모리에서 공급하며, 기존 state는 apply 전에 암호화 백업·이전을 수행한다. v1 참조는 기존 계약을 유지한다. 기기마다 cluster·state를 분리하고 기존 state 없이 클러스터를 재생성하지 않는다.
 - 첫 AWS 인프라: `infra.yml`이 PR에서 plan, 머지에서 apply. 머지 전에 plan 코멘트의 비용을 확인
+- 하이브리드(`layers.db: onprem`): tailnet ACL(`tag:app-aws → tag:db-onprem:5432`)과 OAuth 클라이언트(`modules/db_link/tailscale/README.md`), Secrets Manager에 Tailscale OAuth(`one-tatchi/tailscale-oauth`, 키 `client_id` · `client_secret`)와 환경별 온프레미스 DB 자격증명(`<앱>-db-onprem-<환경>`, 키 `username` · `password`, 온프레미스 DB Secret과 같은 값), 온프레미스 루트에서 환경별 DB를 `<앱>-db-<환경>`으로 publish. 스킬은 값을 넣지 않는다. 운영 중인 RDS의 데이터 이전 · 삭제는 사람이 [절차](../../docs/hybrid-db.md)대로 한다
