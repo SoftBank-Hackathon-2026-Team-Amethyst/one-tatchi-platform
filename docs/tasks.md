@@ -793,10 +793,10 @@ AWS/GCP/onprem에서 승격 전 공개 preview 경로 없음. 인증된 pipeline
 **목표** prod에는 장애 주입 변경 경로가 없고, 대상 레포가 환경별로 값을 다르게 줄 수 있다.
 
 **할 일**
-- [ ] `deploy.yml`: 서비스 값 파일이 `deploy/values-be.yaml`이면 `deploy/values-be.<environment>.yaml`이 있을 때 뒤에 덧붙인다(`deploy/<target>/values.yaml` 덧붙임과 같은 방식). 덧붙임 순서를 문서와 테스트로 고정
-- [ ] demo-app: `deploy/values-be.yaml`에서 `CHAOS_ENABLED`를 빼고 `deploy/values-be.test.yaml`에만 둔다
-- [ ] deploy-provision 템플릿 · `check-artifacts.sh`: 장애 주입 · 디버그 플래그는 기본 값 파일에 두지 못하고 test 덧붙임 파일에만 허용
-- [ ] 릴리스 후 demo-app 적용: prod `POST /api/chaos` → 404, test는 그대로 동작
+- [x] `deploy.yml`: 서비스 값 파일이 `deploy/values-be.yaml`이면 `deploy/values-be.<environment>.yaml`이 있을 때 뒤에 덧붙인다(`deploy/<target>/values.yaml` 덧붙임과 같은 방식). 덧붙임 순서를 문서와 테스트로 고정
+- [x] demo-app: `deploy/values-be.yaml`에서 `CHAOS_ENABLED`를 빼고 `deploy/values-be.test.yaml`에만 둔다
+- [x] deploy-provision 템플릿 · `check-artifacts.sh`: 장애 주입 · 디버그 플래그는 기본 값 파일에 두지 못하고 test 덧붙임 파일에만 허용
+- [x] 릴리스 후 demo-app 적용: prod `POST /api/chaos` → 404, test는 그대로 동작
 
 **완료 기준** aws · gcp · onprem prod에서 `POST /api/chaos`가 404이고 test에서는 동작한다. 덧붙임 파일이 없는 기존 대상 레포는 동작이 바뀌지 않는다.
 
