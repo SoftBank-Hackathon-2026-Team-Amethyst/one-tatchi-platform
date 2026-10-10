@@ -65,7 +65,7 @@ spec:
             initialDelaySeconds: {{ .Values.probe.initialDelaySeconds }}
           livenessProbe:
             httpGet:
-              path: {{ .Values.probe.path }}
+              path: {{ default .Values.probe.path .Values.probe.livenessPath }}
               port: http
             initialDelaySeconds: {{ add .Values.probe.initialDelaySeconds 10 }}
           resources:
