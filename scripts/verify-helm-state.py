@@ -16,9 +16,9 @@ def releases(module):
         yield from releases(child)
 
 
-def read(args):
+def read(args, ok=(0,)):
     result = subprocess.run(args, capture_output=True, text=True, timeout=90)
-    if result.returncode:
+    if result.returncode not in ok:
         raise RuntimeError(f"{args[0]} read failed; inspect this job's identity and cluster access")
     return result.stdout
 
@@ -31,10 +31,12 @@ def verify(root):
         raise RuntimeError("no state-owned Helm releases; verify the existing cluster's backend before planning")
     namespaces = sorted({namespace for _, namespace, _ in owned})
     for namespace in namespaces:
-        if read(["kubectl", "auth", "can-i", "list", "secrets", "-n", namespace]).strip() != "yes":
+        # can-i exits 1 when the answer is "no"; that is a permission result, not a read failure.
+        if read(["kubectl", "auth", "can-i", "list", "secrets", "-n", namespace], ok=(0, 1)).strip() != "yes":
             raise RuntimeError(f"CI identity cannot list Helm release records in namespace {namespace}")
     for address, namespace, name in owned:
-        found = json.loads(read(["helm", "list", "--all", "--namespace", namespace,
+        # Helm 4 lists every status by default and no longer accepts --all.
+        found = json.loads(read(["helm", "list", "--namespace", namespace,
                                  "--filter", f"^{re.escape(name)}$", "--output", "json"]))
         if len(found) != 1 or found[0].get("name") != name:
             raise RuntimeError(f"state-owned release is not visible: {address}; do not assume it was deleted")

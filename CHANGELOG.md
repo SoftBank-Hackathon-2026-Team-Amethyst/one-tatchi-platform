@@ -10,6 +10,9 @@
 
 ## Unreleased
 
+## v2.6.0
+
+- T17: `verify-helm-state`가 Helm 4에서 항상 실패하던 문제를 고친다. Helm 4는 `helm list --all`을 받지 않는다(기본이 모든 상태). `kubectl auth can-i`가 "no"를 종료 코드 1로 돌려줄 때 "read failed" 대신 권한 부족 메시지를 낸다.
 - T31: `modules/preview_auth/aws`의 SAML IdP에서 Cognito가 채우는 `provider_details` 키(`ActiveEncryptionCertificate` · `SLORedirectBindingURI` · `SSORedirectBindingURI`)를 무시한다. plan마다 이 값을 지우려는 in-place 변경이 나오던 문제를 고친다.
 
 - 스킬: `yolo-deploy` · `deploy-analyze`에 분석 · 비용 재사용 조건을 추가한다. 최근(7일 이내) 분석 이후 서비스 계약 · 과금 자원이 바뀌지 않았으면 분석기 5개와 가격 조회 체인을 다시 돌리지 않는다(10~15분 단축). 로컬 검증은 그대로 수행한다.
