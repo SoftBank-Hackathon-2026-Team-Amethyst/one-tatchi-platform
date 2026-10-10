@@ -1,4 +1,4 @@
-# [ADR-0016] 계층별 배포의 DB 통로: Tailscale Operator로 publish · consume
+# [ADR-0017] 계층별 배포의 DB 통로: Tailscale Operator로 publish · consume
 
 * **상태 (Status):** 제안(Proposed). T32 담당자(배규태)와 접점 합의 전
 * **날짜 (Date):** 2026-10-10

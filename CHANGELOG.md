@@ -10,6 +10,8 @@
 
 ## Unreleased
 
+- T33: `modules/db_link/tailscale` 추가. Tailscale Kubernetes Operator로 클러스터 안 DB를 tailnet에만 publish하고, 다른 클러스터에서 ClusterIP Service로 consume한다(AWS 앱 → 온프레미스 DB, 반대 방향도 같은 모듈). OAuth 값은 ephemeral 입력 → write-only Secret.
+
 ## v2.4.0
 
 - T28: service-base DB Secret의 `DATABASE_URL`을 `postgresql://…?sslmode=require`로 바꾼다(`PG_URL`과 같은 값). 전에는 `postgresql+psycopg://…`에 `sslmode`가 없어 클라우드 DB(TLS 강제)에 붙지 못했다. SQLAlchemy용으로 새 키 `SQLALCHEMY_URL`(`postgresql+psycopg://…?sslmode=require`)을 둔다. **SQLAlchemy로 `DATABASE_URL`을 읽던 앱은 `SQLALCHEMY_URL`로 바꾼다.** `checks.yml`의 Python job도 두 키를 준다.
