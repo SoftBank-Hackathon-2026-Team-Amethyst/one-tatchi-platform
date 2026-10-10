@@ -1,0 +1,204 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/SoftBank-Hackathon-2026-Team-Amethyst/one-tatchi-platform/.github/actions/yolo-report/schema.json",
+  "title": "yolo 배포 리포트",
+  "description": "yolo 배포 한 건이 무엇을 안고 배포됐는지 남기는 기록 (T10, 설계 문서 6.3 · FR-12). 비밀값과 원본 로그 전문은 넣지 않는다.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "report_id", "generated_at", "repository", "deploy", "repairs", "warnings", "judgment", "approval", "collection", "debt"],
+  "properties": {
+    "schema_version": {"const": "1"},
+    "report_id": {
+      "description": "<run_id>-<run_attempt>. 같은 실행의 재시도와 구분한다",
+      "type": "string",
+      "pattern": "^[0-9]+-[0-9]+$"
+    },
+    "generated_at": {"$ref": "#/$defs/utc"},
+    "repository": {
+      "description": "배포한 대상 레포 (owner/name)",
+      "type": "string",
+      "pattern": "^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$"
+    },
+    "deploy": {
+      "description": "누가 · 언제 · 무엇을",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["actor", "branch", "sha", "target", "target_label", "environment", "compliance", "template_version", "run_url", "promoted"],
+      "properties": {
+        "actor": {"type": "string", "minLength": 1},
+        "branch": {"type": "string", "pattern": "^yolo/.+"},
+        "sha": {"$ref": "#/$defs/sha"},
+        "target": {"enum": ["aws", "gcp", "onprem"]},
+        "target_label": {"description": "기기 구분까지 포함한 대상 (예: onprem-secondary)", "type": "string", "minLength": 1},
+        "environment": {"const": "test"},
+        "compliance": {"description": "배포한 커밋의 .deploy/config.yaml 값. 파일이나 값이 없으면 null", "enum": ["regulated", "none", null]},
+        "template_version": {"description": "배포한 커밋의 .deploy/config.yaml 값. 없으면 null", "type": ["string", "null"]},
+        "run_url": {"$ref": "#/$defs/url"},
+        "promoted": {"description": "test에서 실제로 승격(Healthy · stable)까지 확인했는지", "type": "boolean"}
+      }
+    },
+    "repairs": {
+      "description": "검사 실패 후 AI가 고친 이력 (yolo 수정 루프, T14). 최초 push 이후 수정 커밋만 센다",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["count", "max", "items", "history_file"],
+      "properties": {
+        "count": {"type": "integer", "minimum": 0},
+        "max": {"const": 3},
+        "items": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["number", "commit", "files", "reason"],
+            "properties": {
+              "number": {"type": "integer", "minimum": 1, "maximum": 3},
+              "commit": {"$ref": "#/$defs/sha"},
+              "files": {"type": "array", "items": {"type": "string", "minLength": 1}},
+              "reason": {"description": "수정 커밋 본문. 길면 자른다", "type": "string", "maxLength": 1000}
+            }
+          }
+        },
+        "history_file": {"description": "레포 안의 수정 이력 파일 (.deploy/log/<시각>-<SHA>-yolo.md). 수정이 없으면 null", "type": ["string", "null"]}
+      }
+    },
+    "warnings": {
+      "description": "배포를 막지 않은 경고 (차단 기준 HIGH 미만, 검사 예외)",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["total", "items", "scanner"],
+      "properties": {
+        "total": {"type": "integer", "minimum": 0},
+        "items": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["source", "severity", "id", "target", "title"],
+            "properties": {
+              "source": {"enum": ["vulnerability", "license", "scan_exception"]},
+              "severity": {"enum": ["CRITICAL", "HIGH", "MEDIUM", "LOW", "UNKNOWN"]},
+              "id": {"description": "CVE · 라이선스 이름 · 예외 항목", "type": "string", "minLength": 1},
+              "target": {"description": "검사 대상 파일 또는 예외를 둔 파일", "type": "string", "minLength": 1},
+              "package": {"type": ["string", "null"]},
+              "title": {"description": "짧은 설명. 예외는 사유 주석", "type": "string", "maxLength": 300}
+            }
+          }
+        },
+        "scanner": {
+          "description": "경고를 만든 도구. 수집하지 못했으면 null",
+          "type": ["object", "null"],
+          "additionalProperties": false,
+          "required": ["name", "version", "db_updated_at"],
+          "properties": {
+            "name": {"const": "trivy"},
+            "version": {"type": "string"},
+            "db_updated_at": {"anyOf": [{"$ref": "#/$defs/utc"}, {"type": "null"}]}
+          }
+        }
+      }
+    },
+    "judgment": {
+      "description": "AI 승격 판단 근거 (promote-judge 묶음 결정, T7). 판단이 돌지 않았으면 decision이 null",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["decision", "reason", "services"],
+      "properties": {
+        "decision": {"enum": ["promote", "abort", null]},
+        "reason": {"type": ["string", "null"], "maxLength": 2000},
+        "services": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["decision", "source", "reason", "metrics", "thresholds", "near_threshold"],
+            "properties": {
+              "decision": {"enum": ["promote", "abort"]},
+              "source": {"enum": ["ai", "rule", "fallback", "group"]},
+              "reason": {"type": "string", "maxLength": 1000},
+              "metrics": {
+                "type": ["object", "null"],
+                "additionalProperties": false,
+                "required": ["requests", "failed", "error_rate", "p95_ms", "restarts"],
+                "properties": {
+                  "requests": {"type": "integer", "minimum": 0},
+                  "failed": {"type": "integer", "minimum": 0},
+                  "error_rate": {"type": "number", "minimum": 0},
+                  "p95_ms": {"type": ["number", "null"], "minimum": 0},
+                  "restarts": {"type": ["integer", "null"], "minimum": 0}
+                }
+              },
+              "thresholds": {
+                "type": ["object", "null"],
+                "additionalProperties": false,
+                "required": ["max_error_rate", "max_p95_ms", "max_restarts"],
+                "properties": {
+                  "max_error_rate": {"type": "number"},
+                  "max_p95_ms": {"type": ["number", "null"]},
+                  "max_restarts": {"type": "integer"}
+                }
+              },
+              "near_threshold": {
+                "description": "기준 안이지만 가까운 지표 (표시용, 이슈 조건 아님)",
+                "type": "array",
+                "items": {"type": "string"}
+              }
+            }
+          }
+        }
+      }
+    },
+    "approval": {
+      "description": "운영 승인 생략 여부. test 시점에는 compliance로 계산한 예정 값이다",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "stage", "basis"],
+      "properties": {
+        "status": {
+          "description": "required: prod 반영 전 사람 승인 / skipped: 승인 없이 prod-auto / not_reached: test에서 승격하지 않아 prod로 가지 않음",
+          "enum": ["required", "skipped", "not_reached"]
+        },
+        "stage": {"description": "expected: compliance로 계산 / actual: prod 실행 결과", "enum": ["expected", "actual"]},
+        "basis": {"type": "string", "minLength": 1}
+      }
+    },
+    "collection": {
+      "description": "항목별 수집 상태. failed는 이슈 조건이다. not_collected는 범위 밖이라 일부러 모으지 않은 항목이다",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["deploy", "repairs", "warnings", "judgment", "approval", "lint"],
+      "properties": {
+        "deploy": {"$ref": "#/$defs/collected"},
+        "repairs": {"$ref": "#/$defs/collected"},
+        "warnings": {"$ref": "#/$defs/collected"},
+        "judgment": {"$ref": "#/$defs/collected"},
+        "approval": {"$ref": "#/$defs/collected"},
+        "lint": {"$ref": "#/$defs/collected"}
+      }
+    },
+    "debt": {
+      "description": "yolo-debt 이슈를 열지. 경고 1건 이상 · AI 수정 1회 이상 · 수집 실패 1건 이상이면 연다",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["open_issue", "reasons"],
+      "properties": {
+        "open_issue": {"type": "boolean"},
+        "reasons": {"type": "array", "items": {"type": "string", "minLength": 1}}
+      }
+    }
+  },
+  "$defs": {
+    "utc": {"type": "string", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$"},
+    "sha": {"type": "string", "pattern": "^[0-9a-f]{40}$"},
+    "url": {"type": "string", "pattern": "^https://"},
+    "collected": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "detail"],
+      "properties": {
+        "status": {"enum": ["ok", "failed", "not_collected"]},
+        "detail": {"description": "실패 · 미수집 사유. ok면 null", "type": ["string", "null"], "maxLength": 300}
+      }
+    }
+  }
+}

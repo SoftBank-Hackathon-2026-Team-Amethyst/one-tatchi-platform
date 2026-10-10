@@ -1,0 +1,38 @@
+{
+  "schema_version": "1",
+  "report_id": "37950778899-2",
+  "generated_at": "2026-10-10T07:45:02Z",
+  "repository": "SoftBank-Hackathon-2026-Team-Amethyst/demo-app",
+  "deploy": {
+    "actor": "baekyutae",
+    "branch": "yolo/info-theme",
+    "sha": "0f9e8d7c6b5a49382716051f2e3d4c5b6a798081",
+    "target": "onprem",
+    "target_label": "onprem-secondary",
+    "environment": "test",
+    "compliance": "regulated",
+    "template_version": "v2.2.0",
+    "run_url": "https://github.com/SoftBank-Hackathon-2026-Team-Amethyst/demo-app/actions/runs/37950778899/attempts/2",
+    "promoted": true
+  },
+  "repairs": {"count": 0, "max": 3, "items": [], "history_file": null},
+  "warnings": {"total": 0, "items": [], "scanner": null},
+  "judgment": {"decision": null, "reason": null, "services": {}},
+  "approval": {
+    "status": "required",
+    "stage": "expected",
+    "basis": "compliance=regulated → prod 반영 전 사람 승인(environment prod)"
+  },
+  "collection": {
+    "deploy": {"status": "ok", "detail": null},
+    "repairs": {"status": "ok", "detail": null},
+    "warnings": {"status": "failed", "detail": "Trivy 취약점 DB 다운로드 실패"},
+    "judgment": {"status": "failed", "detail": "artifact promote-judgment-test를 받지 못했다"},
+    "approval": {"status": "ok", "detail": null},
+    "lint": {"status": "not_collected", "detail": "린트 경고는 구조화된 출력이 없어 수집 범위 밖"}
+  },
+  "debt": {
+    "open_issue": true,
+    "reasons": ["수집 실패: warnings (Trivy 취약점 DB 다운로드 실패)", "수집 실패: judgment (artifact promote-judgment-test를 받지 못했다)"]
+  }
+}
