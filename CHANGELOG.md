@@ -10,6 +10,10 @@
 
 ## Unreleased
 
+## v2.13.1
+
+- T9: v2.12.0 회귀 수정. `approve` job이 skipped(test · prod-auto)일 때 `yolo-pr` job이 간접 의존 때문에 함께 skipped되어 승격 뒤 main PR이 만들어지지 않던 문제. `yolo-pr` 조건에 `always()`와 직접 의존 job 성공 조건을 명시한다. (같은 커밋을 `v2.12.1`로도 태그했다. 내용은 v2.13.0 + 이 수정이며 v2.13.1을 쓴다)
+
 ## v2.13.0
 
 - T17 후속 #211: App Chart에 선택적 `probe.livenessPath`를 추가한다. 비우면 기존 `probe.path`를 그대로 쓰며 readiness는 바뀌지 않는다. DB 상태를 검사하는 readiness와 프로세스 생존 확인을 분리해 DB 장애가 BE 반복 재시작으로 이어지는 것을 막을 수 있다. demo-app은 test 환경에서 먼저 적용한다.
