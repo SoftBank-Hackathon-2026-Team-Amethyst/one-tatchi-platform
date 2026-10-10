@@ -33,6 +33,17 @@ class HelmVisibilityTests(unittest.TestCase):
             visibility.verify("root")
             self.assertEqual(read.call_args.args[0][:2], ["helm", "list"])
 
+    def test_helm_list_uses_helm4_flags(self):
+        with patch.object(visibility, "read", side_effect=[self.state(), "yes", '[{"name":"argo-rollouts","status":"deployed"}]']) as read:
+            visibility.verify("root")
+            self.assertNotIn("--all", read.call_args.args[0])
+
+    def test_can_i_no_with_exit_code_one_reports_permission(self):
+        results = [subprocess.CompletedProcess([], 0, self.state(), ""), subprocess.CompletedProcess([], 1, "no\n", "")]
+        with patch.object(visibility.subprocess, "run", side_effect=results):
+            with self.assertRaisesRegex(RuntimeError, "cannot list"):
+                visibility.verify("root")
+
     def test_empty_or_wrong_backend_is_not_a_successful_visibility_check(self):
         with patch.object(visibility, "read", return_value='{"values": {"root_module": {}}}'):
             with self.assertRaisesRegex(RuntimeError, "no state-owned Helm"):
