@@ -32,6 +32,16 @@ for class in alb gce nginx; do
   printf '%s\n' "$out" | grep -q -- '--redirect-url=https://green.example.test/oauth2/callback'
 done
 
+# Extra routes go to other green Services in the same namespace, keeping the path prefix.
+out="$(render "${auth[@]}" --set 'previewAuth.routes[0].path=/api/' \
+  --set 'previewAuth.routes[0].service=be-preview' --set 'previewAuth.routes[0].port=8000' \
+  --show-only templates/preview-auth.yaml)"
+printf '%s\n' "$out" | grep -q -- '--upstream=http://be-preview.default.svc.cluster.local:8000/api/'
+printf '%s\n' "$out" | grep -q -- '--upstream=http://auth-preview.default.svc.cluster.local:80/'
+fails "${auth[@]}" --set 'previewAuth.routes[0].path=api' --set 'previewAuth.routes[0].service=be-preview' --set 'previewAuth.routes[0].port=8000'
+fails "${auth[@]}" --set 'previewAuth.routes[0].path=/api/' --set 'previewAuth.routes[0].service=http://evil' --set 'previewAuth.routes[0].port=8000'
+fails "${auth[@]}" --set 'previewAuth.routes[0].path=/api/' --set 'previewAuth.routes[0].service=be-preview'
+
 # The active Ingress still never routes to preview.
 if render "${auth[@]}" --set ingress.enabled=true --set ingress.group=g --show-only templates/ingress.yaml \
   | grep -q 'auth-preview'; then
