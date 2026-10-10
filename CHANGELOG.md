@@ -10,6 +10,8 @@
 
 ## Unreleased
 
+## v2.5.0
+
 - T33: `modules/db_link/tailscale` 추가. Tailscale Kubernetes Operator로 클러스터 안 DB를 tailnet에만 publish하고, 다른 클러스터에서 ClusterIP Service로 consume한다(AWS 앱 → 온프레미스 DB, 반대 방향도 같은 모듈). OAuth 값은 ephemeral 입력 → write-only Secret.
 
 ## v2.4.0
