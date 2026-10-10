@@ -38,6 +38,7 @@ jobs:
       - uses: actions/checkout@v7
       - uses: azure/setup-helm@v5
       - run: |
+          bash charts/app/tests/private-preview.sh
           helm lint charts/app --set image.repository=r --set image.tag=t
           helm template digest charts/app --set image.repository=r --set image.tag=ignored --set image.digest=sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa > /tmp/digest.yaml
           grep -q 'image: "r@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"' /tmp/digest.yaml

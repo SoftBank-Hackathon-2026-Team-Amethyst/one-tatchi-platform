@@ -695,6 +695,29 @@ Claude Code는 `/todo-task`, Codex는 `$todo-task`로 이 순서를 따르는 �
 
 **완료 기준** test · prod 각 서비스가 파드 2개 이상 · 서로 다른 노드에 떠 있고, 파드 하나를 지워도 smoke 에러율 0이다. RDS가 multi-AZ이거나 미루는 결정과 비용 근거가 ADR에 있다.
 
+### [T30] Green 공개 경로 제거와 검증 접근 격리
+
+**어디에 필요** 승격 전 Green이 공개 preview Ingress로 노출되는 문제를 차단한다.
+
+**만들 것** 내부 preview Service, localhost 검증 경로, 접근 격리와 마이그레이션 검증.
+
+- **우선순위** P0 · **영역** 레포 · 인프라 · **담당** 원가연
+- **선행** `T3`, `T5`, `T7` · **후속** `T19` · **설계 문서** FR-6, FR-7
+
+**목표**
+승격 전 Green을 인터넷에 공개하지 않고, 검증은 인증된 배포 파이프라인의 localhost port-forward로 수행한다. 클러스터 내부 접근과 관리자 접근은 별도 경계로 검증한다.
+
+**할 일**
+- [ ] 차트의 공개 preview Ingress 제거, preview Service ClusterIP 고정, 배포 알림의 공개 preview URL 제거
+- [ ] smoke port-forward를 127.0.0.1로 명시하고 회귀 검사 추가
+- [ ] 접근 경계·마이그레이션·잔여 위험 ADR 및 검증 절차 작성
+- [ ] CNI 지원·다른 허용 정책을 확인해 승격 전 내부 Green 격리와 pipeline RBAC 최소 권한 설계·적용·검증
+- [ ] 새 버전 릴리스와 demo-app 적용 후 기존 preview Ingress/LB listener 제거 및 active 정상·인증된 smoke 정상 확인
+
+**완료 기준**
+AWS/GCP/onprem에서 승격 전 공개 preview 경로 없음. 인증된 pipeline smoke 성공, 비인가 내부 워크로드 접근 차단, 승격 후 active 정상. 관리자·노드 권한은 신뢰 경계 예외임을 명시. 기존 설치의 마이그레이션까지 확인하고 완료 처리한다.
+
+
 ## 9단계
 
 앞 단계의 선행 작업이 끝나면 아래 작업을 동시에 진행한다.

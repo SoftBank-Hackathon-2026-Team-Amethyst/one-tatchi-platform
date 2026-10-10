@@ -308,7 +308,7 @@ jobs:
           # 서비스의 외부 주소. 없으면 active는 빈 값이다.
           service_urls() {
             local release="$1" values="$2" host=""
-            active="" preview="(외부 주소 없음)"
+            active="" preview="(비공개: 인증된 Kubernetes port-forward로 검증)"
             case "$TARGET" in
               aws)
                 # Ingress가 없는 서비스(예: FE가 클러스터 안에서 프록시하는 BE)는 외부 주소가 없다.
@@ -320,8 +320,8 @@ jobs:
                     sleep 5
                   done
                 fi
-                if [ -n "$host" ] && [ -n "$HOST" ]; then active="https://$HOST/"; preview="https://$HOST:8080/"
-                elif [ -n "$host" ]; then active="http://$host/"; preview="http://$host:8080/"; fi ;;
+                if [ -n "$host" ] && [ -n "$HOST" ]; then active="https://$HOST/"
+                elif [ -n "$host" ]; then active="http://$host/"; fi ;;
               gcp)
                 if kubectl get ingress "$release" -n "$NAMESPACE" >/dev/null 2>&1; then
                   for _ in $(seq 1 120); do
@@ -331,15 +331,12 @@ jobs:
                   done
                   [ -n "$host" ] || { echo "::error::GKE Ingress address missing: $release"; return 1; }
                   active="http://$host/"
-                  preview_host="$(kubectl get ingress "$release-preview" -n "$NAMESPACE" -o jsonpath='{.status.loadBalancer.ingress[0].ip}' 2>/dev/null || true)"
-                  if [ -n "$preview_host" ]; then preview="http://$preview_host/"; fi
                 fi ;;
               onprem)
                 # Base service values express whether the service is public; onprem overlay disables only Ingress.
                 if [ "$(yq -r '.ingress.enabled // false' "$values")" = true ]; then
                   active="$(python3 .platform/scripts/onprem/tunnel.py "$release" "$NAMESPACE")"
-                fi
-                preview="kubectl -n $NAMESPACE port-forward svc/$release-preview 8080:$(kubectl get svc "$release-preview" -n "$NAMESPACE" -o jsonpath='{.spec.ports[0].port}')" ;;
+                fi ;;
             esac
           }
 
