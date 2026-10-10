@@ -24,3 +24,9 @@ variable "saml_email_attribute" {
   type        = string
   default     = "email"
 }
+
+variable "secret_reader_arns" {
+  description = "oauth2-proxy 시크릿 값을 읽을 IAM 역할 ARN (예: PR plan 역할). plan의 refresh가 시크릿 버전을 읽으려고 GetSecretValue를 호출한다. 이 역할이 state를 읽을 수 있다면 같은 값을 이미 볼 수 있다"
+  type        = list(string)
+  default     = []
+}

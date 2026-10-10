@@ -10,6 +10,10 @@
 
 ## Unreleased
 
+## v2.2.1
+
+- T31: `modules/preview_auth/aws`에 입력 `secret_reader_arns`를 추가한다. ReadOnlyAccess만 가진 PR plan 역할이 oauth2-proxy 시크릿 버전을 refresh하지 못해 plan이 실패하던 문제를 고친다. 넣은 역할에만 이 시크릿의 읽기 resource policy를 붙인다.
+
 ## v2.2.0
 
 - T31: 승인자용 green 미리보기(ADR 0015). App Chart에 `previewAuth`를 추가한다. 켜면 oauth2-proxy가 OIDC 로그인을 강제하고 인증된 요청만 `<release>-preview`로 넘긴다. Ingress는 `previewAuth.host`에 oauth2-proxy로만 연결하며, 인증 설정이 빠지면 렌더가 실패한다. 기본값은 꺼져 있어 기존 호출부는 바뀌지 않는다. 새 모듈 `modules/preview_auth/aws`(Cognito User Pool · SAML IdP · oauth2-proxy 시크릿). 재사용 `deploy.yml`에 새 입력 `preview-host`를 두고, 미리보기를 켠 서비스는 알림 · 실행 요약에 green 주소를 표시한다. App Chart의 Ingress annotation은 공통 헬퍼로 옮겼고, annotation이 하나도 없을 때 빈 `annotations:` 키를 만들지 않는다.

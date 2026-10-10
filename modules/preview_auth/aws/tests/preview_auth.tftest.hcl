@@ -2,6 +2,9 @@ mock_provider "aws" {
   mock_data "aws_region" {
     defaults = { region = "ap-northeast-2" }
   }
+  mock_data "aws_iam_policy_document" {
+    defaults = { json = "{}" }
+  }
 }
 mock_provider "random" {}
 
@@ -16,6 +19,10 @@ run "pool_only_before_idp" {
   assert {
     condition     = length(aws_cognito_identity_provider.saml) == 0 && length(aws_cognito_user_pool_client.this.supported_identity_providers) == 0
     error_message = "Without IdP metadata no login provider may be enabled, including Cognito's own accounts."
+  }
+  assert {
+    condition     = length(aws_secretsmanager_secret_policy.readers) == 0
+    error_message = "No secret reader is granted unless requested."
   }
   assert {
     condition     = aws_cognito_user_pool.this.admin_create_user_config[0].allow_admin_create_user_only
@@ -39,5 +46,16 @@ run "saml_only_login" {
   assert {
     condition     = aws_cognito_user_pool_client.this.allowed_oauth_flows == toset(["code"]) && aws_cognito_user_pool_client.this.generate_secret
     error_message = "oauth2-proxy uses the confidential authorization code flow."
+  }
+}
+
+run "plan_role_can_refresh" {
+  command = plan
+  variables {
+    secret_reader_arns = ["arn:aws:iam::123456789012:role/plan"]
+  }
+  assert {
+    condition     = length(aws_secretsmanager_secret_policy.readers) == 1
+    error_message = "Requested readers must get a secret resource policy so PR plans can refresh the version."
   }
 }
