@@ -1,9 +1,9 @@
 name: pr-ready
 
-# 재사용 워크플로: janto PR의 검사가 통과하면 Slack에 "PR 준비" 알림과 머지 버튼을 올린다 (T26).
+# 재사용 워크플로: PR 검사 통과 알림. 일반 PR은 리뷰·머지 버튼, yolo PR은 버튼 없는 자동 머지 안내 (T26).
 # 리뷰 승인 버튼은 누른 사람이 연결한 GitHub 계정으로 Approve 리뷰를 남기고(CODEOWNERS 리뷰 충족),
 # 머지 버튼은 slack-bot이 PR을 머지하고 누른 사람을 PR 코멘트로 남긴다. 머지 규칙은 GitHub 브랜치 보호가 그대로 지킨다. 대상 레포의 검사 job 뒤에 needs로 붙여 pull_request에서 호출한다.
-# draft PR, yolo/** 브랜치(T8 자동 머지), fork PR(시크릿 없음)은 알리지 않는다.
+# draft PR, fork PR(시크릿 없음)은 알리지 않는다.
 on:
   workflow_call:
     inputs:
@@ -23,7 +23,6 @@ jobs:
     if: >-
       github.event_name == 'pull_request'
       && !github.event.pull_request.draft
-      && !startsWith(github.head_ref, 'yolo/')
       && github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-latest
     steps:
@@ -52,20 +51,25 @@ jobs:
             echo "<$URL|$title>"
             echo "\`$HEAD\` → \`$BASE\` · @$AUTHOR · 파일 $FILES개 (+$ADDITIONS / -$DELETIONS)"
             echo "검사를 모두 통과했어요. 인프라 변경이 있으면 plan 결과는 PR 코멘트에 있어요."
+            if [[ "$HEAD" == yolo/* ]]; then
+              echo "Yolo PR 검사가 통과했어요. 자동 머지 절차가 이어질 예정이며 지금은 머지 완료 알림이 아니에요."
+              echo "보호 파일 리뷰·충돌·추가 검사 등 저장소 조건이 남아 있으면 대기하거나 중단될 수 있어요. 진행 상태는 위 PR 링크에서 확인해 주세요."
+            else
             echo "\`.deploy/config.yaml\` · \`CODEOWNERS\` 변경이 있으면 작성자가 아닌 코드 오너가 *리뷰 승인*을 먼저 눌러야 머지돼요."
+            fi
             echo "END"
           } >> "$GITHUB_OUTPUT"
       - uses: ./.platform/.github/actions/slack-notify
         with:
           token: ${{ secrets.SLACK_BOT_TOKEN }}
           channel: ${{ vars.SLACK_CHANNEL_ID }}
-          flow: Janto / 일반 PR
-          stage: 코드 검사 통과 · main 반영 요청
-          next-action: 보호 파일 변경은 코드 리뷰 승인을 먼저 받고 PR 머지를 누르세요. 운영 배포 승인과는 달라요.
+          flow: ${{ startsWith(github.head_ref, 'yolo/') && 'Yolo' || 'Janto / 일반 PR' }}
+          stage: ${{ startsWith(github.head_ref, 'yolo/') && 'PR 검사 통과 · 자동 머지 절차 안내' || '코드 검사 통과 · main 반영 요청' }}
+          next-action: ${{ startsWith(github.head_ref, 'yolo/') && '알림용이에요. 자동 머지 진행을 기다려 주세요. 보호 규칙으로 대기하면 PR에서 필요한 조치를 확인하세요.' || '보호 파일 변경은 코드 리뷰 승인을 먼저 받고 PR 머지를 누르세요. 운영 배포 승인과는 달라요.' }}
           action: PR 준비
           target: "PR #${{ github.event.pull_request.number }}"
           version: ${{ github.event.pull_request.head.sha }}
           result: success
           details: ${{ steps.pr.outputs.details }}
-          buttons: review merge
+          buttons: ${{ !startsWith(github.head_ref, 'yolo/') && 'review merge' || '' }}
           pr: ${{ github.event.pull_request.number }}
