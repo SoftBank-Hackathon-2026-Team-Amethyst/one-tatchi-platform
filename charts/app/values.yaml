@@ -8,6 +8,31 @@ image:
 replicas: 2
 containerPort: 8000
 
+# Enable per service so only workloads with measured capacity needs autoscale.
+autoscaling:
+  enabled: false
+  minReplicas: 2
+  maxReplicas: 6
+  targetCPUUtilizationPercentage: 70
+  behavior:
+    scaleUp:
+      stabilizationWindowSeconds: 0
+      selectPolicy: Max
+      policies:
+        - type: Percent
+          value: 100
+          periodSeconds: 60
+        - type: Pods
+          value: 2
+          periodSeconds: 60
+    scaleDown:
+      stabilizationWindowSeconds: 300
+      selectPolicy: Min
+      policies:
+        - type: Percent
+          value: 25
+          periodSeconds: 60
+
 # 릴리스 전략 인터페이스: blueGreen | rolling (canary는 아직 미구현)
 deployStrategy: blueGreen
 
