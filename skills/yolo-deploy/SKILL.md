@@ -16,6 +16,7 @@ description: 웹앱을 예외 경로(yolo)로 test 승격 후 main PR 자동 머
 사용자가 쓰는 언어로 문서를 쓴다. 시작 시각을 기록한다. 아래 단계 중 사용자에게 묻는 단계는 없다.
 
 0. **준비.** `git fetch origin && git switch -c yolo/<기능> origin/main`. `<기능>`은 짧은 영문 kebab-case. 반드시 `yolo/`로 시작해야 test로 배포된다.
+   - **검증 선행.** 브랜치를 만들자마자 3단계의 로컬 검증 중 분석 결과와 무관한 것을 **백그라운드로 먼저 시작**하고 분석과 겹친다: 서비스마다 `docker build`(캐시가 있으면 수 초), `pnpm --dir <서비스> install --frozen-lockfile && lint && test && build`, `terraform -chdir=infra/envs/<대상> fmt -check`. `terraform init -backend=false && validate`는 origin/main 대비 `infra/` 변경이 있을 때만 돌린다(모듈 다운로드 30초 이상). 3단계에서 산출물이나 코드를 고쳤으면 해당 검증만 다시 돌린다. 결과(통과 · 소요)는 provision 기록에 적는다.
 1. **분석** → `deploy-analyze` (yolo 모드).
    - `.deploy/brief.md`가 있으면 그대로 재사용한다.
    - 없으면 질문하지 않고 다섯 항목을 모두 **명시적 건너뛰기 값**(`null` · `unknown` · `auto`)으로 저장한다. 규제 여부가 미정이므로 `compliance`는 `regulated`가 되고 운영 반영에는 사람 승인이 필요하다. 이 스킬을 실행한 것이 건너뛰기의 승인이다. 코드에서 규모 · 예산 · 규제를 추측해 답변으로 적지 않는다.
@@ -27,7 +28,7 @@ description: 웹앱을 예외 경로(yolo)로 test 승격 후 main PR 자동 머
      조건에서 벗어난 분석기만 골라 돌릴 수 있다(예: `infra/`만 바뀌면 보안 · 예산만). 돌리지 않은 분석기는 기존 결과를 "재사용(기준 커밋 …)"으로 기록한다. 재사용 여부와 무관하게 3단계 로컬 검증(`check-artifacts.sh`, 이미지 빌드, lint · test, terraform)은 생략하지 않는다.
 2. **리뷰 지점 1 자동 승인.** 추천을 보여 주지 않고 진행한다. 보여 줬을 내용(대상 · 월 비용 · 가정)을 실행 기록에 적는다. 예산 범위를 넘는 추천이면 비용이 가장 낮은 구성으로 바꾸고 그 사실을 적는다.
 3. **산출물** → `deploy-provision`. 로컬 검증(이미지 빌드, lint · test, `terraform fmt` · `validate`, `check-artifacts.sh`)이 실패하면 고친다(수정 범위는 아래 "고칠 수 있는 것"). 템플릿 본문은 고칠 수 없다.
-4. **기록 · 커밋 · push.** push 전에 `.deploy/log/<YYYYMMDD-HHMMSS>-yolo.md`에 실행자, 시각, 대상, compliance, 가정, 자동 승인한 추천과 경고를 적는다. 이 push의 SHA·검사·승격 결과는 Actions artifact와 자동 PR 본문이 기록한다. `[yolo] <무엇을>` 메시지로 커밋하고 `git push -u origin yolo/<기능>`. push가 `checks` → `test` 배포를 일으킨다.
+4. **기록 · 커밋 · push.** push 전에 `.deploy/log/<YYYYMMDD-HHMMSS>-yolo.md`에 실행자, 시각, 대상, compliance, 가정, 자동 승인한 추천과 경고를 적는다. `scripts/yolo_log.py`가 세 기록(analyze · provision · yolo)의 뼈대를 한 번에 만든다([references/yolo-log.md](references/yolo-log.md)). 분석을 재사용했으면 analyze · provision 기록은 그 도구가 만든 짧은 형식으로 충분하다. 이 push의 SHA·검사·승격 결과는 Actions artifact와 자동 PR 본문이 기록한다. `[yolo] <무엇을>` 메시지로 커밋하고 `git push -u origin yolo/<기능>`. push가 `checks` → `test` 배포를 일으킨다.
 5. **수정 루프 초기화.** [references/repair-loop.md](references/repair-loop.md)를 읽고 `scripts/repair_loop.py init`에 분석으로 확인한 앱 소스, 서비스 Dockerfile, 배포 값 파일, 보호할 커스텀 테스트 경로, 로컬 검사 명령을 전달한다. 최초 push 뒤 깨끗한 작업 트리에서 범위와 SHA를 고정한다. 이후 수정 커밋·push는 이 도구의 `retry`로만 한다.
 6. **지켜보기.** `python3 "<skill-dir>/scripts/repair_loop.py" watch`. 저장소·워크플로·push 이벤트·브랜치·SHA가 맞는 실행만 관찰한다. JSON의 `status`를 확인한다(종료 코드 0만으로 배포 성공이라고 판단하지 않는다).
    - `checks_failed`: 아래 수정 루프. 최대 3회.

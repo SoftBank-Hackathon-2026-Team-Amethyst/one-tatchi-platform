@@ -97,7 +97,7 @@ def run(report, branch, repo, timeout=2700):
             break
         if time.monotonic() >= deadline:
             raise RuntimeError("PR 검사 대기 시간 초과. PR은 남기고 자동 머지는 요청하지 않는다")
-        time.sleep(10)
+        time.sleep(5)  # PR 검사는 보통 1분 안에 끝난다. 10초 간격은 평균 5초를 더 기다렸다 (T9)
     assert_head()
     gh("pr", "merge", pr, "--repo", repo, "--auto", "--rebase", "--match-head-commit", sha)
     return pr

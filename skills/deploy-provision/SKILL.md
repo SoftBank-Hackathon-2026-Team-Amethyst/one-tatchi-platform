@@ -49,6 +49,7 @@ description: 분석 결과(.deploy/plan.yaml, .deploy/report.md)로 대상 레�
    docker build -t check:<서비스> <서비스 경로>          # 서비스마다 (이미지가 빌드되는지만. push하지 않는다)
    terraform -chdir=infra/envs/<대상> fmt -check && terraform -chdir=infra/envs/<대상> init -backend=false && terraform -chdir=infra/envs/<대상> validate
    ```
+   `terraform init -backend=false` · `validate`는 origin/main 대비 `infra/` 변경이 있거나 `infra/envs/<대상>`을 이번에 렌더했을 때만 돌린다(모듈 다운로드가 30초 이상). 변경이 없으면 `fmt -check`만 하고 기록에 "init · validate 생략(infra 변경 없음)"을 적는다. 이미지 빌드 · lint · test · 검증 명령은 서로 독립이라 병렬로 돌린다.
    실패하면 산출물이나 앱 코드를 고친다. janto는 원인과 고칠 방법을 사용자에게 보여 주고 승인받아 고친다. yolo는 바로 고치고 기록에 적는다.
 6. **기록.** `.deploy/log/<YYYYMMDD-HHMMSS>-provision.md`: 만든 · 고친 파일 목록, 템플릿 버전, 검증 명령과 결과, 소요 시간.
 
