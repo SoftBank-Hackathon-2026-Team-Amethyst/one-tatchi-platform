@@ -25,6 +25,14 @@ on:
         description: 공통 액션을 가져올 이 레포의 ref (보통 template_version과 같게)
         type: string
         default: v1
+      verify-helm-state:
+        description: 기존 GCP 클러스터에서 CI 계정의 Helm 기록 조회를 plan/apply 전에 검증
+        type: boolean
+        default: false
+      gcp-location:
+        description: Helm 조회 검증 대상 GKE 리전 또는 존
+        type: string
+        default: ""
     secrets:
       OBSERVABILITY_REMOTE_WRITE_PASSWORD:
         required: false
@@ -76,6 +84,22 @@ jobs:
           terraform fmt -check -recursive
           terraform init -input=false -backend-config="bucket=$STATE_BUCKET"
           terraform validate
+      - if: inputs.target == 'gcp' && inputs.verify-helm-state
+        uses: azure/setup-helm@v5
+        with:
+          version: v4.3.0
+      - name: GCP CI 계정의 기존 Helm release 조회 검증
+        if: inputs.target == 'gcp' && inputs.verify-helm-state
+        env:
+          CLUSTER: ${{ inputs.cluster }}
+          LOCATION: ${{ inputs.gcp-location }}
+          PROJECT: ${{ vars.GCP_PROJECT }}
+          ROOT: ${{ inputs.working-directory }}
+        run: |
+          test -n "$CLUSTER" && test -n "$LOCATION"
+          export KUBECONFIG="$RUNNER_TEMP/t17-gcp-kubeconfig"
+          gcloud container clusters get-credentials "$CLUSTER" --location "$LOCATION" --project "$PROJECT"
+          python3 .platform/scripts/verify-helm-state.py "$ROOT"
       - id: plan
         if: inputs.mode == 'plan'
         working-directory: ${{ inputs.working-directory }}

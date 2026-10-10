@@ -1,0 +1,63 @@
+name: onprem-observability
+on:
+  workflow_call:
+    inputs:
+      profile: {type: string, required: true}
+      mode: {type: string, default: plan}
+      remote-write-url: {type: string, required: true}
+      dashboard-url: {type: string, required: true}
+      template-ref: {type: string, required: true}
+    secrets:
+      OBSERVABILITY_REMOTE_WRITE_PASSWORD: {required: true}
+permissions:
+  contents: read
+jobs:
+  device:
+    if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    outputs:
+      runner: ${{ steps.device.outputs.runner }}
+    steps:
+      - id: device
+        env:
+          PROFILE: ${{ inputs.profile }}
+          MODE: ${{ inputs.mode }}
+          TEMPLATE_REF: ${{ inputs.template-ref }}
+        run: |
+          python3 - <<'PY'
+          import json, os, re
+          profile = os.environ['PROFILE']
+          if not re.fullmatch(r'[a-z0-9][a-z0-9-]*', profile):
+              raise SystemExit('invalid profile')
+          if os.environ['MODE'] not in ('plan', 'apply'):
+              raise SystemExit('invalid mode')
+          if not re.fullmatch(r'v\d+\.\d+\.\d+', os.environ['TEMPLATE_REF']):
+              raise SystemExit('a fixed release tag is required')
+          label = 'onprem' if profile == 'default' else 'onprem-' + profile
+          with open(os.environ['GITHUB_OUTPUT'], 'a') as output:
+              output.write('runner=' + json.dumps(['self-hosted', label]) + '\n')
+          PY
+  configure:
+    needs: device
+    runs-on: ${{ fromJSON(needs.device.outputs.runner) }}
+    timeout-minutes: 20
+    concurrency:
+      group: onprem-observability-${{ inputs.profile }}
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          repository: SoftBank-Hackathon-2026-Team-Amethyst/one-tatchi-platform
+          ref: ${{ inputs.template-ref }}
+          persist-credentials: false
+      - name: 기존 device의 관측 설정만 검토·적용
+        env:
+          PROFILE: ${{ inputs.profile }}
+          MODE: ${{ inputs.mode }}
+          REMOTE_WRITE_URL: ${{ inputs.remote-write-url }}
+          DASHBOARD_URL: ${{ inputs.dashboard-url }}
+          METRICS_PASSWORD: ${{ secrets.OBSERVABILITY_REMOTE_WRITE_PASSWORD }}
+        run: |
+          python3 scripts/onprem/observability.py \
+            --config "$HOME/Library/Application Support/one-tatchi/onprem/$PROFILE/config.json" \
+            --mode "$MODE" --remote-write-url "$REMOTE_WRITE_URL" --dashboard-url "$DASHBOARD_URL"

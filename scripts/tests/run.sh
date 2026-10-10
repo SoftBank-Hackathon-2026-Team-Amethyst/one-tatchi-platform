@@ -62,3 +62,4 @@ python3 -B -m unittest discover -s "$(dirname "$scripts")/.github/actions/publis
 bash "$(dirname "$scripts")/.github/actions/image-push/tests/run.sh"
 
 python3 -B -m unittest discover -s "$(dirname "$scripts")/scripts/onprem/tests"
+python3 -B -m unittest discover -s "$(dirname "$scripts")/scripts/tests" -p 'test_*.py'
