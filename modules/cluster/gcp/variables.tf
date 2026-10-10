@@ -74,7 +74,7 @@ variable "node_count" {
     desired = number
     max     = number
   })
-  default = { min = 3, desired = 3, max = 3 }
+  default = { min = 3, desired = 3, max = 5 }
   validation {
     condition = (
       var.node_count.min >= length(var.node_locations) &&

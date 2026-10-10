@@ -12,7 +12,7 @@ module "cluster" {
   pods_range_name     = module.network.pods_range_name
   services_range_name = module.network.services_range_name
   node_instance_types = ["e2-standard-2"]
-  node_count          = { min = 3, desired = 3, max = 3 }
+  node_count          = { min = 3, desired = 3, max = 5 }
 }
 ```
 
@@ -26,7 +26,7 @@ module "cluster" {
 | `region` | `asia-northeast3` | 관리 기능이 여러 영역에 분산되는 클러스터 리전 |
 | `node_locations` | 서울 `a`, `b` | 노드를 둘 영역 목록 |
 | `node_instance_types` | `["e2-standard-2"]` | 단일 머신 타입. 이름은 AWS 입력과 동일 |
-| `node_count` | `{ min = 3, desired = 3, max = 3 }` | 모든 영역을 합친 노드 수 |
+| `node_count` | `{ min = 3, desired = 3, max = 5 }` | 모든 영역을 합친 노드 수. GKE Cluster Autoscaler가 min~max 범위에서 조절 |
 | `kubernetes_version` | `1.36.4-gke.1391000` | 최소 관리 버전. 서울 REGULAR 지원 목록 확인. `null`이면 채널 기본값 |
 | `master_ipv4_cidr` | `172.16.0.0/28` | 관리 기능의 사설 주소 범위. 기존 네트워크와 비중복 확인 필요 |
 | `authorized_networks` | `{}` | 관리 API에 접근할 이름 → IPv4 CIDR 목록. 기본은 IP 제한 없음 |

@@ -38,6 +38,115 @@ resource "helm_release" "lb_controller" {
   depends_on = [module.lb_controller_identity]
 }
 
+# ---------- Metrics Server: Kubernetes resource metrics API for CPU HPA ----------
+resource "helm_release" "metrics_server" {
+  replace = true
+
+  name             = "metrics-server"
+  namespace        = "kube-system"
+  create_namespace = false
+  repository       = "https://kubernetes-sigs.github.io/metrics-server/"
+  chart            = "metrics-server"
+  version          = var.chart_versions.metrics_server
+
+  values = [yamlencode({
+    replicas = 1
+    args = [
+      "--kubelet-use-node-status-port",
+      "--kubelet-preferred-address-types=InternalIP,Hostname,InternalDNS",
+    ]
+  })]
+}
+
+# ---------- Cluster Autoscaler: Pending Pod가 있을 때 tagged EKS ASG 확장 ----------
+data "aws_iam_policy_document" "cluster_autoscaler" {
+  statement {
+    sid = "ReadAutoscalingState"
+    actions = [
+      "autoscaling:DescribeAutoScalingGroups",
+      "autoscaling:DescribeAutoScalingInstances",
+      "autoscaling:DescribeLaunchConfigurations",
+      "autoscaling:DescribeScalingActivities",
+      "autoscaling:DescribeTags",
+      "ec2:DescribeImages",
+      "ec2:DescribeInstanceTypes",
+      "ec2:DescribeLaunchTemplateVersions",
+      "eks:DescribeNodegroup",
+    ]
+    resources = ["*"]
+  }
+
+  statement {
+    sid = "ScaleOnlyThisClustersNodeGroups"
+    actions = [
+      "autoscaling:SetDesiredCapacity",
+      "autoscaling:TerminateInstanceInAutoScalingGroup",
+    ]
+    resources = ["*"]
+    condition {
+      test     = "StringEquals"
+      variable = "autoscaling:ResourceTag/k8s.io/cluster-autoscaler/enabled"
+      values   = ["true"]
+    }
+    condition {
+      test     = "StringEquals"
+      variable = "autoscaling:ResourceTag/k8s.io/cluster-autoscaler/${var.cluster_name}"
+      values   = ["owned"]
+    }
+  }
+}
+
+resource "aws_iam_role" "cluster_autoscaler" {
+  name = "${var.cluster_name}-cluster-autoscaler"
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect    = "Allow"
+      Principal = { Service = "pods.eks.amazonaws.com" }
+      Action    = ["sts:AssumeRole", "sts:TagSession"]
+    }]
+  })
+}
+
+resource "aws_iam_role_policy" "cluster_autoscaler" {
+  name   = "${var.cluster_name}-cluster-autoscaler"
+  role   = aws_iam_role.cluster_autoscaler.id
+  policy = data.aws_iam_policy_document.cluster_autoscaler.json
+}
+
+resource "aws_eks_pod_identity_association" "cluster_autoscaler" {
+  cluster_name    = var.cluster_name
+  namespace       = "kube-system"
+  service_account = "cluster-autoscaler"
+  role_arn        = aws_iam_role.cluster_autoscaler.arn
+}
+
+resource "helm_release" "cluster_autoscaler" {
+  replace = true
+
+  name       = "cluster-autoscaler"
+  namespace  = "kube-system"
+  repository = "https://kubernetes.github.io/autoscaler"
+  chart      = "cluster-autoscaler"
+  version    = var.chart_versions.cluster_autoscaler
+
+  values = [yamlencode({
+    cloudProvider = "aws"
+    awsRegion     = var.region
+    autoDiscovery = { clusterName = var.cluster_name }
+    image         = { tag = var.chart_versions.cluster_autoscaler_image }
+    rbac = {
+      serviceAccount = { create = true, name = "cluster-autoscaler" }
+    }
+    extraArgs = {
+      balance-similar-node-groups = true
+      expander                    = "least-waste"
+    }
+  })]
+
+  depends_on = [aws_eks_pod_identity_association.cluster_autoscaler, aws_iam_role_policy.cluster_autoscaler]
+}
+
 # ---------- Argo Rollouts: 릴리스 전략 엔진 ----------
 resource "helm_release" "argo_rollouts" {
   # 이전 apply에서 실패 상태로 남은 릴리스는 같은 이름으로 덮어쓴다.
