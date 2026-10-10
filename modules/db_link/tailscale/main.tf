@@ -45,13 +45,13 @@ resource "helm_release" "operator" {
 }
 
 # publish: ExternalName Service에 expose 어노테이션을 달면 operator가 프록시 파드를 만들어 target을 tailnet에 내보낸다.
-# DB Service 자체(database/onprem이 관리)는 건드리지 않는다.
+# DB Service 자체(database/onprem이 관리)는 건드리지 않는다. 이름이 겹치지 않게 operator 네임스페이스에 publish-<키>로 둔다.
 resource "kubernetes_service_v1" "publish" {
   for_each = var.publish
 
   metadata {
-    name      = each.key
-    namespace = each.value.namespace
+    name      = "publish-${each.key}"
+    namespace = kubernetes_namespace_v1.tailscale.metadata[0].name
     annotations = {
       "tailscale.com/expose"   = "true"
       "tailscale.com/hostname" = each.key

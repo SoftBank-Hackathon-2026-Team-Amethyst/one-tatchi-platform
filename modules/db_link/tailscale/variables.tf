@@ -39,10 +39,9 @@ variable "publish" {
     target은 클러스터 안 DNS 이름(예: demo-app-db-test.platform.svc.cluster.local). 같은 클러스터의 다른 네임스페이스여도 된다.
   EOT
   type = map(object({
-    namespace = string
-    target    = string
-    port      = optional(number, 5432)
-    tags      = optional(list(string), ["tag:db-onprem"])
+    target = string
+    port   = optional(number, 5432)
+    tags   = optional(list(string), ["tag:db-onprem"])
   }))
   default = {}
 }

@@ -31,7 +31,7 @@
 | `oauth_client_id`, `oauth_client_secret` | ephemeral · sensitive. write-only Secret `tailscale/operator-oauth`로만 전달하고 state에 남지 않는다 |
 | `oauth_revision` | OAuth 값을 바꿨을 때 올린다 |
 | `operator_chart_version` | `tailscale-operator` 차트 버전 (예: `1.102.4`) |
-| `publish` | `{ <tailnet 호스트명> = { namespace, target, port = 5432, tags = ["tag:db-onprem"] } }` |
+| `publish` | `{ <tailnet 호스트명> = { target, port = 5432, tags = ["tag:db-onprem"] } }`. Service는 `tailscale/publish-<호스트명>`에 생긴다 |
 | `consume` | `{ <Service 이름> = { namespace, fqdn, port = 5432, tags = ["tag:app-aws"] } }` |
 
 ## 출력
