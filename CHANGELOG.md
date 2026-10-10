@@ -8,6 +8,10 @@
 
 릴리스 방법: 이 파일에 항목을 추가하고 main에 머지한 뒤 `git tag vX.Y.Z && git push origin vX.Y.Z`. `release.yml`이 차트를 GHCR에 올리고 메이저 태그(`v1`)를 옮긴 뒤, 대상 레포(demo-app)에 알려 버전 업데이트 PR이 열리게 한다. 버전 항목 제목은 `## vX.Y.Z` 형식을 지킨다(PR 본문에 그 구간이 붙는다).
 
+## v1.16.5
+
+- T33: `cluster/aws`의 VPC CNI 애드온에 `enableNetworkPolicy`를 켠다. 정책이 없으면 전처럼 모두 허용이고, db_link의 `allow_from`(v2 계열)과 T30 green 격리가 NetworkPolicy를 쓸 수 있게 된다.
+
 ## v1.16.4
 
 - T17: Cloud Monitoring PromQL 쿼리가 플러그인의 구형 쿼리 변환으로 깨지지 않도록 비활성 편집기 모델을 보존한다. 실제 GCP 리소스 조회로 확인했다.
