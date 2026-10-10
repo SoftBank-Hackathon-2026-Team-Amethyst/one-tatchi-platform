@@ -8,6 +8,10 @@
 
 릴리스 방법: 이 파일에 항목을 추가하고 main에 머지한 뒤 `git tag vX.Y.Z && git push origin vX.Y.Z`. `release.yml`이 차트를 GHCR에 올리고 메이저 태그(`v1`)를 옮긴 뒤, 대상 레포(demo-app)에 알려 버전 업데이트 PR이 열리게 한다. 버전 항목 제목은 `## vX.Y.Z` 형식을 지킨다(PR 본문에 그 구간이 붙는다).
 
+## v1.16.3
+
+- T17: Grafana 차트의 `extraContainerVolumes`로 GCP 단기 토큰을 실제 projected volume으로 전달하고, Grafana 13의 Cloud Monitoring 플러그인에 ADC 환경변수를 전달한다. 빈 디렉터리 마운트와 기본 인증정보 누락으로 실제 GCP 조회가 실패하던 문제를 고친다.
+
 ## v1.16.2
 
 - T17: GCP Grafana Workload Identity Pool의 표시 이름을 API 제한인 32자 이내로 줄여 실제 생성 실패를 고친다. 풀 ID와 신뢰 대상 및 읽기 권한은 유지한다. 기존 v1 클라우드용 호환 패치다.
