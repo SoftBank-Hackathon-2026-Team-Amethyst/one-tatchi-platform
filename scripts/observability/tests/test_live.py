@@ -185,6 +185,12 @@ class PrivatePreviewTest(unittest.TestCase):
             with self.assertRaisesRegex(live.CheckFailed, "SSO preview"):
                 live.private_preview("demo-app-fe")
 
+    def test_fe_proxy_route_to_be_green_is_also_rejected(self):
+        data = {"items": [{"spec": {"defaultBackend": {"service": {"name": "demo-app-fe-preview-auth"}}}}]}
+        with patch.object(live, "kube", return_value=data):
+            with self.assertRaisesRegex(live.CheckFailed, "public preview"):
+                live.private_preview("demo-app-be")
+
     def test_active_routes_and_other_services_are_preserved(self):
         def kube(kind):
             if kind == "ingress":

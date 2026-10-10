@@ -10,6 +10,9 @@
 
 ## Unreleased
 
+- T17: `verify-helm-state`가 `kubectl auth can-i`의 권한 거절("no")과 전송 · 인증 실패(종료 코드 1, 응답 없음)를 구분한다. 전에는 둘 다 권한 부족으로 보고했다.
+- T17: `scripts/observability/live.py`의 private preview 검사가 FE · BE 두 서비스의 preview 경로를 함께 확인한다. T31 `previewAuth.routes`로 FE 프록시가 BE green에 닿을 수 있기 때문이다.
+
 ## v2.6.0
 
 - T17: `verify-helm-state`가 Helm 4에서 항상 실패하던 문제를 고친다. Helm 4는 `helm list --all`을 받지 않는다(기본이 모든 상태). `kubectl auth can-i`가 "no"를 종료 코드 1로 돌려줄 때 "read failed" 대신 권한 부족 메시지를 낸다.
