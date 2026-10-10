@@ -736,11 +736,13 @@ AWS/GCP/onprem에서 승격 전 공개 preview 경로 없음. 인증된 pipeline
 **할 일**
 - [x] AWS BE → 온프레미스 DB의 VPN 등 비공개 연결 방식, 주소 유지, 라우팅, DNS, 암호화와 접근 제한을 설계하고 테스트 환경에서 검증한다. DB 포트를 인터넷에 공개하지 않는다. 후보 비교(Cloudflare Tunnel TCP · Tailscale)와 결정을 ADR에
 - [ ] 맥북 재부팅 · 잠금 뒤에도 통로가 다시 서고 주소가 유지되는지 확인한다 (T27 자동 복구와 맞춤). 안 되면 복구 절차를 README에
+- [ ] k3d 쪽 publish를 임시 루트가 아니라 demo-app `infra/envs/onprem` 루트(`module "db_link"`)에 넣고 T27의 onpremctl(ephemeral 입력 · 로컬 state)로 plan · apply한다. 이때 T27이 요청한 "가연 맥북에서의 Terraform state 검증"(기존 비밀번호 · 데이터 보존, state에 평문 없음)을 같이 확인하고 결과를 T27 #82에 남긴다
 - [x] 온프레미스 PostgreSQL의 데이터·자격증명을 유지하며 AWS 앱에서 사용할 접속 Secret을 구성한다. 비밀번호를 Git·Terraform state·로그에 평문으로 기록하지 않고 test·prod의 DB 데이터와 자격증명을 분리한다. `DATABASE_URL` · `PG_URL` 키와 `sslmode=require`는 service-base와 같게
 - [ ] BE 파드만 DB에 닿도록 제한한다 (보안 그룹 · NetworkPolicy · Access 정책 중 통로에 맞는 것). 다른 네임스페이스 · 외부에서의 접속이 거부되는지 확인
+- [ ] (T32에서 이관) demo-app test에서 클라우드 FE·BE와 온프레미스 DB의 게시글 생성·조회·수정·삭제, 마이그레이션 실행, BE 재배포 후 데이터 보존을 검증한다. DB 연결 실패 시 승격 차단과 기존 버전의 영향을 확인하고 결과를 기록한다
 - [ ] 연결 끊김·재연결, 권한 없는 접근 차단, 비밀값 노출 여부를 검증한다. 끊긴 동안 BE가 메모리 폴백으로 조용히 넘어가지 않고 `/health`가 503을 내는지 확인. 연결·배포·정리 절차, 지원 조합, 온프레미스 DB 장애가 기존 앱에도 영향을 준다는 한계를 문서화하고 관련 Terraform·Helm·워크플로 검사를 통과한다
 
-**완료 기준** EKS test의 BE 파드가 맥북 Postgres에 TLS로 붙어 `/api/info`가 `dbConnected: true`를 돌려주고, DB 포트는 외부에서 닿지 않는다. 접속 정보는 AWS Secret으로만 들어오고 Git · state · 로그에 평문이 없다. 통로를 끊으면 `/health`가 503이 되고 다시 이으면 복구된다.
+**완료 기준** EKS test의 BE 파드가 맥북 Postgres에 TLS로 붙어 `/api/info`가 `dbConnected: true`를 돌려주고, DB 포트는 외부에서 닿지 않는다. 접속 정보는 AWS Secret으로만 들어오고 Git · state · 로그에 평문이 없다. 통로를 끊으면 `/health`가 503이 되고 다시 이으면 복구된다. test에서 CRUD · 마이그레이션 · BE 재배포 뒤 데이터 보존이 확인되고(T32에서 이관), 통로가 demo-app 온프레미스 루트로 관리돼 맥북 재부팅 뒤에도 다시 선다.
 
 ### [T32] 계층별 배포 위치 분리 (AWS 앱 · 온프레미스 DB)
 
@@ -756,9 +758,8 @@ AWS/GCP/onprem에서 승격 전 공개 preview 경로 없음. 인증된 pipeline
 **할 일**
 - [x] 배포 설정의 FE·BE·DB 대상 계약과 기존 단일 target의 호환 규칙을 정의한다. 첫 지원 조합만 허용하고 미지원 조합은 인프라 변경 전에 명확한 오류로 중단한다(`check-artifacts.sh`). 후속 확장 범위를 ADR에 기록한다
 - [x] deploy-analyze·deploy-provision과 재사용 워크플로를 계층별 대상에 연결한다. 온프레미스 DB를 선택하면 AWS RDS를 새로 생성하지 않고(`infra/envs/aws`에서 `module.database` 대신 외부 DB 입력) 기존 리소스 삭제·데이터 이전은 명시적인 절차로 분리한다. 기존 단일 대상 호출의 동작을 유지한다(`tests/run.sh`)
-- [ ] demo-app test에서 클라우드 FE·BE와 온프레미스 DB의 게시글 생성·조회·수정·삭제, 마이그레이션 실행, BE 재배포 후 데이터 보존을 검증한다. DB 연결 실패 시 승격 차단과 기존 버전의 영향을 확인하고 결과를 기록한다
 
-**완료 기준** 지원 조합을 설정하면 수작업으로 앱 접속 정보를 고치지 않고 AWS FE·BE가 온프레미스 DB에 연결된다. CRUD·데이터 보존·연결 실패 시 승격 차단이 test에서 검증되고 기존 단일 대상 배포의 회귀가 없다. DB의 비공개 노출 · 접근 제한은 `T33`의 완료 기준이다. 운영 데이터의 무중단 이전·DB 이중화·모든 배포 조합 자동 지원은 별도 작업이다.
+**완료 기준** 지원 조합을 설정하면 수작업으로 앱 접속 정보를 고치지 않고 AWS FE·BE가 온프레미스 DB에 연결된다(계약 · 스킬 · 워크플로 연결과 로컬 검증). 기존 단일 대상 배포의 회귀가 없다. demo-app test에서의 CRUD · 데이터 보존 · 승격 차단 검증과 DB의 비공개 노출 · 접근 제한은 맥북 DB · 통로가 필요해 `T33`의 완료 기준으로 옮겼다(2026-10-11, 배규태 · 원가연 합의). 운영 데이터의 무중단 이전·DB 이중화·모든 배포 조합 자동 지원은 별도 작업이다.
 
 ### [T34] test · prod DB와 계정 분리
 
