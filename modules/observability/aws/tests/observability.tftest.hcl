@@ -87,6 +87,14 @@ run "integrated_dashboard_and_keyless_auth" {
     condition     = yamldecode(helm_release.gcp_credentials[0].values[0]).credentials.type == "external_account"
     error_message = "GCP authentication must use projected identity, never a service account private key."
   }
+  assert {
+    condition     = yamldecode(helm_release.grafana.values[0]).extraContainerVolumes[0].projected.sources[0].serviceAccountToken.audience == "https://iam.googleapis.com/projects/123/locations/global/workloadIdentityPools/grafana-eks/providers/eks-grafana" && yamldecode(helm_release.grafana.values[0]).extraVolumeMounts[0].mountPath == "/var/run/gcp"
+    error_message = "The Grafana chart must preserve the projected token volume instead of rendering an emptyDir."
+  }
+  assert {
+    condition     = yamldecode(helm_release.grafana.values[0])["grafana.ini"].plugins.forward_host_env_vars == "stackdriver" && yamldecode(helm_release.grafana.values[0]).env.GOOGLE_APPLICATION_CREDENTIALS == "/etc/gcp-wif/credentials.json"
+    error_message = "The Cloud Monitoring plugin must receive the ADC path in Grafana 13."
+  }
 }
 run "aws_onprem_before_gcp" {
   command = plan

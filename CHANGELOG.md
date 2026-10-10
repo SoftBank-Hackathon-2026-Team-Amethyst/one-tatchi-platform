@@ -10,6 +10,8 @@
 
 ## Unreleased
 
+- T17: Grafana 차트의 `extraContainerVolumes`로 GCP 단기 토큰을 실제 projected volume으로 전달하고, Grafana 13의 Cloud Monitoring 플러그인에 ADC 환경변수를 전달한다. 빈 디렉터리 마운트와 기본 인증정보 누락으로 실제 GCP 조회가 실패하던 문제를 고친다.
+
 - T35: `deploy.yml`이 환경별 덧붙임 값 파일 `<values>.<environment>.yaml`(예: `deploy/values-be.test.yaml`)을 기본 → `deploy/<target>/values.yaml` → 환경 순서로 합친다(`scripts/values-files.sh`, 테스트로 고정). 없으면 이전과 같다. `check-artifacts.sh`는 장애 주입 · 디버그 플래그(`CHAOS_*` · `FAULT_*` · `DEBUG`)가 test 덧붙임 파일 밖에 있으면 실패한다. prod에 `POST /api/chaos` 경로가 열리지 않게 한다.
 
 ## v2.7.0
