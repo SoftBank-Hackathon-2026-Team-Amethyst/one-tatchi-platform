@@ -92,6 +92,8 @@ jobs:
       - uses: astral-sh/setup-uv@v10.2.0
       # yolo 리포트: 수집 결과와 예시를 schema.json으로 검사한다 (T10)
       - run: uv run --no-project --with jsonschema python -B -m unittest discover -s .github/actions/yolo-report/tests -v
+      # 배포 실패 진단: 증거 수집(cluster.sh · collect.py) 결과를 evidence.schema.json으로 검사한다 (T12)
+      - run: uv run --no-project --with jsonschema python -B -m unittest discover -s .github/actions/failure-diagnosis/tests -v
       - run: bash skills/deploy-provision/tests/run.sh
 
   slack-bot:

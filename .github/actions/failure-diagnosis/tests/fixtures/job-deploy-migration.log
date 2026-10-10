@@ -1,0 +1,74 @@
+2026-10-10T17:10:26.9883395Z [36;1m[0m
+2026-10-10T17:10:26.9883623Z [36;1m# 2단계: green 대기 · 주소는 서비스마다 따로 기다린다. helm upgrade를 먼저 모두 보내 두어[0m
+2026-10-10T17:10:26.9883938Z [36;1m# 서비스들의 green 기동이 겹친다 (T9: 직렬이면 서비스당 green 기동 시간이 그대로 더해졌다).[0m
+2026-10-10T17:10:26.9884293Z [36;1m# 적용 순서(BE 먼저)는 1단계가 지키고, Blue-Green이라 green FE는 active BE를 보므로 순서가 결과를 바꾸지 않는다.[0m
+2026-10-10T17:10:26.9884611Z [36;1mfor idx in $(seq 0 $((count - 1))); do[0m
+2026-10-10T17:10:26.9884873Z [36;1m  svc="$(jq -c ".[$idx]" <<<"$SERVICES")"[0m
+2026-10-10T17:10:26.9885124Z [36;1m  release="$(jq -r .name <<<"$svc")"[0m
+2026-10-10T17:10:26.9885375Z [36;1m  echo "::group::$release green 대기"[0m
+2026-10-10T17:10:26.9885613Z [36;1m  wait_rollout "$release"[0m
+2026-10-10T17:10:26.9885893Z [36;1m  service_urls "$release" "$(jq -r .values <<<"$svc")"[0m
+2026-10-10T17:10:26.9886159Z [36;1m  echo "::endgroup::"[0m
+2026-10-10T17:10:26.9886358Z [36;1m[0m
+2026-10-10T17:10:26.9886599Z [36;1m  [ -z "$first_active" ] && [ -n "$active" ] && first_active="$active"[0m
+2026-10-10T17:10:26.9887011Z [36;1m  slack+="*$release* active (blue): ${active:-(외부 주소 없음)} · preview (green): $preview"$'\n'[0m
+2026-10-10T17:10:26.9887499Z [36;1m  echo "- **$release** active (blue): ${active:-(외부 주소 없음)} · preview (green): $preview" >> "$GITHUB_STEP_SUMMARY"[0m
+2026-10-10T17:10:26.9887867Z [36;1mdone[0m
+2026-10-10T17:10:26.9888025Z [36;1m[0m
+2026-10-10T17:10:26.9888187Z [36;1m{[0m
+2026-10-10T17:10:26.9888514Z [36;1m  echo "active=$first_active"[0m
+2026-10-10T17:10:26.9888815Z [36;1m  echo "names=$(jq -r 'map(.name) | join(" ")' <<<"$SERVICES")"[0m
+2026-10-10T17:10:26.9889112Z [36;1m  echo "paused=${paused% }"[0m
+2026-10-10T17:10:26.9889383Z [36;1m  echo "slack<<END"; printf '%s' "$slack"; echo "END"[0m
+2026-10-10T17:10:26.9889658Z [36;1m} >> "$GITHUB_OUTPUT"[0m
+2026-10-10T17:10:26.9945173Z shell: /usr/bin/bash -e {0}
+2026-10-10T17:10:26.9945408Z env:
+2026-10-10T17:10:26.9945606Z   TAG: 7d957874950d5261679da077bf9e907ec34ce6af
+2026-10-10T17:10:26.9945879Z   NAMESPACE: test
+2026-10-10T17:10:26.9946054Z   TARGET: aws
+2026-10-10T17:10:26.9946543Z   SERVICES: [{"name":"demo-app-be","path":"be","values":"deploy/values-be.yaml","migration":"db/init.sql"},
+ {"name":"demo-app-fe","path":"fe","values":"deploy/values-fe.yaml"}]
+2026-10-10T17:10:26.9948124Z   IMAGES: {"demo-app-be":{"repository":"993371732872.dkr.ecr.ap-northeast-2.amazonaws.com/demo-app-be","digest":"sha256:d205ca45fba0d71faeb0eb57282aa15d34f2529a61459d891fc6b9e200a25e1f","source_sha":"7d957874950d5261679da077bf9e907ec34ce6af"},"demo-app-fe":{"repository":"993371732872.dkr.ecr.ap-northeast-2.amazonaws.com/demo-app-fe","digest":"sha256:979389059f95c2e04b60f943760c8ea3f578004ee04d1992c661cb6b5ef83528","source_sha":"7d957874950d5261679da077bf9e907ec34ce6af"}}
+2026-10-10T17:10:26.9949730Z   VERIFY_OBSERVABILITY: false
+2026-10-10T17:10:26.9949959Z   T17_KEY: aws-38070479286-1
+2026-10-10T17:10:26.9950167Z   CLUSTER: one-tatchi
+2026-10-10T17:10:26.9950523Z   OBSERVABILITY_URL: https://onetatchi.soulee.dev/grafana
+2026-10-10T17:10:26.9950844Z   OBSERVABILITY_LOG_GROUP: /one-tatchi/deploy-evidence
+2026-10-10T17:10:26.9951122Z   AWS_DEFAULT_REGION: ap-northeast-2
+2026-10-10T17:10:26.9951354Z   AWS_REGION: ap-northeast-2
+2026-10-10T17:10:26.9951658Z   AWS_ACCESS_KEY_ID: ***
+2026-10-10T17:10:26.9951938Z   AWS_SECRET_ACCESS_KEY: ***
+2026-10-10T17:10:26.9955769Z   AWS_SESSION_TOKEN: ***
+2026-10-10T17:10:26.9955995Z   KUBECONFIG: /home/runner/work/_temp/kubeconfig
+2026-10-10T17:10:26.9956264Z   DOCKER_CONFIG: /home/runner/work/_temp/docker
+2026-10-10T17:10:26.9956569Z   HELM_REGISTRY_CONFIG: /home/runner/work/_temp/helm/registry.json
+2026-10-10T17:10:26.9956862Z   GCP_PROJECT: one-tatchi-gejkm
+2026-10-10T17:10:26.9957077Z   GCP_REGION: asia-northeast3
+2026-10-10T17:10:26.9959275Z   GH_TOKEN: ***
+2026-10-10T17:10:26.9959496Z   OWNER: SoftBank-Hackathon-2026-Team-Amethyst
+2026-10-10T17:10:26.9959851Z   SOURCE: https://github.com/SoftBank-Hackathon-2026-Team-Amethyst/demo-app
+2026-10-10T17:10:26.9960191Z   INGRESS_GROUP: demo-app-test
+2026-10-10T17:10:26.9960417Z   HOST: yolo.onetatchi.soulee.dev
+2026-10-10T17:10:26.9960659Z   PREVIEW_HOST: green-yolo.onetatchi.soulee.dev
+2026-10-10T17:10:26.9960906Z   PREVIEW_AUTH: true
+2026-10-10T17:10:26.9961175Z   CHART: oci://ghcr.io/softbank-hackathon-2026-team-amethyst/charts/app
+2026-10-10T17:10:26.9961479Z   CHART_VERSION: 2.12.0
+2026-10-10T17:10:26.9961668Z   ENVIRONMENT: test
+2026-10-10T17:10:26.9961857Z ##[endgroup]
+2026-10-10T17:10:27.0124982Z ##[group]demo-app-be helm upgrade
+2026-10-10T17:10:29.8232273Z Pulled: ghcr.io/softbank-hackathon-2026-team-amethyst/charts/app:2.12.0
+2026-10-10T17:10:29.8232987Z Digest: sha256:0fa7817dd6619c21af0a839c0924154014cb46b93a62ff48bbaa80751841c1b4
+2026-10-10T17:18:02.8513644Z level=WARN msg="upgrade failed" name=demo-app-be error="pre-upgrade hooks failed: resource Job/test/demo-app-be-migration not ready. status: Failed, message: Job Failed. failed: 3/1"
+2026-10-10T17:18:03.2372572Z Error: UPGRADE FAILED: pre-upgrade hooks failed: resource Job/test/demo-app-be-migration not ready. status: Failed, message: Job Failed. failed: 3/1
+2026-10-10T17:18:03.2400349Z ##[error]Process completed with exit code 1.
+2026-10-10T17:18:03.2511517Z Prepare all required actions
+2026-10-10T17:18:03.2551407Z ##[warning]Unexpected input(s) 'flow', 'environment', 'stage', 'next-action', valid inputs are ['action', 'target', 'version', 'result', 'requested-by', 'bucket']
+2026-10-10T17:18:03.2555784Z ##[group]Run ./.platform/.github/actions/audit-log
+2026-10-10T17:18:03.2556039Z with:
+2026-10-10T17:18:03.2556209Z   flow: Yolo
+2026-10-10T17:18:03.2556380Z   environment: test
+2026-10-10T17:18:03.2556570Z   stage: Green 배포·검사 결과
+2026-10-10T17:18:03.2556783Z   next-action: 실행 로그를 확인해 주세요. 성공이나 승격 완료 상태가 아니에요.
+2026-10-10T17:18:03.2557033Z   action: deploy
+2026-10-10T17:18:03.2557206Z   target: all@aws.test
+2026-10-10T17:18:03.2557388Z   result: failure

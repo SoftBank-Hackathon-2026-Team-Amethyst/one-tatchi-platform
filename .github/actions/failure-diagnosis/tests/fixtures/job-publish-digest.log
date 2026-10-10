@@ -1,0 +1,51 @@
+2026-10-10T16:06:29.4976565Z ##[endgroup]
+2026-10-10T16:06:29.5142969Z ##[group]Run aws-actions/configure-aws-credentials@v6
+2026-10-10T16:06:29.5143157Z with:
+2026-10-10T16:06:29.5143651Z   role-to-assume: arn:aws:iam::993371732872:role/one-tatchi-gha-deploy
+2026-10-10T16:06:29.5143862Z   aws-region: ap-northeast-2
+2026-10-10T16:06:29.5144007Z   audience: sts.amazonaws.com
+2026-10-10T16:06:29.5144151Z ##[endgroup]
+2026-10-10T16:06:29.7558407Z Assuming role with OIDC
+2026-10-10T16:06:30.3169934Z Authenticated as assumedRoleId AROA6OSMRXOEIGIRIKBP2:GitHubActions
+2026-10-10T16:06:30.8538652Z ##[group]Run aws-actions/amazon-ecr-login@v2
+2026-10-10T16:06:30.8538832Z with:
+2026-10-10T16:06:30.8538964Z   mask-password: true
+2026-10-10T16:06:30.8539105Z   registry-type: private
+2026-10-10T16:06:30.8539247Z   skip-logout: false
+2026-10-10T16:06:30.8539378Z env:
+2026-10-10T16:06:30.8539502Z   AWS_DEFAULT_REGION: ap-northeast-2
+2026-10-10T16:06:30.8539669Z   AWS_REGION: ap-northeast-2
+2026-10-10T16:06:30.8539954Z   AWS_ACCESS_KEY_ID: ***
+2026-10-10T16:06:30.8540150Z   AWS_SECRET_ACCESS_KEY: ***
+2026-10-10T16:06:30.8543049Z   AWS_SESSION_TOKEN: ***
+2026-10-10T16:06:30.8543182Z ##[endgroup]
+2026-10-10T16:06:30.9219366Z Using environment variable credentials.
+2026-10-10T16:06:30.9356246Z @aws-sdk/core/protocols - WARN - JsonCodec2: you have called a string method on a Uint8Array request body. It has been automatically converted to string. In a future version this will throw an error.
+2026-10-10T16:06:31.5223587Z Logging into registry 993371732872.dkr.ecr.ap-northeast-2.amazonaws.com
+2026-10-10T16:06:33.1238325Z ##[group]Run python3 .platform/.github/actions/image-push/publish.py
+2026-10-10T16:06:33.1238778Z [36;1mpython3 .platform/.github/actions/image-push/publish.py[0m
+2026-10-10T16:06:33.1288841Z shell: /usr/bin/bash -e {0}
+2026-10-10T16:06:33.1288994Z env:
+2026-10-10T16:06:33.1289131Z   AWS_DEFAULT_REGION: ap-northeast-2
+2026-10-10T16:06:33.1289293Z   AWS_REGION: ap-northeast-2
+2026-10-10T16:06:33.1289567Z   AWS_ACCESS_KEY_ID: ***
+2026-10-10T16:06:33.1289765Z   AWS_SECRET_ACCESS_KEY: ***
+2026-10-10T16:06:33.1292648Z   AWS_SESSION_TOKEN: ***
+2026-10-10T16:06:33.1292785Z   TARGET: aws
+2026-10-10T16:06:33.1293131Z   SERVICES: [{"name":"demo-app-be","path":"be","values":"deploy/values-be.yaml","migration":"db/init.sql"},
+ {"name":"demo-app-fe","path":"fe","values":"deploy/values-fe.yaml"}]
+2026-10-10T16:06:33.1293663Z   BUNDLES: /home/runner/work/_temp/checked-images
+2026-10-10T16:06:33.1293886Z   ECR_REGISTRY: 993371732872.dkr.ecr.ap-northeast-2.amazonaws.com
+2026-10-10T16:06:33.1294107Z   GCP_REGION: asia-northeast3
+2026-10-10T16:06:33.1294257Z   GCP_PROJECT: one-tatchi-gejkm
+2026-10-10T16:06:33.1295645Z   GH_TOKEN: ***
+2026-10-10T16:06:33.1295773Z ##[endgroup]
+2026-10-10T16:06:41.4991688Z ##[error]existing tag has different digest: 993371732872.dkr.ecr.ap-northeast-2.amazonaws.com/demo-app-be:6ecd9f993b54c8502e2b92d9d084fdde8cb9b968
+2026-10-10T16:06:41.5040363Z ##[error]Process completed with exit code 1.
+2026-10-10T16:06:41.5093013Z Post job cleanup.
+2026-10-10T16:06:41.5538093Z Logging out of registry 993371732872.dkr.ecr.ap-northeast-2.amazonaws.com
+2026-10-10T16:06:41.5851683Z Post job cleanup.
+2026-10-10T16:06:41.6386120Z Post job cleanup.
+2026-10-10T16:06:41.6985610Z [command]/usr/bin/git version
+2026-10-10T16:06:41.7044479Z git version 2.55.0
+2026-10-10T16:06:41.7062451Z Temporarily overriding HOME='/home/runner/work/_temp/4a26025d-a49f-4903-b95f-e41e08093063' before making global git config changes

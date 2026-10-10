@@ -43,6 +43,16 @@ publish · deploy job 실패
 | [`examples/evidence-image-publish.json`](examples/evidence-image-publish.json) · [`diagnosis-image-publish.json`](examples/diagnosis-image-publish.json) | [38066156334](https://github.com/SoftBank-Hackathon-2026-Team-Amethyst/demo-app/actions/runs/38066156334) | `existing tag has different digest`. 원인이 Actions 로그에 그대로 있다 |
 | [`examples/diagnosis-fallback.json`](examples/diagnosis-fallback.json) | — | Claude 시간 초과 → 오류 줄만 보여 준다 |
 
+## 수집 스크립트
+
+| 파일 | 어디서 | 하는 일 |
+|---|---|---|
+| [`cluster.sh`](cluster.sh) | 실패한 deploy job 안 (`if: failure()`, onprem은 맥북 러너) | Rollout 상태 · Warning 이벤트 40개 · Ready가 아니거나 재시작한 파드 10개의 로그 끝(재시작했으면 `--previous`) · `<서비스>-migration` Job 상태와 로그 → `cluster.json`. bash · kubectl · jq · sed만 쓴다 |
+| [`collect.py`](collect.py) | 진단 job (ubuntu) | 실행의 실패한 `deploy` · `publish` job(최대 3개) 로그를 API로 받아 실패 step · 오류 줄 · 첫 `##[error]` 앞뒤를 뽑고 `cluster.json`과 합쳐 `evidence.json`을 만든다. 로그 API에는 `actions: read` 토큰(봇 App 토큰)이 필요하다 |
+| [`redact.sed`](redact.sed) | 두 스크립트 공용 | 접속 문자열 비밀번호 · Bearer · GitHub/AWS/Slack/Anthropic 토큰 형태 · `password=` 류 값을 `***`로 가린다. 가린 뒤 JSON이 깨지면 내용을 버리고 수집 실패로 남긴다 |
+
+둘 다 하나가 실패해도 멈추지 않고 `collection`에 이유를 남긴다. 테스트: `uv run --no-project --with jsonschema python -B -m unittest discover -s .github/actions/failure-diagnosis/tests` (가짜 kubectl · gh, 실제 demo-app 실패 로그 일부를 `tests/fixtures`에 둔다).
+
 ## 넣지 않는 것
 
 - 비밀값: GitHub가 가린 값(`***`) 외에도 클러스터 출력의 접속 문자열 · 토큰 형태를 가린다(수집 단계).
