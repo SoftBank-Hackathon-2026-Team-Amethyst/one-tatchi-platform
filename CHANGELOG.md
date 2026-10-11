@@ -10,8 +10,12 @@
 
 ## Unreleased
 
-- T25: 선택형 Runtime Status API와 Chart를 추가한다. namespace의 Kubernetes Pod 목록과 Metrics API CPU·working-set 메모리를 조회하며, 요청 분배와 관계없이 BE Pod을 표시할 수 있다. `deploy.yml`의 `runtime-status-values` 또는 앱 `.deploy/config.yaml`의 `runtime_status_values`로 켠다. 이미지 digest는 릴리스 Chart에 고정하며 기본 App Pod의 API 권한은 유지한다. App Chart는 Pod별 앱 버전 annotation을 제공한다. 온프레미스 doctor/status와 공통 스크립트로 Metrics API를 검증한다.
+
 - T36: 장애 훈련 재사용 워크플로 `chaos.yml`과 스크립트 `.github/actions/chaos-drill`(설계 `docs/chaos-drill.md`). test의 green에 시나리오(`error-burst` · `slow-response` · `db-down` · `flaky`, `scenarios.json`)대로 장애를 넣고(green 파드마다 port-forward로 `POST /api/chaos`), 기존 `promote-judge`를 `manual`로 돌려 기대한 결정(abort)이 나오는지, active 서비스 smoke로 blue 에러율이 0%인지 확인한 뒤 항상 정리(장애 해제 확인 · 훈련용 green은 abort와 파드 템플릿 annotation 복구)하고 채점한다. green이 없거나(`new-green`이면 훈련용 green을 띄움) 배포 중 · Degraded면 아무것도 바꾸지 않고 거절한다. namespace는 `test` 고정(입력 없음), `rollout.yml`과 같은 concurrency group. 결과는 실행 요약 · Slack(`action: drill`, 해제를 확인하지 못한 대기 중 green은 승격 금지 경고와 abort 버튼) · 감사 로그에 남는다. `promote-judge/smoke.sh`에 `SERVICE` 환경변수(기본은 전처럼 `<release>-preview`). 호출부는 demo-app `chaos.yml`(T36 후속), Slack `/chaos` 명령은 T37.
+
+## v2.17.0
+
+- T25: 선택형 Runtime Status API와 Chart를 추가한다. namespace의 Kubernetes Pod 목록과 Metrics API CPU·working-set 메모리를 조회하며, 요청 분배와 관계없이 BE Pod을 표시할 수 있다. `deploy.yml`의 `runtime-status-values` 또는 앱 `.deploy/config.yaml`의 `runtime_status_values`로 켠다. 이미지 digest는 릴리스 Chart에 고정하며 기본 App Pod의 API 권한은 유지한다. App Chart는 Pod별 앱 버전 annotation을 제공한다. 온프레미스 doctor/status와 공통 스크립트로 Metrics API를 검증한다.
 
 ## v2.16.0
 
