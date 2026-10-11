@@ -10,6 +10,8 @@
 
 ## Unreleased
 
+## v2.15.0
+
 - T22: `template-update.yml`이 이미 열린 `template/<버전>` PR이 main과 충돌(CONFLICTING)하면 건너뛰지 않고 main 기준으로 버전 올리기를 다시 돌려 같은 브랜치에 `push -f` 한다(PR 본문 갱신 · 코멘트). 봇 커밋 하나가 아닌 PR은 덮어쓰지 않고 경고만 남긴다. 호출부(스킬 템플릿 `template-update.yml`)에 `push: main`(`.deploy/config.yaml` · `.github/workflows/**` · `**.tf`) 트리거를 더해 main이 바뀔 때마다 자동으로 돈다.
 
 ## v2.14.0
