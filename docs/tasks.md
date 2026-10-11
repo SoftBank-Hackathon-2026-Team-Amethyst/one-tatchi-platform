@@ -878,10 +878,10 @@ AWS/GCP/onprem에서 승격 전 공개 preview 경로 없음. 인증된 pipeline
 **목표** push 한 번으로 고른 대상 모두에 test가 병렬로 돌고, 모든 대상의 test가 통과했을 때만 모든 대상의 prod로 넘어간다. 한 대상이라도 실패하면 어느 대상도 prod로 가지 않는다.
 
 **할 일**
-- [ ] `deploy.yml.tmpl`: 레포 변수 `DEPLOY_TARGETS`(쉼표 구분, 없으면 `DEPLOY_TARGET`, 그것도 없으면 `aws`), 수동 실행 `target`에 `all` 추가. `targets` job이 대상 목록과 `changes` 결과로 matrix JSON을 만든다(job `if`에서는 `matrix`를 쓸 수 없다)
-- [ ] `test` · `prod`: `strategy.matrix.include`로 대상별 `target` · `target-label` · `onprem-runner-label` · `cluster` · `host` · `preview-host`, `fail-fast: false`. `prod`는 모든 대상의 `test` 성공 후에만 진행
+- [x] `deploy.yml.tmpl`: 레포 변수 `DEPLOY_TARGETS`(쉼표 구분, 없으면 `DEPLOY_TARGET`, 그것도 없으면 `aws`), 수동 실행 `target`에 `all` 추가. `targets` job이 대상 목록과 `changes` 결과로 matrix JSON을 만든다(job `if`에서는 `matrix`를 쓸 수 없다)
+- [x] `test` · `prod`: `strategy.matrix.include`로 대상별 `target` · `target-label` · `onprem-runner-label` · `cluster` · `host` · `preview-host`, `fail-fast: false`. `prod`는 모든 대상의 `test` 성공 후에만 진행
 - [ ] onprem 대상은 runner가 꺼져 있으면 `targets` 단계에서 실패로 알린다(`scripts/onprem/target.py` 재사용). 대기 상태로 prod 전체를 붙잡지 않는다
-- [ ] yolo 리포트 · 자동 머지 PR이 대상 수만큼 생기지 않게 기준 대상 하나에만 `yolo-auto-merge`를 켠다
+- [x] yolo 리포트 · 자동 머지 PR이 대상 수만큼 생기지 않게 기준 대상 하나에만 `yolo-auto-merge`를 켠다
 - [ ] Slack 승인 버튼(`<run_id>@prod`) 한 번으로 모든 대상의 prod 승인이 처리되는지 확인. 안 되면 slack-bot이 같은 실행의 대기 중인 승인을 모두 처리하게 고친다
 - [ ] 문서: `deploy-provision` 스킬 · `references/artifacts.md` · `docs/gcp-deploy.md`의 `DEPLOY_TARGET` 설명, ADR(전부 통과해야 prod로 가는 이유)
 - [ ] demo-app 적용: `DEPLOY_TARGETS=aws,gcp`로 확인한 뒤 onprem 추가
