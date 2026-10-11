@@ -27,8 +27,9 @@ spec:
     metadata:
       labels:
         {{- include "app.labels" . | nindent 8 }}
-      {{- if .Values.metrics.enabled }}
       annotations:
+        one-tatchi.dev/app-version: {{ default "" .Values.env.APP_VERSION | quote }}
+      {{- if .Values.metrics.enabled }}
         prometheus.io/scrape: "true"
         prometheus.io/port: {{ .Values.metrics.port | quote }}
         prometheus.io/path: {{ .Values.metrics.path | quote }}
@@ -44,12 +45,20 @@ spec:
           ports:
             - name: http
               containerPort: {{ .Values.containerPort }}
-          {{- with .Values.env }}
+          {{- if or .Values.env .Values.podNamespaceEnv }}
           env:
+          {{- if .Values.podNamespaceEnv }}
+            - name: POD_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+          {{- end }}
+          {{- with .Values.env }}
             {{- range $k, $v := . }}
             - name: {{ $k }}
               value: {{ $v | quote }}
             {{- end }}
+          {{- end }}
           {{- end }}
           {{- with .Values.envFromSecrets }}
           envFrom:

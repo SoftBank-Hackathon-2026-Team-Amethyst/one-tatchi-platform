@@ -12,6 +12,7 @@ permissions:
 
 jobs:
   charts:
+    needs: runtime-status
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
@@ -19,11 +20,13 @@ jobs:
       - name: 차트 패키징 · GHCR push
         env:
           VERSION: ${{ github.ref_name }}
+          RUNTIME_DIGEST: ${{ needs.runtime-status.outputs.digest }}
         run: |
           ver="${VERSION#v}"
           owner="$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')"
           echo "${{ secrets.GITHUB_TOKEN }}" | helm registry login ghcr.io -u "${{ github.actor }}" --password-stdin
-          for c in app service-base platform-config observability grafana-wif; do
+          sed -i "s|digest: \"\"|digest: \"$RUNTIME_DIGEST\"|" charts/runtime-status/values.yaml
+          for c in app service-base platform-config observability grafana-wif runtime-status; do
             helm package "charts/$c" --version "$ver" --app-version "$ver" -d dist
             helm push "dist/$c-$ver.tgz" "oci://ghcr.io/$owner/charts"
           done
@@ -34,6 +37,36 @@ jobs:
           major="${VERSION%%.*}"
           git tag -f "$major"
           git push -f origin "$major"
+
+  runtime-status:
+    runs-on: ubuntu-latest
+    outputs:
+      digest: ${{ steps.build.outputs.digest }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: docker/setup-qemu-action@v3
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - id: image
+        env:
+          VERSION: ${{ github.ref_name }}
+        run: |
+          owner="$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')"
+          echo "tags=ghcr.io/$owner/runtime-status:${VERSION#v}" >> "$GITHUB_OUTPUT"
+      - id: build
+        uses: docker/build-push-action@v6
+        with:
+          context: runtime-status
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ${{ steps.image.outputs.tags }}
+          labels: org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+          cache-from: type=gha,scope=runtime-status
+          cache-to: type=gha,mode=max,scope=runtime-status
 
   # Slack 봇(T26) 이미지. 대상 레포의 인프라가 같은 버전 태그로 띄운다. EKS(amd64) · 맥북 k3d(arm64) 둘 다.
   slack-bot:

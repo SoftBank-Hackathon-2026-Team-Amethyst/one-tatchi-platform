@@ -49,6 +49,9 @@ jobs:
           helm lint charts/platform-config
           helm lint charts/observability --set cluster=ci
           helm lint charts/grafana-wif
+          helm lint charts/runtime-status --set serviceName=demo-app-be --set image.digest=sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+          helm template runtime-status charts/runtime-status --namespace test --set serviceName=demo-app-be --set image.digest=sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa > /tmp/runtime-status.yaml
+          python3 -B -m unittest discover -s charts/runtime-status/tests -v
           helm template metrics charts/observability --set cluster=ci --set receiver.enabled=true --set receiver.host=metrics.example.com --set receiver.secretName=metrics-auth > /tmp/metrics.yaml
           helm template auth charts/app --set image.repository=r --set image.tag=t --set ingress.enabled=true --set ingress.group=g --set previewAuth.enabled=true --set previewAuth.host=green.example.test --set previewAuth.issuerUrl=https://issuer.example.test --set previewAuth.remoteKey=x --show-only templates/preview-auth.yaml > /tmp/preview-auth.yaml
       - uses: aquasecurity/trivy-action@v0.36.0
@@ -61,6 +64,29 @@ jobs:
         with:
           scan-type: config
           scan-ref: /tmp/preview-auth.yaml
+          severity: HIGH,CRITICAL
+          exit-code: "1"
+
+      - uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          scan-type: config
+          scan-ref: /tmp/runtime-status.yaml
+          severity: HIGH,CRITICAL
+          exit-code: "1"
+
+  runtime-status:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v6
+        with:
+          node-version: "22"
+      - run: npm test --prefix runtime-status && npm run lint --prefix runtime-status
+      - run: docker build -t runtime-status:ci runtime-status
+      - uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          image-ref: runtime-status:ci
+          scanners: vuln
           severity: HIGH,CRITICAL
           exit-code: "1"
 

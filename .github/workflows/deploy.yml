@@ -73,6 +73,10 @@ on:
         description: App Chart 버전 (template_version과 같게)
         type: string
         required: true
+      runtime-status-values:
+        description: "Optional Runtime Status Chart values file. Defaults to .deploy/config.yaml runtime_status_values; empty disables installation"
+        type: string
+        default: ""
       chart-repo:
         description: App Chart OCI 저장소
         type: string
@@ -381,6 +385,12 @@ jobs:
         run: |
           NAMESPACE="$TEST_NS" WAIT_SECONDS="$WAIT" bash .platform/.github/actions/yolo-pr/verify.sh
           echo "### test 승격 확인: 검사한 OCI digest가 $TEST_NS 에서 stable" >> "$GITHUB_STEP_SUMMARY"
+      - name: Pod inventory and resource status API
+        env:
+          RUNTIME_STATUS_VALUES: ${{ inputs.runtime-status-values }}
+          CHART_REPO: ${{ inputs.chart-repo }}
+          CHART_VERSION: ${{ inputs.chart-version }}
+        run: bash .platform/scripts/install-runtime-status.sh
       - id: deploy
         name: 서비스 배포 (이미지 → helm upgrade → green 대기 → 주소)
         env:

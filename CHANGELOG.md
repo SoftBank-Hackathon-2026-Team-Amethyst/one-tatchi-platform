@@ -10,6 +10,8 @@
 
 ## Unreleased
 
+- T25: 선택형 Runtime Status API와 Chart를 추가한다. namespace의 Kubernetes Pod 목록과 Metrics API CPU·working-set 메모리를 조회하며, 요청 분배와 관계없이 BE Pod을 표시할 수 있다. `deploy.yml`의 `runtime-status-values` 또는 앱 `.deploy/config.yaml`의 `runtime_status_values`로 켠다. 이미지 digest는 릴리스 Chart에 고정하며 기본 App Pod의 API 권한은 유지한다. App Chart는 Pod별 앱 버전 annotation을 제공한다. 온프레미스 doctor/status와 공통 스크립트로 Metrics API를 검증한다.
+
 ## v2.16.0
 
 - T38: App Chart `previewAuth.ingress` 입력 추가. preview Ingress에만 붙는 어노테이션(`annotations`, 값은 템플릿으로 렌더해 `{{ .Release.Namespace }}` 사용 가능), GKE ManagedCertificate(`managedCertificate`), 미리 만든 TLS Secret(`tlsSecretName`). active Ingress는 바뀌지 않는다. preview가 active와 같은 GKE 고정 IP 이름을 쓰거나 GKE가 아닌 Ingress에 ManagedCertificate를 켜면 렌더링을 실패시킨다. 기본값이면 이전과 같다(ALB 어노테이션은 키 순서만 바뀐다).

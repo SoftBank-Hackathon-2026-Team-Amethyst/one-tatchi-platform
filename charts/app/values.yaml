@@ -42,6 +42,8 @@ blueGreen:
   scaleDownDelaySeconds: 30
 
 env: {}
+# Opt in when an app needs its namespace without a Kubernetes API token.
+podNamespaceEnv: false
 # 환경변수로 통째로 주입할 Secret 이름 (예: Terraform이 만든 <서비스>-db)
 envFromSecrets: []
 

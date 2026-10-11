@@ -16,6 +16,9 @@ app.kubernetes.io/name: {{ include "app.name" . }}
 {{- end -}}
 
 {{- define "app.validate" -}}
+{{- if and .Values.podNamespaceEnv (hasKey .Values.env "POD_NAMESPACE") -}}
+{{- fail "POD_NAMESPACE is reserved when podNamespaceEnv is enabled" -}}
+{{- end -}}
 {{- $supported := list "blueGreen" "rolling" -}}
 {{- if not (has .Values.deployStrategy $supported) -}}
 {{- fail (printf "deployStrategy %q is not supported (supported: %s)" .Values.deployStrategy (join ", " $supported)) -}}

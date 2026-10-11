@@ -1,5 +1,8 @@
 # 중앙 Grafana 연결
 
+앱 화면의 현재 Pod 목록·CPU·메모리는 선택형 [Runtime Status API](../runtime-status/README.md)로 조회할 수 있다.
+Kubernetes API·Metrics API를 사용하며 아래 Prometheus·Grafana 이력 수집과 독립적으로 동작한다.
+
 T17은 AWS의 기존 `/grafana/d/deploy-overview`를 확장한다. `target`, 환경, 서비스, 클러스터와 Actions 실행 ID로 범위를 고른다. AI 근거는 게시 시각에 표시하며 각 행에 실제 관찰 시작·종료가 있다. 과거 실행을 볼 때 시간 범위도 넓힌다. `promote`는 AI 판단이며 실제 승격 여부는 실행 링크에서 확인한다.
 
 ## 연결 순서
