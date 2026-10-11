@@ -48,7 +48,7 @@ Claude Code는 `/todo-task`, Codex는 `$todo-task`로 이 순서를 따르는 �
 - `T22` 템플릿 버전 업데이트 흐름 (P1)
 - `T2` 도메인과 HTTPS (P0)
 - `T26` Slack 버튼으로 머지 · 승인 · 승격 (P1). 담당 필요
-- `T38` gcp 승인자용 green 미리보기 (P2)
+- `T38` gcp 고정 주소와 승인자용 green 미리보기 (P2)
 - `T39` 여러 배포 대상 동시 배포 (P2)
 
 **김형래** · 에이전트 스킬 (4개, P0 3개)
@@ -842,27 +842,29 @@ AWS/GCP/onprem에서 승격 전 공개 preview 경로 없음. 인증된 pipeline
 - [x] App Chart: `preview.auth` 입력과 oauth2-proxy Deployment · Service · Ingress. 인증 설정 없이는 preview Ingress를 렌더하지 않는 T30 회귀 테스트 유지, 인증 조합 테스트 추가
 - [x] `deploy.yml`: preview 인증을 켠 릴리스는 Slack 알림 · 실행 요약에 green 링크 표시, `previewAuth.routes`가 없으면 green 화면의 API가 active BE로 간다는 한계 문구 포함
 - [x] demo-app aws 적용: green 호스트 DNS · 인증서 · 시크릿 주입. 승인자 로그인 성공, 비할당 사용자 · 비인증 요청 차단 확인
-- [ ] onprem 적용: green 전용 Named Tunnel(Public Hostname → `<release>-preview-auth`), `platform` 네임스페이스 시크릿, Cognito 콜백 추가. aws와 같은 확인. gcp는 `T38`
+- [ ] onprem 적용: Quick Tunnel을 환경마다 Named Tunnel 하나로 바꾸고(`tunnel.token_secret`), Public Hostname 두 개를 붙인다. active `onetatchi-onprem.soulee.dev` · `yolo-onetatchi-onprem.soulee.dev` → FE Service, green `green-onetatchi-onprem.soulee.dev` · `green-yolo-onetatchi-onprem.soulee.dev` → `<release>-preview-auth`. `soulee.dev`는 Cloudflare 존이라 `onetatchi.soulee.dev`(Route53 위임) 아래 이름은 쓸 수 없다. `platform` 네임스페이스 시크릿, Cognito 콜백 추가, `scripts/onprem/tunnel.py`가 고정 주소를 알린다. aws와 같은 확인. gcp는 `T38`
 
-**완료 기준** aws · onprem에서 regulated 배포 알림의 green 링크를 승인자가 SSO로 열 수 있고, 비인증 요청은 green에 닿지 않는다. promote-judge smoke는 지금처럼 port-forward로 성공한다.
+**완료 기준** aws · onprem에서 regulated 배포 알림의 green 링크를 승인자가 SSO로 열 수 있고, 비인증 요청은 green에 닿지 않는다. promote-judge smoke는 지금처럼 port-forward로 성공한다. onprem active 주소는 재부팅 뒤에도 바뀌지 않는다.
 
-### [T38] gcp 승인자용 green 미리보기
+### [T38] gcp 고정 주소와 승인자용 green 미리보기
 
-**어디에 필요** `T31`은 aws · onprem에서 SSO로 green을 연다. gcp는 green 호스트에 붙일 HTTPS · DNS가 없고 비밀값 저장소가 달라 따로 다룬다.
+**어디에 필요** `T31`은 aws · onprem에서 SSO로 green을 연다. gcp는 active · green 모두 HTTPS · DNS가 없고(active는 `http://<IP>/`) 비밀값 저장소가 달라 따로 다룬다. 고정 IP · 인증서 · DNS를 active와 green에 함께 만든다.
 
-**만들 것** App Chart preview Ingress 전용 TLS · 어노테이션 입력, demo-app gcp의 시크릿 · 고정 IP · DNS · Cognito 콜백.
+**만들 것** App Chart preview Ingress 전용 TLS · 어노테이션 입력과 같은 입력의 active Ingress판, demo-app gcp의 시크릿 · 고정 IP · DNS · Cognito 콜백. 주소는 active `gcp.onetatchi.soulee.dev` · `yolo-gcp.onetatchi.soulee.dev`, green `green-gcp.onetatchi.soulee.dev` · `green-yolo-gcp.onetatchi.soulee.dev`.
 
 - **우선순위** P2 · **영역** 레포 · 인프라 · **담당** 이소울
 - **선행** `T31` · **후속** 없음 · **설계 문서** FR-6
 
-**목표** gcp 대상에서도 승인자가 Slack 알림의 green 링크를 SSO로 열고, 인증되지 않은 요청은 green에 닿지 않는다.
+**목표** gcp 서비스가 고정 HTTPS 주소로 열리고, 승인자가 Slack 알림의 green 링크를 SSO로 열며, 인증되지 않은 요청은 green에 닿지 않는다.
 
 **할 일**
 - [ ] App Chart: preview Ingress에만 붙는 TLS(GKE ManagedCertificate 또는 미리 올린 인증서) · 고정 IP 어노테이션 입력. active Ingress와 충돌하지 않는지 테스트
 - [ ] demo-app `infra/envs/gcp`: oauth2-proxy 시크릿(GCP Secret Manager) · `readable_secret_ids` · 고정 IP, `infra/envs/aws`: Route53 레코드 · Cognito 콜백. `deploy.yml` 대상별 `preview-host`
 - [ ] gcp test · prod 적용과 확인: 승인자 로그인 성공, 비할당 사용자 · 비인증 요청 차단, promote-judge smoke 정상
+- [ ] App Chart: active Ingress에도 GKE ManagedCertificate · 어노테이션 입력(preview와 다른 고정 IP 이름). `deploy.yml` `service_urls()`가 gcp에서 `host`가 있으면 `https://<host>/`를 알린다
+- [ ] demo-app gcp active 주소: 고정 IP 두 개(test · prod) · Route53 A 레코드, `deploy.yml` gcp `host`. test · prod HTTPS 접속 확인
 
-**완료 기준** gcp에서 regulated 배포 알림의 green 링크를 승인자가 SSO로 열 수 있고, 비인증 요청은 green에 닿지 않는다.
+**완료 기준** gcp test · prod가 고정 HTTPS 주소로 열리고, regulated 배포 알림의 green 링크를 승인자가 SSO로 열 수 있으며, 비인증 요청은 green에 닿지 않는다.
 
 ### [T39] 여러 배포 대상 동시 배포
 
