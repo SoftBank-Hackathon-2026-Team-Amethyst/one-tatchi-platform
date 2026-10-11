@@ -117,7 +117,7 @@ spec:
 {{- range $k, $v := ($ing.annotations | default dict) }}{{ $_ := set $annotations $k (tpl (toString $v) $root) }}{{ end -}}
 {{- /* Two GKE Ingresses cannot share one reserved address. */}}
 {{- $ipKey := "kubernetes.io/ingress.global-static-ip-name" -}}
-{{- with index $annotations $ipKey }}{{ if eq . (index ($root.Values.ingress.annotations | default dict) $ipKey | default "") }}{{ fail "previewAuth.ingress.annotations must set its own kubernetes.io/ingress.global-static-ip-name" }}{{ end }}{{ end -}}
+{{- with index $annotations $ipKey }}{{ if eq . (tpl (index ($root.Values.ingress.annotations | default dict) $ipKey | default "" | toString) $root) }}{{ fail "previewAuth.ingress.annotations must set its own kubernetes.io/ingress.global-static-ip-name" }}{{ end }}{{ end -}}
 {{- if $ing.managedCertificate }}
 {{- if not (has $root.Values.ingress.className (list "" "gce")) }}{{ fail "previewAuth.ingress.managedCertificate requires a GKE Ingress (className empty or gce)" }}{{ end }}
 {{- $_ := set $annotations "networking.gke.io/managed-certificates" $name }}

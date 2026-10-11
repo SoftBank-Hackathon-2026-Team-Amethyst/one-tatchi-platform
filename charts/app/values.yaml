@@ -94,6 +94,9 @@ ingress:
   # 비우면 host 없이 HTTP(80)만 연다 (도메인이 없는 환경).
   host: ""
   sslPolicy: ELBSecurityPolicy-TLS13-1-2-2021-06
+  # GKE(className 비어 있음 또는 gce)에서 host 인증서를 ManagedCertificate로 만들어 붙인다. host가 필요하다.
+  # 고정 IP는 annotations의 kubernetes.io/ingress.global-static-ip-name으로 준다(값은 템플릿, 예 "app-{{ .Release.Namespace }}").
+  managedCertificate: false
   # Green has no public Ingress. Legacy previewPort values are ignored.
 
 # 승인자용 green 미리보기 (ADR 0015). 꺼져 있으면 green은 내부 preview Service로만 열린다.
