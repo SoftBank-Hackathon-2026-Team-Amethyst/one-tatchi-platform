@@ -42,13 +42,14 @@ Claude Code는 `/todo-task`, Codex는 `$todo-task`로 이 순서를 따르는 �
 - `T36` 장애 훈련 워크플로 (green 확인 · 주입 · 채점) (P1)
 - `T37` 장애 훈련 Slack 명령과 Grafana 기록 (P1)
 
-**이소울** · 파이프라인 (6개, P0 3개)
+**이소울** · 파이프라인 (7개, P0 3개)
 - `T6` 규제 여부에 따른 운영 관문 (P0)
 - `T23` 초기 인프라 세팅 (계정 · 권한) (P0)
 - `T22` 템플릿 버전 업데이트 흐름 (P1)
 - `T2` 도메인과 HTTPS (P0)
 - `T26` Slack 버튼으로 머지 · 승인 · 승격 (P1). 담당 필요
 - `T38` gcp 승인자용 green 미리보기 (P2)
+- `T39` 여러 배포 대상 동시 배포 (P2)
 
 **김형래** · 에이전트 스킬 (4개, P0 3개)
 - `T14` yolo 자동 수정 루프 (P0)
@@ -862,6 +863,28 @@ AWS/GCP/onprem에서 승격 전 공개 preview 경로 없음. 인증된 pipeline
 - [ ] gcp test · prod 적용과 확인: 승인자 로그인 성공, 비할당 사용자 · 비인증 요청 차단, promote-judge smoke 정상
 
 **완료 기준** gcp에서 regulated 배포 알림의 green 링크를 승인자가 SSO로 열 수 있고, 비인증 요청은 green에 닿지 않는다.
+
+### [T39] 여러 배포 대상 동시 배포
+
+**어디에 필요** 지금은 실행 한 번에 대상 하나(`DEPLOY_TARGET`)에만 배포한다. 같은 배포 정의로 aws · gcp · onprem에 한 번에 같은 버전을 올린다.
+
+**만들 것** `deploy-provision` 호출부 템플릿(`deploy.yml.tmpl`)의 대상 목록 변수 `DEPLOY_TARGETS`, 이번에 배포할 대상을 고르는 `targets` job, `test` · `prod` job의 대상별 matrix. platform 재사용 워크플로는 대상 하나를 받는 지금 구조를 유지한다.
+
+- **우선순위** P2 · **영역** 파이프라인 (platform 재사용 워크플로) · **담당** 이소울
+- **선행** `T3`, `T4`, `T24`, `T6`, `T8` · **후속** 없음 · **설계 문서** 3장(같은 배포 정의로 AWS, GCP, 온프레미스에 배포)
+
+**목표** push 한 번으로 고른 대상 모두에 test가 병렬로 돌고, 모든 대상의 test가 통과했을 때만 모든 대상의 prod로 넘어간다. 한 대상이라도 실패하면 어느 대상도 prod로 가지 않는다.
+
+**할 일**
+- [ ] `deploy.yml.tmpl`: 레포 변수 `DEPLOY_TARGETS`(쉼표 구분, 없으면 `DEPLOY_TARGET`, 그것도 없으면 `aws`), 수동 실행 `target`에 `all` 추가. `targets` job이 대상 목록과 `changes` 결과로 matrix JSON을 만든다(job `if`에서는 `matrix`를 쓸 수 없다)
+- [ ] `test` · `prod`: `strategy.matrix.include`로 대상별 `target` · `target-label` · `onprem-runner-label` · `cluster` · `host` · `preview-host`, `fail-fast: false`. `prod`는 모든 대상의 `test` 성공 후에만 진행
+- [ ] onprem 대상은 runner가 꺼져 있으면 `targets` 단계에서 실패로 알린다(`scripts/onprem/target.py` 재사용). 대기 상태로 prod 전체를 붙잡지 않는다
+- [ ] yolo 리포트 · 자동 머지 PR이 대상 수만큼 생기지 않게 기준 대상 하나에만 `yolo-auto-merge`를 켠다
+- [ ] Slack 승인 버튼(`<run_id>@prod`) 한 번으로 모든 대상의 prod 승인이 처리되는지 확인. 안 되면 slack-bot이 같은 실행의 대기 중인 승인을 모두 처리하게 고친다
+- [ ] 문서: `deploy-provision` 스킬 · `references/artifacts.md` · `docs/gcp-deploy.md`의 `DEPLOY_TARGET` 설명, ADR(전부 통과해야 prod로 가는 이유)
+- [ ] demo-app 적용: `DEPLOY_TARGETS=aws,gcp`로 확인한 뒤 onprem 추가
+
+**완료 기준** demo-app main push 한 번으로 aws · gcp · onprem test가 병렬로 돌고, Slack 승인 한 번 뒤 세 대상 prod에 같은 이미지 digest가 올라간다. 한 대상의 test를 실패시키면 세 대상 모두 prod로 가지 않는다.
 
 ### [T36] 장애 훈련 워크플로 (green 확인 · 주입 · 채점)
 
