@@ -74,6 +74,7 @@ jobs:
           echo "### 배포 대상: $(jq -r 'map(.label) | join(", ")' <<<"$matrix")" >> "$GITHUB_STEP_SUMMARY"
 
   test:
+    name: test (${{ matrix.label }})
     needs: [checks, targets]
     if: github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main')
     # 한 대상이 실패해도 나머지 대상의 test 결과는 끝까지 본다. prod는 모든 대상이 통과해야 간다.
@@ -105,6 +106,7 @@ jobs:
   # test에서 만든 같은 이미지(같은 커밋 SHA 태그)를 prod에 올린다. 다시 빌드하지 않는다.
   # needs.test는 모든 대상의 test가 성공해야 성공이다. 한 대상이라도 실패하면 어느 대상도 prod로 가지 않는다.
   prod:
+    name: prod (${{ matrix.label }})
     needs: [targets, test]
     if: (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && github.ref == 'refs/heads/main'
     strategy:
