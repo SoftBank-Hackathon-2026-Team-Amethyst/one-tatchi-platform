@@ -2,10 +2,10 @@ name: audit-log
 description: 배포 파이프라인 작업 한 건을 감사 로그 버킷(Object Lock)에 JSON으로 남긴다.
 inputs:
   action:
-    description: deploy | promote | abort | undo | infra-apply | destroy
+    description: deploy | promote | abort | undo | infra-apply | destroy | drill
     required: true
   target:
-    description: 대상 (서비스 이름, 스택 이름 등)
+    description: 대상 (서비스 이름, 스택 이름, 장애 훈련은 <시나리오>@<대상>.<환경>)
     required: true
   version:
     description: 반영한 버전 (커밋 SHA 등)

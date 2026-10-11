@@ -1,0 +1,30 @@
+{
+  "_comment": "장애 훈련 시나리오 (T36, docs/chaos-drill.md). platform 템플릿이 정하고 대상 레포는 이름만 고른다. inject는 green 파드마다 POST /api/chaos로 보내는 본문, expect.decision은 promote-judge의 기대 묶음 결정. 모든 시나리오에서 blue(active) 에러율은 0%여야 한다.",
+  "limits": {"latencyMs": 10000, "errorRate": 1},
+  "scenarios": {
+    "error-burst": {
+      "title": "모든 요청이 500",
+      "inject": {"errorRate": 1},
+      "expect": {"decision": "abort"},
+      "guardrail": "규칙 거부권 (에러율 기준 0%)"
+    },
+    "slow-response": {
+      "title": "모든 요청이 3초 지연",
+      "inject": {"latencyMs": 3000},
+      "expect": {"decision": "abort"},
+      "guardrail": "p95 기준 (2000ms)"
+    },
+    "db-down": {
+      "title": "DB 단절 시뮬레이션",
+      "inject": {"dbError": true},
+      "expect": {"decision": "abort"},
+      "guardrail": "smoke 본문 조건 dbConnected (T28)"
+    },
+    "flaky": {
+      "title": "요청의 5%가 500",
+      "inject": {"errorRate": 0.05},
+      "expect": {"decision": "abort"},
+      "guardrail": "에러율 기준 0% (조금 깨진 것도 막는다)"
+    }
+  }
+}
