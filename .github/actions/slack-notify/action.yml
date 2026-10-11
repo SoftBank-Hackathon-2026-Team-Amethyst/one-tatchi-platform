@@ -8,7 +8,7 @@ inputs:
     description: 채널 ID (vars.SLACK_CHANNEL_ID)
     required: false
   action:
-    description: deploy | promote | abort | undo | infra-apply | destroy
+    description: deploy | promote | abort | undo | infra-apply | destroy | drill
     required: true
   target:
     description: 대상 (서비스 이름, 스택 이름 등)
@@ -98,6 +98,12 @@ runs:
             undo) greeting="우라! 되돌리기 완료." ;;
             infra-apply) greeting="야하! 인프라 반영 완료!" ;;
             destroy) greeting="후웅! 리소스 삭제 완료." ;;
+            drill) greeting="야하! 장애 훈련 통과! 가드레일이 막았어요." ;;
+          esac
+        elif [ "$ACTION" = drill ]; then
+          case "$RESULT" in
+            failure) greeting="하아…? 장애 훈련 실패. 아래 확인 결과를 봐 주세요." ;;
+            cancelled) greeting="후웅… 장애 훈련을 시작하지 않았어요." ;;
           esac
         elif [ "$RESULT" = waiting ] && [ "$ACTION" = "운영 승인 대기" ]; then
           greeting="우라! 운영 승인 대기 중. 대상과 버전을 확인해 주세요."

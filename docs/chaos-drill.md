@@ -1,6 +1,6 @@
 # 장애 훈련 (Chaos Drill) 설계
 
-상태: 초안 (2026-10-10)
+상태: 초안 (2026-10-10) · T35 적용, T36 구현(platform `chaos.yml` · `.github/actions/chaos-drill`, 2026-10-11)
 
 ## 한 줄 요약
 
@@ -107,7 +107,7 @@ kubectl get rollout <release> -n test -o json | jq '{
 | `Degraded` · 읽기 실패 | 이미 이상한 상태 | **거절**: 상태와 메시지를 그대로 알린다 |
 
 - 서비스가 여럿이면(BE · FE) 모두 같은 상태여야 진행한다. 묶음 승격(ADR 0005)과 같은 이유다.
-- 확인과 주입 사이에 누가 승격 · 취소 버튼을 누르면 안 되므로, `rollout.yml`과 **같은 concurrency group**에서 돈다. 훈련이 끝날 때까지 버튼 동작은 대기한다.
+- 확인과 주입 사이에 누가 승격 · 취소 버튼을 누르면 안 되므로, `rollout.yml`과 **같은 concurrency group**에서 돈다. 훈련이 끝날 때까지 버튼 동작은 대기한다. job은 group 하나에만 속할 수 있어 test 배포(`deploy-…` group)와는 같은 group을 쓰지 않는다. 배포와의 겹침은 0단계의 `Progressing` 거절과 해시 재확인이 막는다(T36 구현 결정).
 - 확인한 `preview` 해시를 기억해 두고, 주입 · 정리 직전에 한 번 더 같은지 본다. 다르면 아무것도 하지 않고 실패로 알린다.
 
 ### 1. green 준비
@@ -125,6 +125,8 @@ kubectl get rollout <release> -n test -o json | jq '{
 
 - `chaosState`는 파드 메모리에 있다. 서비스 주소로 한 번만 보내면 파드 하나에만 들어가므로, **파드마다** 직접 보낸다.
 - green 파드는 `rollouts-pod-template-hash=<previewSelector>` 라벨로 고른다(`metrics.sh`와 같은 방식). blue에는 보내지 않는다.
+- 주입 대상은 호출부의 `inject-services`(BE)로 명시한다. FE 파드의 `/api/chaos`는 nginx가 active BE로 프록시할 수 있어, FE에 보내면 blue에 들어간다.
+- 주입 전에 `GET /api/chaos`의 `enabled`를 확인한다. false면(`CHAOS_ENABLED` 꺼짐) 주입하지 않고 실패로 남긴다.
 
 ### 3. 판단 돌리기
 
@@ -133,6 +135,8 @@ kubectl get rollout <release> -n test -o json | jq '{
 ### 4. blue 확인
 
 지금의 smoke는 green(`<release>-preview`)만 본다. 훈련에서는 active 서비스(`<release>`)에도 같은 smoke 요청을 보내 **blue 에러율 0%**를 확인한다. "장애가 사용자 쪽으로 새지 않았다"를 보여 주는 증거다.
+
+test 화면의 장애 버튼은 blue에 들어간다. 훈련 중 누가 누르면 blue 에러율이 0%가 아니게 되는데, 이건 훈련 실패가 아니라 간섭이다. 그래서 blue의 `GET /api/chaos`도 함께 읽어 수동 주입이 있으면 결과에 따로 표시한다.
 
 ### 5. 정리 (항상 실행)
 
@@ -154,7 +158,7 @@ kubectl get rollout <release> -n test -o json | jq '{
 |---|---|---|---|---|
 | `error-burst` | `errorRate: 1` | abort (source: rule) | 에러 0% | 규칙 거부권 |
 | `slow-response` | `latencyMs: 3000` | abort (p95 > 2000ms) | 에러 0% | p95 기준 |
-| `db-down` | `dbError: true` | abort | 에러 0% | T28 DB 상태 검증 |
+| `db-down` | `dbError: true` | abort | 에러 0% | smoke 본문 조건 `dbConnected`(T28). `/health`는 readiness라 주입을 받지 않고, 데이터 라우트가 `isDbConnected`를 내린 뒤 `/api/info`가 어긋난다 |
 | `flaky` | `errorRate: 0.05` | abort | 에러 0% | 에러율 기준 0% (조금 깨진 것도 막는다) |
 | `pod-kill` | green 파드 하나 삭제 | promote (T29 이후) | 에러 0% | 이중화 · 자가 복구 |
 | `bad-after-promote` | 승격 직후 에러 주입 | (판단 없음) | Slack undo로 복구 | T26 되돌리기 |

@@ -7,6 +7,7 @@
 #
 # 환경변수
 #   WORK_DIR, RELEASE, NAMESPACE, SMOKE_FILE, WINDOW_SECONDS, REQUEST_TIMEOUT_SECONDS
+#   SERVICE   (선택) 붙을 Service 이름. 기본은 green(<release>-preview). 장애 훈련(T36)이 active(<release>)에 쓴다
 #   BASE_URL  (선택) 주면 port-forward 없이 이 주소로 요청한다 (테스트용)
 #   KUBECTL   (선택) kubectl 대신 쓸 명령 (테스트용)
 set -euo pipefail
@@ -58,7 +59,7 @@ trap cleanup EXIT
 
 if [ -z "${BASE_URL:-}" ]; then
   : "${NAMESPACE:?}"
-  svc="$RELEASE-preview"
+  svc="${SERVICE:-$RELEASE-preview}"
   svc_port="$($KUBECTL get svc "$svc" -n "$NAMESPACE" -o jsonpath='{.spec.ports[0].port}')"
   pf_log="$WORK_DIR/port-forward.log"
   # 로컬 포트는 비어 있는 것을 kubectl이 고른다. 고른 포트는 로그의 "Forwarding from 127.0.0.1:<포트>"에서 읽는다.
@@ -77,7 +78,7 @@ if [ -z "${BASE_URL:-}" ]; then
     exit 1
   fi
   BASE_URL="http://127.0.0.1:$local_port"
-  echo "green: svc/$svc:$svc_port → $BASE_URL"
+  echo "대상: svc/$svc:$svc_port → $BASE_URL"
 fi
 
 # ---------- 관찰 창 ----------

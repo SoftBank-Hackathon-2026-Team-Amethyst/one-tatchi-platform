@@ -875,11 +875,11 @@ AWS/GCP/onprem에서 승격 전 공개 preview 경로 없음. 인증된 pipeline
 **목표** 명령 하나로 test의 green에 장애를 넣고, 기대한 판단(대부분 abort)이 나오는지, blue가 멀쩡한지 확인한 뒤 원래 상태로 돌려놓는다.
 
 **할 일**
-- [ ] green 확인: Rollout `phase` · `pauseConditions` · `activeSelector` · `previewSelector`로 대기 중인 green이 있는지 판단. 없으면 거절(`new-green`이면 훈련용 green), 배포 진행 중 · `Degraded`면 거절하고 이유를 남긴다. 서비스 묶음 단위, 확인한 preview 해시를 주입 · 정리 직전에 다시 비교
-- [ ] green 준비 · 주입: 훈련용 green은 파드 템플릿 annotation으로 revision만 바꿔 띄운다. 앱 장애는 green **파드마다** port-forward로 `POST /api/chaos`, 파드 장애는 green 파드 삭제. blue에는 경로가 없다
-- [ ] 판단 · 확인: 기존 `promote-judge`를 `mode: manual`로 호출, active 서비스에도 smoke를 보내 blue 에러율을 남긴다
-- [ ] 정리(`if: always()`): 장애 해제와 해제 확인, 훈련용 green이면 abort · annotation 복구 · `Healthy` 확인, 대기 중이던 green은 `Paused`로 남긴다. 해제를 확인하지 못하면 실패로 남긴다
-- [ ] 시나리오 목록(`error-burst` · `slow-response` · `db-down` · `flaky`)과 기대 결과로 채점. namespace는 `test` 고정(입력 없음), test 배포 · `rollout.yml`과 같은 concurrency group, `timeout-minutes`
+- [x] green 확인: Rollout `phase` · `pauseConditions` · `activeSelector` · `previewSelector`로 대기 중인 green이 있는지 판단. 없으면 거절(`new-green`이면 훈련용 green), 배포 진행 중 · `Degraded`면 거절하고 이유를 남긴다. 서비스 묶음 단위, 확인한 preview 해시를 주입 · 정리 직전에 다시 비교
+- [x] green 준비 · 주입: 훈련용 green은 파드 템플릿 annotation으로 revision만 바꿔 띄운다. 앱 장애는 green **파드마다** port-forward로 `POST /api/chaos`, 파드 장애는 green 파드 삭제. blue에는 경로가 없다
+- [x] 판단 · 확인: 기존 `promote-judge`를 `mode: manual`로 호출, active 서비스에도 smoke를 보내 blue 에러율을 남긴다
+- [x] 정리(`if: always()`): 장애 해제와 해제 확인, 훈련용 green이면 abort · annotation 복구 · `Healthy` 확인, 대기 중이던 green은 `Paused`로 남긴다. 해제를 확인하지 못하면 실패로 남긴다
+- [x] 시나리오 목록(`error-burst` · `slow-response` · `db-down` · `flaky`)과 기대 결과로 채점. namespace는 `test` 고정(입력 없음), test 배포 · `rollout.yml`과 같은 concurrency group, `timeout-minutes`
 - [ ] 감사 로그(`audit-log`)에 시나리오 · 기대 · 실제 · 요청자. 워크플로 테스트(가짜 kubectl)와 demo-app `chaos.yml` 호출부, aws · onprem에서 시나리오 4개 통과 확인
 
 **완료 기준** aws · onprem test에서 시나리오 4개가 모두 기대대로(abort) 채점되고, 훈련 중 blue 에러율이 0%이며, 끝난 뒤 Rollout이 원래 상태(`Healthy` 또는 `Paused`)로 돌아온다. green이 없거나 배포 중이면 아무것도 바꾸지 않고 거절한다.

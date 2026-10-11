@@ -77,6 +77,9 @@ actual="$(bash "$scripts/changelog-between.sh" v1.0.0 v1.2.0 "$tmp/CHANGELOG.md"
 echo "== promote-judge 액션 (T7)"
 bash "$(dirname "$scripts")/.github/actions/promote-judge/tests/run.sh" >/dev/null
 
+echo "== 장애 훈련 스크립트 (T36)"
+bash "$(dirname "$scripts")/.github/actions/chaos-drill/tests/run.sh" >/dev/null
+
 echo "== deploy-provision 템플릿 · 산출물 검사 (T13)"
 bash "$(dirname "$scripts")/skills/deploy-provision/tests/run.sh" >/dev/null
 
