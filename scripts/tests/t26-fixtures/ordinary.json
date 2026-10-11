@@ -1,0 +1,176 @@
+{
+  "fixture": "Synthetic offline evidence; not a real deployment",
+  "repo": "example/app",
+  "target": "aws",
+  "services": [
+    "be",
+    "fe"
+  ],
+  "compliance": "regulated",
+  "deploy": {
+    "requested_id": 100,
+    "attempt": 1,
+    "meta": {
+      "id": 100,
+      "run_attempt": 1,
+      "repository": {
+        "full_name": "example/app"
+      },
+      "path": ".github/workflows/deploy.yml",
+      "head_sha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "head_branch": "main",
+      "event": "push",
+      "created_at": "2026-10-11T01:00:00Z",
+      "run_started_at": "2026-10-11T01:00:00Z",
+      "conclusion": "success"
+    },
+    "jobs": [
+      {
+        "id": 1,
+        "run_id": 100,
+        "run_attempt": 1,
+        "head_sha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "name": "test / deploy",
+        "conclusion": "success",
+        "started_at": "2026-10-11T01:01:00Z",
+        "completed_at": "2026-10-11T01:04:01Z",
+        "html_url": "https://github.com/example/app/actions/runs/100/job/1",
+        "steps": [
+          {
+            "name": "서비스 배포 (이미지 → helm upgrade → green 대기 → 주소)",
+            "started_at": "2026-10-11T01:01:00Z"
+          }
+        ],
+        "log": "2026-10-11T01:01:00Z ##[group]Run deploy\n2026-10-11T01:01:00Z env:\n2026-10-11T01:01:00Z   TARGET: aws\n2026-10-11T01:01:00Z   TARGET_LABEL: aws\n2026-10-11T01:01:00Z   NAMESPACE: test\n2026-10-11T01:01:00Z   MODE: manual\n2026-10-11T01:01:00Z   VERIFY_OBSERVABILITY: false\n2026-10-11T01:01:00Z   IMAGES: {\"be\": {\"repository\": \"registry.example/be\", \"digest\": \"sha256:1111111111111111111111111111111111111111111111111111111111111111\", \"source_sha\": \"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"}, \"fe\": {\"repository\": \"registry.example/fe\", \"digest\": \"sha256:2222222222222222222222222222222222222222222222222222222222222222\", \"source_sha\": \"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"}}\n2026-10-11T01:01:00Z ##[endgroup]\n2026-10-11T01:02:00Z Name:            be\n2026-10-11T01:02:00Z Namespace:       test\n2026-10-11T01:02:00Z Status:          ✔ Paused\n2026-10-11T01:02:00Z Images:          registry.example/be@sha256:1111111111111111111111111111111111111111111111111111111111111111 (preview)\n2026-10-11T01:02:00Z Replicas:\n2026-10-11T01:02:00Z Name:            fe\n2026-10-11T01:02:00Z Namespace:       test\n2026-10-11T01:02:00Z Status:          ✔ Paused\n2026-10-11T01:02:00Z Images:          registry.example/fe@sha256:2222222222222222222222222222222222222222222222222222222222222222 (preview)\n2026-10-11T01:02:00Z Replicas:\n2026-10-11T01:03:00Z Name:            be\n2026-10-11T01:03:00Z Namespace:       test\n2026-10-11T01:03:00Z Status:          ✔ Healthy\n2026-10-11T01:03:00Z Images:          registry.example/be@sha256:1111111111111111111111111111111111111111111111111111111111111111 (stable, active)\n2026-10-11T01:03:00Z Replicas:\n2026-10-11T01:03:00Z Name:            fe\n2026-10-11T01:03:00Z Namespace:       test\n2026-10-11T01:03:00Z Status:          ✔ Healthy\n2026-10-11T01:03:00Z Images:          registry.example/fe@sha256:2222222222222222222222222222222222222222222222222222222222222222 (stable, active)\n2026-10-11T01:03:00Z Replicas:\n2026-10-11T01:04:00Z audit log: s3://example/record.json\n2026-10-11T01:04:00Z {\n2026-10-11T01:04:00Z   \"timestamp\": \"2026-10-11T01:04:00Z\",\n2026-10-11T01:04:00Z   \"action\": \"deploy\",\n2026-10-11T01:04:00Z   \"target\": \"all@aws.test\",\n2026-10-11T01:04:00Z   \"version\": \"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\n2026-10-11T01:04:00Z   \"result\": \"success\",\n2026-10-11T01:04:00Z   \"actor\": \"bot\",\n2026-10-11T01:04:00Z   \"requested_by\": \"bot\",\n2026-10-11T01:04:00Z   \"ref\": \"refs/heads/main\",\n2026-10-11T01:04:00Z   \"workflow\": \"deploy\",\n2026-10-11T01:04:00Z   \"run_url\": \"https://github.com/example/app/actions/runs/100/attempts/1\"\n2026-10-11T01:04:00Z }\n"
+      },
+      {
+        "id": 6,
+        "run_id": 100,
+        "run_attempt": 1,
+        "head_sha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "name": "prod / deploy",
+        "conclusion": "success",
+        "started_at": "2026-10-11T01:06:00Z",
+        "completed_at": "2026-10-11T01:09:01Z",
+        "html_url": "https://github.com/example/app/actions/runs/100/job/6",
+        "steps": [
+          {
+            "name": "서비스 배포 (이미지 → helm upgrade → green 대기 → 주소)",
+            "started_at": "2026-10-11T01:06:00Z"
+          }
+        ],
+        "log": "2026-10-11T01:06:00Z ##[group]Run deploy\n2026-10-11T01:06:00Z env:\n2026-10-11T01:06:00Z   TARGET: aws\n2026-10-11T01:06:00Z   TARGET_LABEL: aws\n2026-10-11T01:06:00Z   NAMESPACE: prod\n2026-10-11T01:06:00Z   MODE: manual\n2026-10-11T01:06:00Z   VERIFY_OBSERVABILITY: false\n2026-10-11T01:06:00Z   IMAGES: {\"be\": {\"repository\": \"registry.example/be\", \"digest\": \"sha256:1111111111111111111111111111111111111111111111111111111111111111\", \"source_sha\": \"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"}, \"fe\": {\"repository\": \"registry.example/fe\", \"digest\": \"sha256:2222222222222222222222222222222222222222222222222222222222222222\", \"source_sha\": \"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"}}\n2026-10-11T01:06:00Z ##[endgroup]\n2026-10-11T01:07:00Z Name:            be\n2026-10-11T01:07:00Z Namespace:       prod\n2026-10-11T01:07:00Z Status:          ✔ Paused\n2026-10-11T01:07:00Z Images:          registry.example/be@sha256:1111111111111111111111111111111111111111111111111111111111111111 (preview)\n2026-10-11T01:07:00Z Replicas:\n2026-10-11T01:07:00Z Name:            fe\n2026-10-11T01:07:00Z Namespace:       prod\n2026-10-11T01:07:00Z Status:          ✔ Paused\n2026-10-11T01:07:00Z Images:          registry.example/fe@sha256:2222222222222222222222222222222222222222222222222222222222222222 (preview)\n2026-10-11T01:07:00Z Replicas:\n2026-10-11T01:08:00Z Name:            be\n2026-10-11T01:08:00Z Namespace:       prod\n2026-10-11T01:08:00Z Status:          ✔ Healthy\n2026-10-11T01:08:00Z Images:          registry.example/be@sha256:1111111111111111111111111111111111111111111111111111111111111111 (stable, active)\n2026-10-11T01:08:00Z Replicas:\n2026-10-11T01:08:00Z Name:            fe\n2026-10-11T01:08:00Z Namespace:       prod\n2026-10-11T01:08:00Z Status:          ✔ Healthy\n2026-10-11T01:08:00Z Images:          registry.example/fe@sha256:2222222222222222222222222222222222222222222222222222222222222222 (stable, active)\n2026-10-11T01:08:00Z Replicas:\n2026-10-11T01:09:00Z audit log: s3://example/record.json\n2026-10-11T01:09:00Z {\n2026-10-11T01:09:00Z   \"timestamp\": \"2026-10-11T01:09:00Z\",\n2026-10-11T01:09:00Z   \"action\": \"deploy\",\n2026-10-11T01:09:00Z   \"target\": \"all@aws.prod\",\n2026-10-11T01:09:00Z   \"version\": \"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\n2026-10-11T01:09:00Z   \"result\": \"success\",\n2026-10-11T01:09:00Z   \"actor\": \"bot\",\n2026-10-11T01:09:00Z   \"requested_by\": \"slack:tester(U1)\",\n2026-10-11T01:09:00Z   \"ref\": \"refs/heads/main\",\n2026-10-11T01:09:00Z   \"workflow\": \"deploy\",\n2026-10-11T01:09:00Z   \"run_url\": \"https://github.com/example/app/actions/runs/100/attempts/1\"\n2026-10-11T01:09:00Z }\n"
+      }
+    ]
+  },
+  "pr": {
+    "number": 9,
+    "created_at": "2026-10-10T23:00:00Z",
+    "merged_at": "2026-10-11T00:59:00Z",
+    "merge_commit_sha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "base": {
+      "ref": "main",
+      "repo": {
+        "full_name": "example/app"
+      }
+    },
+    "head": {
+      "ref": "deploy/example",
+      "sha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "repo": {
+        "full_name": "example/app"
+      }
+    },
+    "html_url": "https://github.com/example/app/pull/9"
+  },
+  "pr_comments": [
+    {
+      "user": {
+        "type": "Bot"
+      },
+      "body": "Slack에서 `slack:tester(U1)`이 머지했다."
+    }
+  ],
+  "pr_reviews": [],
+  "pr_files": [
+    {
+      "filename": "fe/index.html"
+    }
+  ],
+  "approval_comments": [
+    {
+      "user": {
+        "type": "Bot"
+      },
+      "commit_id": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "created_at": "2026-10-11T01:05:00Z",
+      "body": "<!-- one-tatchi-approval run=100 environment=prod state=approved by=slack:tester(U1) -->",
+      "html_url": "https://github.com/example/app/commit/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa#commitcomment-1"
+    }
+  ],
+  "errors": [],
+  "test_rollout": {
+    "requested_id": 200,
+    "attempt": 1,
+    "meta": {
+      "id": 200,
+      "run_attempt": 1,
+      "repository": {
+        "full_name": "example/app"
+      },
+      "path": ".github/workflows/rollout.yml",
+      "head_sha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "head_branch": "main",
+      "event": "workflow_dispatch",
+      "created_at": "2026-10-11T01:03:00Z",
+      "run_started_at": "2026-10-11T01:03:00Z",
+      "conclusion": "success"
+    },
+    "jobs": [
+      {
+        "id": 200,
+        "run_id": 200,
+        "run_attempt": 1,
+        "head_sha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "name": "rollout / rollout",
+        "conclusion": "success",
+        "started_at": "2026-10-11T01:03:00Z",
+        "completed_at": "2026-10-11T01:03:02Z",
+        "html_url": "https://github.com/example/app/actions/runs/200/job/200",
+        "log": "2026-10-11T01:01:00Z ##[group]Run deploy\n2026-10-11T01:01:00Z env:\n2026-10-11T01:01:00Z   TARGET: aws\n2026-10-11T01:01:00Z   TARGET_LABEL: aws\n2026-10-11T01:01:00Z   NAMESPACE: test\n2026-10-11T01:01:00Z ##[endgroup]\n2026-10-11T01:03:00Z rollout 'be' promoted\n2026-10-11T01:03:00Z rollout 'fe' promoted\n2026-10-11T01:03:00Z Name:            be\n2026-10-11T01:03:00Z Namespace:       test\n2026-10-11T01:03:00Z Status:          ✔ Healthy\n2026-10-11T01:03:00Z Images:          registry.example/be@sha256:1111111111111111111111111111111111111111111111111111111111111111 (stable, active)\n2026-10-11T01:03:00Z Replicas:\n2026-10-11T01:03:00Z Name:            fe\n2026-10-11T01:03:00Z Namespace:       test\n2026-10-11T01:03:00Z Status:          ✔ Healthy\n2026-10-11T01:03:00Z Images:          registry.example/fe@sha256:2222222222222222222222222222222222222222222222222222222222222222 (stable, active)\n2026-10-11T01:03:00Z Replicas:\n2026-10-11T01:03:01Z audit log: s3://example/rollout.json\n2026-10-11T01:03:01Z {\n2026-10-11T01:03:01Z   \"timestamp\": \"2026-10-11T01:03:01Z\",\n2026-10-11T01:03:01Z   \"action\": \"promote\",\n2026-10-11T01:03:01Z   \"target\": \"all@aws.test\",\n2026-10-11T01:03:01Z   \"version\": \"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\n2026-10-11T01:03:01Z   \"result\": \"success\",\n2026-10-11T01:03:01Z   \"actor\": \"bot\",\n2026-10-11T01:03:01Z   \"requested_by\": \"slack:tester(U1)\",\n2026-10-11T01:03:01Z   \"ref\": \"refs/heads/main\",\n2026-10-11T01:03:01Z   \"workflow\": \"rollout\",\n2026-10-11T01:03:01Z   \"run_url\": \"https://github.com/example/app/actions/runs/200/attempts/1\"\n2026-10-11T01:03:01Z }\n"
+      }
+    ]
+  },
+  "prod_rollout": {
+    "requested_id": 300,
+    "attempt": 1,
+    "meta": {
+      "id": 300,
+      "run_attempt": 1,
+      "repository": {
+        "full_name": "example/app"
+      },
+      "path": ".github/workflows/rollout.yml",
+      "head_sha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "head_branch": "main",
+      "event": "workflow_dispatch",
+      "created_at": "2026-10-11T01:08:00Z",
+      "run_started_at": "2026-10-11T01:08:00Z",
+      "conclusion": "success"
+    },
+    "jobs": [
+      {
+        "id": 300,
+        "run_id": 300,
+        "run_attempt": 1,
+        "head_sha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "name": "rollout / rollout",
+        "conclusion": "success",
+        "started_at": "2026-10-11T01:08:00Z",
+        "completed_at": "2026-10-11T01:08:02Z",
+        "html_url": "https://github.com/example/app/actions/runs/300/job/300",
+        "log": "2026-10-11T01:06:00Z ##[group]Run deploy\n2026-10-11T01:06:00Z env:\n2026-10-11T01:06:00Z   TARGET: aws\n2026-10-11T01:06:00Z   TARGET_LABEL: aws\n2026-10-11T01:06:00Z   NAMESPACE: prod\n2026-10-11T01:06:00Z ##[endgroup]\n2026-10-11T01:08:00Z rollout 'be' promoted\n2026-10-11T01:08:00Z rollout 'fe' promoted\n2026-10-11T01:08:00Z Name:            be\n2026-10-11T01:08:00Z Namespace:       prod\n2026-10-11T01:08:00Z Status:          ✔ Healthy\n2026-10-11T01:08:00Z Images:          registry.example/be@sha256:1111111111111111111111111111111111111111111111111111111111111111 (stable, active)\n2026-10-11T01:08:00Z Replicas:\n2026-10-11T01:08:00Z Name:            fe\n2026-10-11T01:08:00Z Namespace:       prod\n2026-10-11T01:08:00Z Status:          ✔ Healthy\n2026-10-11T01:08:00Z Images:          registry.example/fe@sha256:2222222222222222222222222222222222222222222222222222222222222222 (stable, active)\n2026-10-11T01:08:00Z Replicas:\n2026-10-11T01:08:01Z audit log: s3://example/rollout.json\n2026-10-11T01:08:01Z {\n2026-10-11T01:08:01Z   \"timestamp\": \"2026-10-11T01:08:01Z\",\n2026-10-11T01:08:01Z   \"action\": \"promote\",\n2026-10-11T01:08:01Z   \"target\": \"all@aws.prod\",\n2026-10-11T01:08:01Z   \"version\": \"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\n2026-10-11T01:08:01Z   \"result\": \"success\",\n2026-10-11T01:08:01Z   \"actor\": \"bot\",\n2026-10-11T01:08:01Z   \"requested_by\": \"slack:tester(U1)\",\n2026-10-11T01:08:01Z   \"ref\": \"refs/heads/main\",\n2026-10-11T01:08:01Z   \"workflow\": \"rollout\",\n2026-10-11T01:08:01Z   \"run_url\": \"https://github.com/example/app/actions/runs/300/attempts/1\"\n2026-10-11T01:08:01Z }\n"
+      }
+    ]
+  }
+}

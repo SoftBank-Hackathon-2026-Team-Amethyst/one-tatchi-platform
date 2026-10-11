@@ -655,10 +655,6 @@ jobs:
       - if: always()
         uses: ./.platform/.github/actions/audit-log
         with:
-          flow: ${{ needs.gate.outputs.flow }}
-          environment: ${{ inputs.environment }}
-          stage: Green 배포·검사 결과
-          next-action: ${{ job.status != 'success' && '실행 로그를 확인해 주세요. 성공이나 승격 완료 상태가 아니에요.' || (steps.judge.outputs.executed == 'promote' && '자동 트래픽 승격을 실행했어요. 이상이 있으면 되돌리기를 요청하세요.' || (steps.judge.outputs.executed == 'abort' && 'Green을 취소했어요. 실패 근거를 확인해 주세요.' || '검사·AI 판단 근거를 확인하고 트래픽 승격 또는 Green 취소를 선택하세요. 승격 완료 알림이 아니에요.')) }}
           action: deploy
           target: all@${{ inputs.target-label || inputs.target }}.${{ inputs.environment }}
           result: ${{ job.status }}
@@ -683,6 +679,7 @@ jobs:
           DECISION: ${{ steps.judge.outputs.decision }}
           REASON: ${{ steps.judge.outputs.reason }}
           EXECUTED: ${{ steps.judge.outputs.executed }}
+          PAUSED: ${{ steps.deploy.outputs.paused }}
           T17_CLEANUP: ${{ steps.t17-cleanup.outcome }}
         run: |
           # 버튼: manual이면 사람이 고를 promote · abort, auto로 promote했으면 되돌리기(undo)만
@@ -695,8 +692,29 @@ jobs:
             fi
           fi
           if [ -n "$EXECUTED" ]; then how="$EXECUTED 실행함"; else how="실행 안 함"; fi
+          # 표시만 결정한다. executed는 일부 서비스의 조작만 성공했어도 값이 있으므로
+          # 실패·취소 상태를 먼저 확인하고 전체 승격/취소 완료로 표현하지 않는다.
+          if [ "$VERIFY_OBSERVABILITY" = true ]; then
+            next_action="T17 실측 결과=$STATUS, Green 정리=${T17_CLEANUP:-미실행}. 일반 배포의 승격 대상이 아니에요. 실측 artifact와 정리 결과를 확인하세요."
+          elif [ "$STATUS" != success ]; then
+            next_action="작업 결과=$STATUS. 전체 완료 상태가 아니에요. 서비스별 상태와 실행 로그를 확인하세요."
+            if [ "$EXECUTED" = abort ]; then
+              next_action="Green 취소(abort) 실행 기록이 있고 파이프라인이 중단됐어요. $next_action"
+            elif [ -n "$EXECUTED" ]; then
+              next_action="$EXECUTED 실행 기록이 있어요. $next_action"
+            fi
+          elif [ "$MODE" = auto ] && [ "$EXECUTED" = promote ]; then
+            next_action="자동 트래픽 승격을 실행했어요. 이상이 있으면 되돌리기를 요청하세요."
+          elif [ "$MODE" = manual ] && [ -n "$PAUSED" ]; then
+            next_action="검사·AI 판단 근거를 확인하고 트래픽 승격 또는 Green 취소를 선택하세요. 승격 완료 알림이 아니에요."
+          elif [ -z "$PAUSED" ] && [ -z "$EXECUTED" ]; then
+            next_action="배포 단계에서 승격 대기 서비스가 없어요. AI 승격 명령은 실행하지 않았어요. 현재 활성 버전을 확인하세요."
+          else
+            next_action="자동 승격 실행 기록이 없어요. 현재 서비스 상태와 판단 근거를 확인하세요. 승격 완료 알림이 아니에요."
+          fi
           {
             echo "buttons=$buttons"
+            echo "next-action=$next_action"
             echo "details<<__DETAILS__"
             [ -z "$URLS" ] || printf '%s\n' "$URLS"
             [ -z "$DECISION" ] || echo "AI 판단: *$DECISION* ($MODE, $how) — $REASON"
@@ -708,6 +726,10 @@ jobs:
         with:
           token: ${{ secrets.SLACK_BOT_TOKEN }}
           channel: ${{ vars.SLACK_CHANNEL_ID }}
+          flow: ${{ needs.gate.outputs.flow }}
+          environment: ${{ inputs.environment }}
+          stage: Green 배포·검사 결과
+          next-action: ${{ steps.notify.outputs.next-action }}
           action: deploy
           target: ${{ steps.deploy.outputs.names || 'all' }}@${{ inputs.target-label || inputs.target }}.${{ inputs.environment }}
           service: all@${{ inputs.target-label || inputs.target }}.${{ inputs.environment }}
