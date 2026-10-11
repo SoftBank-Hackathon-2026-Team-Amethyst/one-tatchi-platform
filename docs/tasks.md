@@ -885,6 +885,7 @@ AWS/GCP/onprem에서 승격 전 공개 preview 경로 없음. 인증된 pipeline
 - [x] Slack 승인 버튼(`<run_id>@prod`) 한 번으로 모든 대상의 prod 승인이 처리되는지 확인. 안 되면 slack-bot이 같은 실행의 대기 중인 승인을 모두 처리하게 고친다
 - [x] 문서: `deploy-provision` 스킬 · `references/artifacts.md` · `docs/gcp-deploy.md`의 `DEPLOY_TARGET` 설명, ADR(전부 통과해야 prod로 가는 이유)
 - [ ] demo-app 적용: `DEPLOY_TARGETS=aws,gcp`로 확인한 뒤 onprem 추가
+- [ ] Grafana `deploy-overview` 맨 위 멀티클라우드 행: 대상별 켜짐 · 꺼짐, 요청 · 5xx · p95, 마지막 배포(sha). platform 릴리스 후 demo-app aws 인프라 버전을 올려 반영
 
 **완료 기준** demo-app main push 한 번으로 aws · gcp · onprem test가 병렬로 돌고, Slack 승인 한 번 뒤 세 대상 prod에 같은 이미지 digest가 올라간다. 한 대상의 test를 실패시키면 세 대상 모두 prod로 가지 않는다.
 

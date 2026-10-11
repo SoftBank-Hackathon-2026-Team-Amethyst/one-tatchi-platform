@@ -17,10 +17,10 @@ def row(title):
     y += 1
 
 
-def panel(title, targets, unit, x=0, width=8, description="", kind="timeseries"):
+def panel(title, targets, unit, x=0, width=8, description="", kind="timeseries", height=8):
     panels.append({"id": len(panels) + 1, "type": kind, "title": title,
                    "description": description,
-                   "gridPos": {"x": x, "y": y, "w": width, "h": 8},
+                   "gridPos": {"x": x, "y": y, "w": width, "h": height},
                    "datasource": {"type": "datasource", "uid": "-- Mixed --"},
                    "targets": [{**t, "refId": chr(65 + i)} for i, t in enumerate(targets)],
                    "fieldConfig": {"defaults": {"unit": unit, "noValue": "데이터 없음",
@@ -46,6 +46,67 @@ group = "target,cluster,environment,service"
 count = f'sum by ({group}) (rate(app_http_response_count_total{{{sel}}}[$__rate_interval]))'
 errors = f'sum by ({group}) (rate(app_http_response_count_total{{{sel},status=~"5.."}}[$__rate_interval]))'
 p95 = f'histogram_quantile(0.95, sum by (le,{group}) (rate(app_http_response_time_seconds_hist_bucket{{{sel}}}[$__rate_interval]))) * 1000'
+
+
+def stat(title, expr, unit, x, steps, description):
+    # One tile per deployment target (target · cluster). GCP comes from Cloud Monitoring, the rest from Prometheus.
+    panel(title, [prom(expr, "{{target}} · {{cluster}}"), gcp(expr)], unit, x=x, width=8,
+          description=description, kind="stat", height=6)
+    panels[-1]["options"] = {"reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": False},
+                             "textMode": "value_and_name", "colorMode": "background", "graphMode": "area",
+                             "justifyMode": "auto", "orientation": "auto"}
+    panels[-1]["fieldConfig"]["defaults"]["decimals"] = 1
+    panels[-1]["fieldConfig"]["defaults"]["thresholds"] = {"mode": "absolute", "steps": [
+        {"color": color, "value": value} for value, color in steps]}
+
+
+# Multi-target view (T39): the same service on aws · gcp · onprem side by side, then the latest deploy per target.
+multi = 'target=~"${target:regex}",environment=~"${environment:regex}",cluster=~"$cluster",service=~"$service"'
+by_target = "target,cluster"
+m_count = f'sum by ({by_target}) (rate(app_http_response_count_total{{{multi}}}[5m]))'
+m_errors = f'sum by ({by_target}) (rate(app_http_response_count_total{{{multi},status=~"5.."}}[5m]))'
+row("멀티클라우드 · 배포 대상 상태")
+# 1 = every app pod scraped, 0 = seen in the last 24h but silent now (device off or link down).
+# The 24h fallback keeps a tile for a target that went dark instead of letting it disappear.
+up = f'up{{{multi},job="application"}}'
+alive = (f'(sum by ({by_target}) ({up}) / count by ({by_target}) ({up})) '
+         f'or (max by ({by_target}) (max_over_time({up}[24h])) * 0)')
+panel("배포 대상 켜짐 · 꺼짐", [prom(alive, "{{target}} · {{cluster}}"), gcp(alive)], "percentunit", width=24,
+      kind="stat", height=4,
+      description="배포 대상(target · cluster)마다 앱 파드 지표가 지금 수집되는 비율입니다. 최근 24시간 안에 보였다가 끊긴 대상은 꺼짐으로 남고, 24시간 넘게 끊긴 대상은 보이지 않습니다. GitHub runner 상태와 배포 설정 오류는 여기에 나오지 않습니다.")
+panels[-1]["options"] = {"reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": False},
+                         "textMode": "value_and_name", "colorMode": "background", "graphMode": "none",
+                         "justifyMode": "center", "orientation": "vertical"}
+panels[-1]["fieldConfig"]["defaults"]["thresholds"] = {"mode": "absolute", "steps": [
+    {"color": "red", "value": None}, {"color": "orange", "value": 0.01}, {"color": "green", "value": 0.999}]}
+panels[-1]["fieldConfig"]["defaults"]["mappings"] = [
+    {"type": "value", "options": {"0": {"text": "꺼짐", "index": 0}}},
+    {"type": "range", "options": {"from": 0.01, "to": 0.999, "result": {"text": "일부", "index": 1}}},
+    {"type": "range", "options": {"from": 0.999, "to": 1, "result": {"text": "켜짐", "index": 2}}}]
+y += 4
+stat("대상별 요청 / 초", m_count, "reqps", 0, [(None, "blue")],
+     "배포 대상(target · cluster)마다 최근 5분 완료 요청. 선택한 환경 · 서비스를 합산합니다.")
+stat("대상별 HTTP 5xx 비율", f'100 * ({m_errors} or ({m_count} * 0)) / ({m_count} > 0)', "percent", 8,
+     [(None, "green"), (1, "orange"), (5, "red")], "5xx / 전체 요청. 1% 이상 주황, 5% 이상 빨강. 요청이 없으면 데이터 없음.")
+stat("대상별 응답시간 p95",
+     f'histogram_quantile(0.95, sum by (le,{by_target}) (rate(app_http_response_time_seconds_hist_bucket{{{multi}}}[5m]))) * 1000',
+     "ms", 16, [(None, "green"), (500, "orange"), (1000, "red")], "실제 요청 histogram의 추정 p95. 500ms 이상 주황, 1초 이상 빨강.")
+y += 6
+latest = ('filter target like /^${target:regex}$/ and environment like /^${environment:regex}$/ '
+          'and service like /$service/ and cluster like /$cluster/ '
+          '| stats latest(@timestamp) as last_deploy, latest(sha) as sha, latest(decision) as decision, '
+          'latest(metrics.error_rate) as error_rate, latest(metrics.p95_ms) as p95_ms, latest(run_url) as run_url '
+          'by target, cluster, environment, service | sort target, cluster, environment, service')
+panel("대상별 마지막 배포 · 같은 커밋인지 확인", [{"datasource": CW, "queryMode": "Logs", "region": "default",
+      "logGroupNames": ["${evidence_log_group}"], "expression": latest}], "none", width=24, kind="table",
+      description="대상 · 환경 · 서비스마다 마지막 AI 배포 검사 기록입니다. sha가 같으면 여러 대상에 같은 커밋이 배포됐습니다. 판단 결과가 실제 승격을 뜻하지는 않습니다.")
+panels[-1]["options"] = {"showHeader": True, "cellHeight": "sm", "footer": {"show": False}}
+panels[-1]["fieldConfig"]["overrides"] = [{
+    "matcher": {"id": "byName", "options": "run_url"}, "properties": [{
+        "id": "links", "value": [{"title": "Actions 실행", "url": "${__value.raw}", "targetBlank": True}]
+    }]
+}]
+y += 8
 row("실제 사용자 트래픽 · smoke / kube-probe 제외")
 for i, (title, expr, unit, desc) in enumerate([
     ("요청 / 초", count, "reqps", "서비스별 완료 요청. FE와 BE의 값을 합산하지 않습니다."),
@@ -112,7 +173,7 @@ def custom(name, label, values):
 
 dashboard = {"uid": "deploy-overview", "title": "Deploy Overview", "schemaVersion": 39,
              "timezone": "browser", "refresh": "30s", "time": {"from": "now-1h", "to": "now"},
-             "tags": ["one-tatchi", "T17"], "panels": panels,
+             "tags": ["one-tatchi", "T17", "T39"], "panels": panels,
              "templating": {"list": [custom("target", "배포 대상", "aws,onprem,gcp"),
                  custom("environment", "환경", "test,prod"),
                  {"name": "service", "label": "서비스", "type": "textbox", "query": "demo-app-.*", "current": {"value": "demo-app-.*"}},
