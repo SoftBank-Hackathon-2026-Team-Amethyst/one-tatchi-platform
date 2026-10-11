@@ -71,7 +71,8 @@ alb.ingress.kubernetes.io/ssl-policy: {{ $root.Values.ingress.sslPolicy }}
 {{- end }}
 alb.ingress.kubernetes.io/healthcheck-path: {{ $.healthcheckPath }}
 {{- end }}
-{{- with $root.Values.ingress.annotations }}
-{{ toYaml . }}
+{{- /* Values are templates, so one target file can name a per-namespace address. */}}
+{{- range $k, $v := ($root.Values.ingress.annotations | default dict) }}
+{{ $k }}: {{ tpl (toString $v) $root | quote }}
 {{- end }}
 {{- end -}}

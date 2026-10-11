@@ -52,9 +52,10 @@ on:
         default: ""
       host:
         description: >-
-          aws만. 서비스 도메인 (예: prod onetatchi.soulee.dev, test yolo.onetatchi.soulee.dev).
-          Ingress가 있는 서비스를 HTTPS로 열고 80은 443으로 리다이렉트한다. 인증서는 ACM, DNS 레코드는 external-dns가 만든다.
-          비우면 ALB 주소로 HTTP만 연다
+          aws · gcp. 서비스 도메인 (예: prod onetatchi.soulee.dev, test yolo.onetatchi.soulee.dev).
+          aws는 Ingress가 있는 서비스를 HTTPS로 열고 80은 443으로 리다이렉트한다(인증서 ACM, DNS external-dns).
+          gcp는 Ingress host로 넣는다. HTTPS는 값 파일의 ingress.managedCertificate · 고정 IP 어노테이션으로 켜고, DNS는 대상 레포가 만든다.
+          비우면 LB 주소로 HTTP만 연다
         type: string
         default: ""
       preview-host:
@@ -461,7 +462,12 @@ jobs:
                     sleep 5
                   done
                   [ -n "$host" ] || { echo "::error::GKE Ingress address missing: $release"; return 1; }
-                  active="http://$host/"
+                  # ManagedCertificate를 켠 서비스만 https로 알린다. 인증서가 아직 발급 중이면 잠시 열리지 않을 수 있다.
+                  if [ -n "$HOST" ] && [ "$(helm get values "$release" -n "$NAMESPACE" -a -o json | jq -r '.ingress.managedCertificate // false')" = true ]; then
+                    active="https://$HOST/"
+                  else
+                    active="http://$host/"
+                  fi
                 fi ;;
               onprem)
                 # Base service values express whether the service is public; onprem overlay disables only Ingress.
@@ -495,7 +501,7 @@ jobs:
               extra+=(--set-string "env.T17_VALIDATION_RUN_ID=${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}" --set migration.enabled=false --set blueGreen.autoPromotionEnabled=false --set previewAuth.enabled=false)
             fi
             if [ "$TARGET" = aws ] && [ -n "$INGRESS_GROUP" ]; then extra+=(--set ingress.group="$INGRESS_GROUP"); fi
-            if [ "$TARGET" = aws ] && [ -n "$HOST" ]; then extra+=(--set ingress.host="$HOST"); fi
+            if [ "$TARGET" != onprem ] && [ -n "$HOST" ]; then extra+=(--set ingress.host="$HOST"); fi
             if [ "$PREVIEW_AUTH" != true ]; then
               extra+=(--set previewAuth.enabled=false)
             elif [ -n "$PREVIEW_HOST" ]; then

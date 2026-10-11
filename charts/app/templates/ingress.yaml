@@ -1,5 +1,21 @@
 {{- if .Values.ingress.enabled }}
 {{- $name := include "app.name" . -}}
+{{- $annotations := include "app.ingressAnnotations" (dict "root" $ "host" $.Values.ingress.host "healthcheckPath" $.Values.ingress.healthcheckPath) | fromYaml | default dict -}}
+{{- if .Values.ingress.managedCertificate }}
+{{- if not (has .Values.ingress.className (list "" "gce")) }}{{ fail "ingress.managedCertificate requires a GKE Ingress (className empty or gce)" }}{{ end }}
+{{- if not .Values.ingress.host }}{{ fail "ingress.managedCertificate requires ingress.host" }}{{ end }}
+{{- $_ := set $annotations "networking.gke.io/managed-certificates" $name }}
+---
+apiVersion: networking.gke.io/v1
+kind: ManagedCertificate
+metadata:
+  name: {{ $name }}
+  labels:
+    {{- include "app.labels" $ | nindent 4 }}
+spec:
+  domains:
+    - {{ .Values.ingress.host | quote }}
+{{- end }}
 {{/* Green is reachable only through the internal preview Service. */}}
 ---
 apiVersion: networking.k8s.io/v1
@@ -8,9 +24,9 @@ metadata:
   name: {{ $name }}
   labels:
     {{- include "app.labels" $ | nindent 4 }}
-  {{- with include "app.ingressAnnotations" (dict "root" $ "host" $.Values.ingress.host "healthcheckPath" $.Values.ingress.healthcheckPath) | trim }}
+  {{- with $annotations }}
   annotations:
-    {{- . | nindent 4 }}
+    {{- toYaml . | nindent 4 }}
   {{- end }}
 spec:
   {{- if $.Values.ingress.className }}
