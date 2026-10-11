@@ -10,6 +10,7 @@
 
 ## Unreleased
 
+- T38: App Chart `previewAuth.ingress.managedCertificate`를 켜면 proxy Service 문서가 ManagedCertificate 문서와 붙어(`targetPort: http---`) Service가 만들어지지 않던 문제를 고친다. gcp green Ingress가 `could not find service` 로 동기화되지 못하고 고정 IP · 인증서가 붙지 않았다. 차트 회귀 테스트에 문서 구분자 검사 추가.
 
 - T36: 장애 훈련 재사용 워크플로 `chaos.yml`과 스크립트 `.github/actions/chaos-drill`(설계 `docs/chaos-drill.md`). test의 green에 시나리오(`error-burst` · `slow-response` · `db-down` · `flaky`, `scenarios.json`)대로 장애를 넣고(green 파드마다 port-forward로 `POST /api/chaos`), 기존 `promote-judge`를 `manual`로 돌려 기대한 결정(abort)이 나오는지, active 서비스 smoke로 blue 에러율이 0%인지 확인한 뒤 항상 정리(장애 해제 확인 · 훈련용 green은 abort와 파드 템플릿 annotation 복구)하고 채점한다. green이 없거나(`new-green`이면 훈련용 green을 띄움) 배포 중 · Degraded면 아무것도 바꾸지 않고 거절한다. namespace는 `test` 고정(입력 없음), `rollout.yml`과 같은 concurrency group. 결과는 실행 요약 · Slack(`action: drill`, 해제를 확인하지 못한 대기 중 green은 승격 금지 경고와 abort 버튼) · 감사 로그에 남는다. `promote-judge/smoke.sh`에 `SERVICE` 환경변수(기본은 전처럼 `<release>-preview`). 호출부는 demo-app `chaos.yml`(T36 후속), Slack `/chaos` 명령은 T37.
 

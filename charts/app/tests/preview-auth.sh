@@ -62,6 +62,9 @@ out2="$(render "${gke[@]}" --namespace test \
   --show-only templates/preview-auth.yaml)"
 printf '%s\n' "$out2" | grep -q 'kubernetes.io/ingress.global-static-ip-name: green-test'
 printf '%s\n' "$out" | grep -q '^kind: ManagedCertificate$'
+# Every document stays separate: the proxy Service must not merge into the ManagedCertificate.
+test "$(printf '%s\n' "$out" | grep -c '^kind: Service$')" = 1
+if printf '%s\n' "$out" | grep -q -- '[^-]---$'; then echo 'document separator glued to the previous line' >&2; exit 1; fi
 printf '%s\n' "$out" | grep -A2 'domains:' | grep -q '"green.example.test"'
 printf '%s\n' "$out" | grep -q 'networking.gke.io/managed-certificates: auth-preview-auth'
 printf '%s\n' "$out" | grep -q 'kubernetes.io/ingress.global-static-ip-name: green-ip'

@@ -120,7 +120,7 @@ spec:
 {{- with index $annotations $ipKey }}{{ if eq . (index ($root.Values.ingress.annotations | default dict) $ipKey | default "") }}{{ fail "previewAuth.ingress.annotations must set its own kubernetes.io/ingress.global-static-ip-name" }}{{ end }}{{ end -}}
 {{- if $ing.managedCertificate }}
 {{- if not (has $root.Values.ingress.className (list "" "gce")) }}{{ fail "previewAuth.ingress.managedCertificate requires a GKE Ingress (className empty or gce)" }}{{ end }}
-{{- $_ := set $annotations "networking.gke.io/managed-certificates" $name -}}
+{{- $_ := set $annotations "networking.gke.io/managed-certificates" $name }}
 ---
 apiVersion: networking.gke.io/v1
 kind: ManagedCertificate
