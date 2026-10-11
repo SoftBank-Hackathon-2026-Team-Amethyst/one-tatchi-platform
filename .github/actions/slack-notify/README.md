@@ -20,3 +20,11 @@ Yolo PR도 검사 통과 시 버튼 없는 안내 알림을 보낸다. 자동 �
 공통 액션과 workflow 변경이므로 봇 버튼 핸들러 이미지 변경은 필요 없다. 플랫폼 릴리스 후 demo-app의 workflow template-ref를 해당 버전으로 올려야 새 알림이 나온다. 이전에 게시한 Slack 메시지는 바뀌지 않는다.
 
 검증은 curl 대체 프로그램으로 chat.postMessage payload를 로컬 렌더링한다. 실제 Slack 게시나 승인 버튼 실행은 하지 않는다.
+
+```sh
+uv run --no-project --with 'pyyaml>=6,<7' python -B -m unittest discover -s .github/actions/slack-notify/tests -v
+```
+
+배포 결과의 `next-action`은 `deploy.yml`의 `notify` 단계에서 만든다. 실패·취소는 일부 서비스의
+`executed=promote/abort`가 있어도 전체 완료로 표현하지 않는다. 이미 Healthy여서 판단을 생략한
+경우와 T17 실측 후 Green 정리도 구분한다. 이 설명은 버튼 생성 조건이나 실제 배포 판단을 바꾸지 않는다.

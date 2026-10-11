@@ -116,6 +116,8 @@ jobs:
       - run: python3 -B -m unittest discover -s .github/actions/yolo-pr/tests -v
       - run: python3 -B -m unittest discover -s .github/actions/approval-timeout/tests -v
       - uses: astral-sh/setup-uv@v10.2.0
+      # T26: 실제 알림 스크립트의 offline payload와 로컬 액션 입력 계약을 검사한다.
+      - run: uv run --no-project --with 'pyyaml>=6,<7' python -B -m unittest discover -s .github/actions/slack-notify/tests -v
       # yolo 리포트: 수집 결과와 예시를 schema.json으로 검사한다 (T10)
       - run: uv run --no-project --with jsonschema python -B -m unittest discover -s .github/actions/yolo-report/tests -v
       # 배포 실패 진단: 증거 수집 · 원인 요약 결과를 스키마로 검사한다 (T12)
