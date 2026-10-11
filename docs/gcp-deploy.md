@@ -13,7 +13,7 @@ export CLOUDSDK_ACTIVE_CONFIG_NAME=onetatchi
 
 bootstrap/gcp는 GCS state 버킷과 WIF를 만든다. 자세한 최초 이전 절차는 [bootstrap 안내](../bootstrap/gcp/README.md)를 따른다. demo-app 루트는 GCS prefix `demo-app/gcp`를 사용하고 bootstrap은 `bootstrap/gcp`를 사용한다. Terraform state·plan은 Git에 넣지 않는다.
 
-GitHub Variables: `GCP_PROJECT`, `GCP_REGION`, `GCP_CLUSTER`, `GCP_WIF_PROVIDER`, `GCP_PLAN_WIF_PROVIDER`, `GCP_PLAN_IDENTITY`, `GCP_DEPLOY_IDENTITY`, `GCP_TF_STATE_BUCKET`. AWS 변수와 기본 `DEPLOY_TARGET`은 그대로 둔다.
+GitHub Variables: `GCP_PROJECT`, `GCP_REGION`, `GCP_CLUSTER`, `GCP_WIF_PROVIDER`, `GCP_PLAN_WIF_PROVIDER`, `GCP_PLAN_IDENTITY`, `GCP_DEPLOY_IDENTITY`, `GCP_TF_STATE_BUCKET`. AWS 변수와 기본 `DEPLOY_TARGET`은 그대로 둔다. aws와 gcp에 함께 배포하려면 `DEPLOY_TARGETS=aws,gcp`를 둔다. 모든 대상의 test가 통과해야 prod로 간다([ADR-0020](adr/0020-multi-target-deploy.md)).
 
 ## 최초 생성
 
