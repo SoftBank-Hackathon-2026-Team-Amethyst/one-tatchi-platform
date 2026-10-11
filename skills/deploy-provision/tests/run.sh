@@ -118,7 +118,7 @@ for version in v1.8.0 v1.13.0 v1.14.0; do
   case "$version" in
     v1.8.0) ! grep -q 'promote-mode:' "$tmp/compat.yml"; ! grep -q 'yolo-auto-merge:' "$tmp/compat.yml" ;;
     v1.13.0) grep -q "promote-mode:.*startsWith" "$tmp/compat.yml"; ! grep -q 'yolo-auto-merge:' "$tmp/compat.yml" ;;
-    v1.14.0) grep -q 'promote-mode: branch' "$tmp/compat.yml"; grep -q 'yolo-auto-merge: true' "$tmp/compat.yml" ;;
+    v1.14.0) grep -q 'promote-mode: branch' "$tmp/compat.yml"; grep -qF 'yolo-auto-merge: ${{ matrix.primary }}' "$tmp/compat.yml" ;;
   esac
   if command -v actionlint >/dev/null; then actionlint -shellcheck='' "$tmp/compat.yml"; fi
 done
@@ -293,6 +293,36 @@ grep -q 'ephemeral *= true' "$tmp/v2-variables.tf"
 common[0]="TEMPLATE_VERSION=v1.16.0"
 bash "$render" "$skill/templates/infra/envs/onprem/main.tf.tmpl" "$tmp/v1-main.tf" "${common[@]}" >/dev/null
 grep -q 'module.cluster.client_key' "$tmp/v1-main.tf"
+
+echo "== 여러 배포 대상 (T39): targets job이 만드는 matrix"
+common[0]="TEMPLATE_VERSION=v2.0.0"
+common[1]="CHART_VERSION=2.0.0"
+bash "$render" "$skill/templates/.github/workflows/deploy.yml.tmpl" "$tmp/multi.yml" "${common[@]}" >/dev/null
+if command -v actionlint >/dev/null; then actionlint -shellcheck='' "$tmp/multi.yml"; fi
+yq -r '.jobs.targets.steps[0].run' "$tmp/multi.yml" > "$tmp/targets.sh"
+grep -q 'include: ${{ fromJSON(needs.targets.outputs.matrix) }}' "$tmp/multi.yml"
+[ "$(yq -r '.jobs.prod.needs | join(",")' "$tmp/multi.yml")" = "targets,test" ]
+[ "$(yq -r '.jobs.test.with["yolo-auto-merge"]' "$tmp/multi.yml")" = '${{ matrix.primary }}' ]
+targets() {  # <REQUESTED> <TARGETS> [GCP_CLUSTER] → matrix JSON
+  out="$tmp/targets.out"; : > "$out"
+  REQUESTED="$1" TARGETS="$2" RUNNER_LABEL=onprem-mini GCP_CLUSTER="${3:-}" \
+    GITHUB_OUTPUT="$out" GITHUB_STEP_SUMMARY=/dev/null bash -e "$tmp/targets.sh" >/dev/null 2>&1 || return 1
+  sed -n 's/^matrix=//p' "$out"
+}
+m="$(targets "" "aws,gcp, onprem" gke-1)"
+[ "$(jq -r 'map("\(.target):\(.label):\(.cluster):\(.primary)") | join(" ")' <<<"$m")" = \
+  "aws:aws:one-tatchi:true gcp:gcp:gke-1:false onprem:onprem-mini:k3d-onetouch:false" ] || { echo "matrix가 다르다: $m" >&2; exit 1; }
+[ "$(targets onprem "aws,gcp" | jq -r '.[0].target + (length|tostring)')" = onprem1 ] || { echo "수동 실행 대상 하나를 무시했다" >&2; exit 1; }
+[ "$(targets all "aws,onprem" | jq length)" = 2 ] || { echo "all이 대상 목록을 쓰지 않았다" >&2; exit 1; }
+for bad in "aws,aws" "aws,azure" "gcp" ""; do
+  if targets "" "$bad" >/dev/null; then echo "잘못된 대상 목록을 놓쳤다: '$bad'" >&2; exit 1; fi
+done
+common[0]="TEMPLATE_VERSION=v1.13.0"
+common[1]="CHART_VERSION=1.13.0"
+bash "$render" "$skill/templates/.github/workflows/deploy.yml.tmpl" "$tmp/multi-v1.yml" "${common[@]}" >/dev/null
+! grep -q 'target-label:' "$tmp/multi-v1.yml"
+! grep -q 'yolo-auto-merge:' "$tmp/multi-v1.yml"
+grep -q 'target: ${{ matrix.target }}' "$tmp/multi-v1.yml"
 
 echo "== 렌더된 워크플로 · JSON 형식"
 if command -v python3 >/dev/null; then

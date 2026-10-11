@@ -19,7 +19,7 @@
 | `CLUSTER_NAME` | onprem k3d 클러스터 이름 (context는 `k3d-<이름>`) | `onetouch` |
 | `REPOSITORIES_HCL` | 이미지 저장소 이름 목록, HCL 리스트 문자열 | `["demo-app-be", "demo-app-fe"]` |
 | `PUBLIC_SERVICE`, `PUBLIC_SERVICE_PORT` | onprem Quick Tunnel이 연결할 서비스와 포트 (`public: true`인 서비스) | `demo-app-fe`, `3000` |
-| `DEFAULT_TARGET` | `plan.yaml`의 `target`. 레포 변수 `DEPLOY_TARGET`이 없을 때의 기본값 | `onprem` |
+| `DEFAULT_TARGET` | `plan.yaml`의 `target`. 레포 변수 `DEPLOY_TARGETS` · `DEPLOY_TARGET`이 모두 없을 때의 기본값 | `onprem` |
 | `CLUSTER_AWS` | EKS 클러스터 이름 (`infra/envs/aws` 변수 `name`) | `one-tatchi` |
 | `CLUSTER_ONPREM` | self-hosted runner의 kube context (`k3d-<이름>`) | `k3d-onetouch` |
 | `HOST_TEST`, `HOST_PROD` | aws만. 서비스 도메인. 없으면 빈 값(ALB 주소로 HTTP) | `yolo.onetatchi.soulee.dev` / `onetatchi.soulee.dev` |

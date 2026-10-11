@@ -4,8 +4,9 @@ name: deploy
 # - pull_request: 검사만
 # - push yolo/**: 검사 → test (AI 승격 판단을 바로 실행)
 # - push main:    검사 → test → prod (prod 승인 여부는 .deploy/config.yaml의 compliance)
-# - workflow_dispatch(main): 대상 하나를 골라 검사 → test → prod를 다시 실행
-# push 배포 대상은 레포 변수 DEPLOY_TARGET(aws | onprem, 기본 @@DEFAULT_TARGET@@)으로 고른다.
+# - workflow_dispatch(main): 대상 하나(또는 all)를 골라 검사 → test → prod를 다시 실행
+# push 배포 대상은 레포 변수 DEPLOY_TARGETS(쉼표 구분, 예 "aws,gcp,onprem")로 고른다. 없으면 DEPLOY_TARGET, 그것도 없으면 @@DEFAULT_TARGET@@.
+# 대상이 여럿이면 test를 병렬로 돌리고, 모든 대상의 test가 통과해야 모든 대상의 prod로 간다 (T39).
 on:
   pull_request:
   push:
@@ -16,7 +17,7 @@ on:
         description: 다시 배포할 대상
         required: true
         type: choice
-        options: [aws, onprem]
+        options: [aws, gcp, onprem, all]
 
 permissions:
   contents: read
@@ -36,15 +37,56 @@ jobs:
       iac-path: infra
     secrets: inherit
 
-  test:
-    needs: checks
+  # 이번 실행의 배포 대상 목록. test · prod가 이 목록으로 대상마다 한 번씩 재사용 워크플로를 호출한다.
+  targets:
     if: github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main')
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    outputs:
+      matrix: ${{ steps.targets.outputs.matrix }}
+    steps:
+      - id: targets
+        env:
+          REQUESTED: ${{ inputs.target }}
+          TARGETS: ${{ vars.DEPLOY_TARGETS || vars.DEPLOY_TARGET || '@@DEFAULT_TARGET@@' }}
+          RUNNER_LABEL: ${{ vars.ONPREM_RUNNER_LABEL || 'onprem' }}
+          GCP_CLUSTER: ${{ vars.GCP_CLUSTER }}
+        run: |
+          if [ -n "$REQUESTED" ] && [ "$REQUESTED" != all ]; then TARGETS="$REQUESTED"; fi
+          # 첫 대상이 기준 대상이다. yolo 리포트 · main PR은 기준 대상에서만 만든다.
+          matrix='[]'
+          for t in $(tr ',' ' ' <<<"$TARGETS"); do
+            case "$t" in
+              aws) label=aws cluster='@@CLUSTER_AWS@@' ;;
+              gcp) label=gcp cluster="$GCP_CLUSTER"
+                   [ -n "$cluster" ] || { echo "::error::gcp 대상에는 레포 변수 GCP_CLUSTER가 필요하다"; exit 1; } ;;
+              onprem) label="$RUNNER_LABEL" cluster='@@CLUSTER_ONPREM@@' ;;
+              *) echo "::error::지원하지 않는 배포 대상: $t (aws | gcp | onprem)"; exit 1 ;;
+            esac
+            if jq -e --arg t "$t" 'any(.target == $t)' <<<"$matrix" >/dev/null; then
+              echo "::error::배포 대상이 중복됐다: $t"; exit 1
+            fi
+            matrix="$(jq -c --arg t "$t" --arg l "$label" --arg c "$cluster" \
+              '. + [{target: $t, label: $l, cluster: $c, primary: (length == 0)}]' <<<"$matrix")"
+          done
+          [ "$matrix" != '[]' ] || { echo "::error::배포 대상이 없다"; exit 1; }
+          echo "matrix=$matrix" >> "$GITHUB_OUTPUT"
+          echo "### 배포 대상: $(jq -r 'map(.label) | join(", ")' <<<"$matrix")" >> "$GITHUB_STEP_SUMMARY"
+
+  test:
+    needs: [checks, targets]
+    if: github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main')
+    # 한 대상이 실패해도 나머지 대상의 test 결과는 끝까지 본다. prod는 모든 대상이 통과해야 간다.
+    strategy:
+      fail-fast: false
+      matrix:
+        include: ${{ fromJSON(needs.targets.outputs.matrix) }}
     uses: SoftBank-Hackathon-2026-Team-Amethyst/one-tatchi-platform/.github/workflows/deploy.yml@@@TEMPLATE_VERSION@@
     with:
-      target: ${{ inputs.target || vars.DEPLOY_TARGET || '@@DEFAULT_TARGET@@' }}
+      target: ${{ matrix.target }}
       onprem-runner-label: ${{ vars.ONPREM_RUNNER_LABEL || 'onprem' }} # T27-input
-      target-label: ${{ (inputs.target || vars.DEPLOY_TARGET || '@@DEFAULT_TARGET@@') == 'onprem' && (vars.ONPREM_RUNNER_LABEL || 'onprem') || (inputs.target || vars.DEPLOY_TARGET || '@@DEFAULT_TARGET@@') }} # T27-input
-      cluster: ${{ (inputs.target || vars.DEPLOY_TARGET || '@@DEFAULT_TARGET@@') == 'aws' && '@@CLUSTER_AWS@@' || '@@CLUSTER_ONPREM@@' }}
+      target-label: ${{ matrix.label }} # T27-input
+      cluster: ${{ matrix.cluster }}
       ingress-group: @@APP@@-test
       host: @@HOST_TEST@@  # aws만
       environment: test
@@ -54,21 +96,27 @@ jobs:
       # yolo 브랜치는 AI 승격 판단대로 바로 실행하고, 그 외(main)는 사람이 Slack 버튼으로 결정한다.
       # branch · yolo-auto-merge는 v1.14.0부터. render.sh가 이전 버전에 맞춰 입력을 조정한다.
       promote-mode: branch
-      yolo-auto-merge: true
+      # 대상이 여럿이면 yolo 리포트 · main PR은 기준 대상(DEPLOY_TARGETS의 첫 대상)에서만 만든다.
+      yolo-auto-merge: ${{ matrix.primary }}
       chart-version: @@CHART_VERSION@@
       template-ref: @@TEMPLATE_VERSION@@
     secrets: inherit
 
   # test에서 만든 같은 이미지(같은 커밋 SHA 태그)를 prod에 올린다. 다시 빌드하지 않는다.
+  # needs.test는 모든 대상의 test가 성공해야 성공이다. 한 대상이라도 실패하면 어느 대상도 prod로 가지 않는다.
   prod:
-    needs: test
+    needs: [targets, test]
     if: (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && github.ref == 'refs/heads/main'
+    strategy:
+      fail-fast: false
+      matrix:
+        include: ${{ fromJSON(needs.targets.outputs.matrix) }}
     uses: SoftBank-Hackathon-2026-Team-Amethyst/one-tatchi-platform/.github/workflows/deploy.yml@@@TEMPLATE_VERSION@@
     with:
-      target: ${{ inputs.target || vars.DEPLOY_TARGET || '@@DEFAULT_TARGET@@' }}
+      target: ${{ matrix.target }}
       onprem-runner-label: ${{ vars.ONPREM_RUNNER_LABEL || 'onprem' }} # T27-input
-      target-label: ${{ (inputs.target || vars.DEPLOY_TARGET || '@@DEFAULT_TARGET@@') == 'onprem' && (vars.ONPREM_RUNNER_LABEL || 'onprem') || (inputs.target || vars.DEPLOY_TARGET || '@@DEFAULT_TARGET@@') }} # T27-input
-      cluster: ${{ (inputs.target || vars.DEPLOY_TARGET || '@@DEFAULT_TARGET@@') == 'aws' && '@@CLUSTER_AWS@@' || '@@CLUSTER_ONPREM@@' }}
+      target-label: ${{ matrix.label }} # T27-input
+      cluster: ${{ matrix.cluster }}
       ingress-group: @@APP@@-prod
       host: @@HOST_PROD@@  # aws만
       environment: prod

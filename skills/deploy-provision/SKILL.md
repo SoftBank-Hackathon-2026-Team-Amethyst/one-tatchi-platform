@@ -66,7 +66,7 @@ description: 분석 결과(.deploy/plan.yaml, .deploy/report.md)로 대상 레�
 호출한 스킬이 PR 본문이나 마무리 보고에 적는다.
 
 - yolo 자동 PR: `BOT_CLIENT_ID` 변수와 `BOT_PRIVATE_KEY` 시크릿. GitHub App은 대상 레포에 설치하고 Contents · Pull requests 쓰기, Actions 읽기 권한을 준다. 저장소 auto-merge와 rebase merge가 활성화돼 있어야 한다. 리뷰 정책은 우회하지 않는다.
-- GitHub Variables: `DEPLOY_TARGET`, AWS면 `AWS_REGION` · `AWS_PLAN_ROLE_ARN` · `AWS_DEPLOY_ROLE_ARN` · `TF_STATE_BUCKET` · `AUDIT_LOG_BUCKET`(bootstrap 출력), Slack 알림이면 `SLACK_CHANNEL_ID`와 시크릿 `SLACK_BOT_TOKEN`, AI 승격 판단이면 시크릿 `ANTHROPIC_API_KEY`
+- GitHub Variables: `DEPLOY_TARGET`(대상 하나) 또는 `DEPLOY_TARGETS`(쉼표 구분, 예 `aws,gcp,onprem`. 모든 대상의 test가 통과해야 모든 대상의 prod로 간다. gcp면 `GCP_CLUSTER`도), AWS면 `AWS_REGION` · `AWS_PLAN_ROLE_ARN` · `AWS_DEPLOY_ROLE_ARN` · `TF_STATE_BUCKET` · `AUDIT_LOG_BUCKET`(bootstrap 출력), Slack 알림이면 `SLACK_CHANNEL_ID`와 시크릿 `SLACK_BOT_TOKEN`, AI 승격 판단이면 시크릿 `ANTHROPIC_API_KEY`
 - Environments: `test`, `prod`(승인자 지정), `prod-auto`(main만)
 - 온프레미스: 기본 self-hosted runner 라벨은 기존 `onprem`을 유지한다. 추가 기기는 `onprem-<profile>`로 구분한다. v2는 `scripts/onprem/README.md`에 따라 `onpremctl.py terraform`으로 인증정보를 메모리에서 공급하며, 기존 state는 apply 전에 암호화 백업·이전을 수행한다. v1 참조는 기존 계약을 유지한다. 기기마다 cluster·state를 분리하고 기존 state 없이 클러스터를 재생성하지 않는다.
 - 첫 AWS 인프라: `infra.yml`이 PR에서 plan, 머지에서 apply. 머지 전에 plan 코멘트의 비용을 확인
