@@ -112,6 +112,26 @@ spec:
       port: 80
       targetPort: http
 {{- if $root.Values.ingress.enabled }}
+{{- $ing := .ingress | default dict -}}
+{{- $annotations := include "app.ingressAnnotations" (dict "root" $root "host" $host "healthcheckPath" "/ping") | fromYaml | default dict -}}
+{{- range $k, $v := ($ing.annotations | default dict) }}{{ $_ := set $annotations $k (tpl (toString $v) $root) }}{{ end -}}
+{{- /* Two GKE Ingresses cannot share one reserved address. */}}
+{{- $ipKey := "kubernetes.io/ingress.global-static-ip-name" -}}
+{{- with index $annotations $ipKey }}{{ if eq . (index ($root.Values.ingress.annotations | default dict) $ipKey | default "") }}{{ fail "previewAuth.ingress.annotations must set its own kubernetes.io/ingress.global-static-ip-name" }}{{ end }}{{ end -}}
+{{- if $ing.managedCertificate }}
+{{- if not (has $root.Values.ingress.className (list "" "gce")) }}{{ fail "previewAuth.ingress.managedCertificate requires a GKE Ingress (className empty or gce)" }}{{ end }}
+{{- $_ := set $annotations "networking.gke.io/managed-certificates" $name -}}
+---
+apiVersion: networking.gke.io/v1
+kind: ManagedCertificate
+metadata:
+  name: {{ $name }}
+  labels:
+    {{- toYaml $labels | nindent 4 }}
+spec:
+  domains:
+    - {{ $host | quote }}
+{{- end }}
 ---
 apiVersion: networking.k8s.io/v1
 kind: Ingress
@@ -119,13 +139,19 @@ metadata:
   name: {{ $name }}
   labels:
     {{- toYaml $labels | nindent 4 }}
-  {{- with include "app.ingressAnnotations" (dict "root" $root "host" $host "healthcheckPath" "/ping") | trim }}
+  {{- with $annotations }}
   annotations:
-    {{- . | nindent 4 }}
+    {{- toYaml . | nindent 4 }}
   {{- end }}
 spec:
   {{- if $root.Values.ingress.className }}
   ingressClassName: {{ $root.Values.ingress.className }}
+  {{- end }}
+  {{- with $ing.tlsSecretName }}
+  tls:
+    - hosts:
+        - {{ $host | quote }}
+      secretName: {{ . }}
   {{- end }}
   rules:
     - host: {{ $host | quote }}

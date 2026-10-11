@@ -10,6 +10,10 @@
 
 ## Unreleased
 
+## v2.16.0
+
+- T38: App Chart `previewAuth.ingress` 입력 추가. preview Ingress에만 붙는 어노테이션(`annotations`, 값은 템플릿으로 렌더해 `{{ .Release.Namespace }}` 사용 가능), GKE ManagedCertificate(`managedCertificate`), 미리 만든 TLS Secret(`tlsSecretName`). active Ingress는 바뀌지 않는다. preview가 active와 같은 GKE 고정 IP 이름을 쓰거나 GKE가 아닌 Ingress에 ManagedCertificate를 켜면 렌더링을 실패시킨다. 기본값이면 이전과 같다(ALB 어노테이션은 키 순서만 바뀐다).
+
 ## v2.15.0
 
 - T22: `template-update.yml`이 이미 열린 `template/<버전>` PR이 main과 충돌(CONFLICTING)하면 건너뛰지 않고 main 기준으로 버전 올리기를 다시 돌려 같은 브랜치에 `push -f` 한다(PR 본문 갱신 · 코멘트). 봇 커밋 하나가 아닌 PR은 덮어쓰지 않고 경고만 남긴다. 호출부(스킬 템플릿 `template-update.yml`)에 `push: main`(`.deploy/config.yaml` · `.github/workflows/**` · `**.tf`) 트리거를 더해 main이 바뀔 때마다 자동으로 돈다.
