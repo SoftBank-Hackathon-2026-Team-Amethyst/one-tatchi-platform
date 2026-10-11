@@ -18,6 +18,7 @@ from pathlib import Path
 from kube_auth import credentials, public_config
 from tunnel import resolve
 from deadline import budget, remaining, pause
+from resource_metrics import inspect_metrics
 
 BASE = Path.home() / "Library/Application Support/one-tatchi/onprem"
 
@@ -513,6 +514,12 @@ def _status(config):
                         not all(c.get("ready") for c in p["status"]["containerStatuses"]))]
             if unready:
                 result["errors"].append("unready pods: " + ", ".join(unready))
+            result["resource_metrics"] = inspect_metrics(
+                config["environments"],
+                lambda args: run(["kubectl", *args, "--request-timeout=5s"], check=False, timeout=6),
+            )
+            if not result["resource_metrics"]["available"]:
+                result["errors"].append(result["resource_metrics"]["error"])
             result["versions"] = {"configured": config.get("kubernetes_version"),
                 "nodes": [{"name": n["metadata"]["name"], "version": n["status"]["nodeInfo"]["kubeletVersion"],
                            "addresses": n["status"]["addresses"]} for n in kube("get", "nodes")["items"]],

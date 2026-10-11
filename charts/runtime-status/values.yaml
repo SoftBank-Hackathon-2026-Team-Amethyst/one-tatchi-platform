@@ -1,0 +1,11 @@
+# The release workflow fills in the multi-platform image digest before packaging.
+image:
+  repository: ghcr.io/softbank-hackathon-2026-team-amethyst/runtime-status
+  digest: ""
+serviceName: ""
+resources:
+  requests:
+    cpu: 10m
+    memory: 32Mi
+  limits:
+    memory: 96Mi

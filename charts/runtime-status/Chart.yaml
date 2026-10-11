@@ -1,0 +1,5 @@
+apiVersion: v2
+name: runtime-status
+description: Namespace-scoped Kubernetes Pod inventory and current resource usage.
+type: application
+version: 0.1.0
