@@ -1,0 +1,64 @@
+#!/usr/bin/env bash
+# 장애 훈련 테스트용 가짜 kubectl. Rollout 상태는 FAKE_STATE_FILE(JSON)에 두고 patch · abort가 바꾼다.
+#   { "<release>": {"phase","message","paused","active","preview","annotation","pods":[{"name","hash"}]} }
+#   FAKE_STATE_FILE   상태 파일 (필수)
+#   FAKE_CHAOS_DIR    가짜 파드 상태 폴더 (port-forward가 fake_chaos.py에 넘긴다)
+#   FAKE_NO_ROLLOUT   쉼표로 구분한 release. get rollout이 실패한다
+#   FAKE_CALLS_FILE   patch · argo rollouts 호출을 한 줄씩 남길 파일
+#   FAKE_PATCH_STUCK  값이 있으면 annotation을 붙여도 Progressing에 머문다 (green이 안 뜨는 경우)
+#   FAKE_RESTORE_PHASE annotation을 되돌린 뒤 phase (기본 Healthy)
+here="$(cd "$(dirname "$0")" && pwd)"
+: "${FAKE_STATE_FILE:?}"
+state() { jq -c --arg r "$1" '.[$r] // empty' "$FAKE_STATE_FILE"; }
+update() {  # <release> <jq 식>
+  jq --arg r "$1" "(.[\$r]) |= ($2)" "$FAKE_STATE_FILE" > "$FAKE_STATE_FILE.tmp" && mv "$FAKE_STATE_FILE.tmp" "$FAKE_STATE_FILE"
+}
+record() { [ -z "${FAKE_CALLS_FILE:-}" ] || echo "$*" >> "$FAKE_CALLS_FILE"; }
+listed() { case ",${2:-}," in *",$1,"*) return 0 ;; *) return 1 ;; esac; }
+
+case "$1 $2" in
+  "get rollout")
+    r="$3"
+    listed "$r" "${FAKE_NO_ROLLOUT:-}" && { echo "Error from server (NotFound): rollouts.argoproj.io \"$r\" not found" >&2; exit 1; }
+    s="$(state "$r")"; [ -n "$s" ] || { echo "Error from server (NotFound)" >&2; exit 1; }
+    jq -c '{spec: {template: {metadata: {annotations: (if .annotation != "" then {"one-tatchi/drill": .annotation} else {} end)}}},
+            status: {phase: .phase, message: (.message // ""),
+                     pauseConditions: (if .paused then [{reason: "BlueGreenPause"}] else [] end),
+                     blueGreen: {activeSelector: .active, previewSelector: .preview}}}' <<<"$s" ;;
+  "get pods")
+    sel=""; for a in "$@"; do case "$a" in app.kubernetes.io/name=*) sel="$a" ;; esac; done
+    r="${sel#app.kubernetes.io/name=}"; r="${r%%,*}"; h="${sel##*rollouts-pod-template-hash=}"
+    s="$(state "$r")"
+    jq -c --arg h "$h" '{items: [(.pods // [])[] | select(.hash == $h)
+      | {metadata: {name: .name}, spec: {containers: [{ports: [{containerPort: 8000}]}]},
+         status: {conditions: [{type: "Ready", status: "True"}], containerStatuses: [{restartCount: 0}]}}]}' <<<"${s:-{\}}" ;;
+  "get svc") echo 80 ;;
+  "patch rollout")
+    r="$3"; p=""
+    while [ $# -gt 0 ]; do [ "$1" = -p ] && { p="$2"; break; }; shift; done
+    record "patch $r $p"
+    v="$(jq -r '.spec.template.metadata.annotations["one-tatchi/drill"] // ""' <<<"$p")"
+    # stable_annotation(기본 "")과 같은 값으로 돌아가면 spec이 stable과 같아져 Healthy, 다른 값이면 새 revision → 훈련용 green
+    stable="$(jq -r '.stable_annotation // ""' <<<"$(state "$r")")"
+    if [ "$v" != "$stable" ]; then
+      if [ -n "${FAKE_PATCH_STUCK:-}" ]; then update "$r" '.annotation = "'"$v"'" | .phase = "Progressing" | .paused = false'
+      else update "$r" '.annotation = "'"$v"'" | .phase = "Paused" | .paused = true | .preview = ("drill-" + "'"$v"'") | .pods += [{name: "'"$r"'-drill-'"$v"'", hash: ("drill-" + "'"$v"'")}]'
+      fi
+    else
+      update "$r" '.annotation = "'"$v"'" | .phase = "'"${FAKE_RESTORE_PHASE:-Healthy}"'" | .paused = false | .preview = .active | .message = "" | .pods |= map(select(.hash | startswith("drill-") | not))'
+    fi
+    echo "rollout.argoproj.io/$r patched" ;;
+  "argo rollouts")
+    shift 2; record "$*"
+    case "$1" in
+      abort) update "$2" '.phase = "Degraded" | .paused = false | .message = "RolloutAborted: Rollout aborted"' ;;
+      get) echo "Name: $3" ;;
+    esac ;;
+  port-forward*)
+    [ "$2" = --address ] && [ "$3" = 127.0.0.1 ] || { echo "port-forward must bind loopback" >&2; exit 1; }
+    case "$4" in
+      pod/*) exec python3 "$here/fake_chaos.py" "${4#pod/}" ;;
+      svc/*) exec python3 "$here/fake_chaos.py" "svc-${4#svc/}" ;;
+    esac ;;
+  *) echo "fake-kubectl: 지원하지 않는 명령 $*" >&2; exit 1 ;;
+esac
