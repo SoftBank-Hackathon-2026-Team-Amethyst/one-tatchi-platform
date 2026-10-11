@@ -100,7 +100,7 @@ demo-app은 템플릿을 **태그로 고정해 참조**만 한다. 그래서 에
 | `infra.yml` | Terraform fmt · validate · plan(PR 코멘트) / apply. 감사 로그 · Slack 알림 |
 | `deploy.yml` | 이미지 빌드(SHA 태그) → App Chart(OCI)로 `helm upgrade` → green이 Paused가 될 때까지 대기 → 주소 · 감사 로그 · Slack(promote/abort 버튼) |
 | `rollout.yml` | Blue-Green 승격 · 취소 · 되돌리기. slack-bot 버튼이 대상 레포의 rollout 워크플로를 거쳐 호출한다. 감사 로그에 요청자(`requested-by`) |
-| `template-update.yml` | 이 레포의 새 태그를 확인해 버전 표기를 올리는 PR을 연다(본문에 CHANGELOG 구간). GitHub App 토큰 사용 |
+| `template-update.yml` | 이 레포의 새 태그를 확인해 버전 표기를 올리는 PR을 연다(본문에 CHANGELOG 구간). 열린 PR이 main과 충돌하면 main 기준으로 다시 만들어 같은 브랜치에 밀어 넣는다(대상 레포는 main push도 트리거). GitHub App 토큰 사용 |
 
 이 레포 자체는 `ci.yml`(모듈 validate · 차트 lint · IaC 검사 · scripts 테스트)과 `release.yml`(태그 `vX.Y.Z` → 차트를 GHCR에 push, 메이저 태그 `v1` 이동, 대상 레포에 `repository_dispatch`)로 관리한다.
 

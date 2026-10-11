@@ -12,6 +12,12 @@ on:
         required: false
   schedule:
     - cron: "0 0 * * *" # 알림을 놓쳤을 때 대비 (매일 09:00 KST)
+  push:
+    branches: [main] # 버전 표기 파일이 main에서 바뀌어 열린 bump PR이 충돌하면 main 기준으로 다시 만든다
+    paths:
+      - .deploy/config.yaml
+      - .github/workflows/**
+      - "**.tf"
 
 permissions:
   contents: read
