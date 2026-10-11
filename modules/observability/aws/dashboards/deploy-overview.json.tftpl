@@ -10,13 +10,14 @@
   },
   "tags": [
     "one-tatchi",
-    "T17"
+    "T17",
+    "T39"
   ],
   "panels": [
     {
       "id": 1,
       "type": "row",
-      "title": "실제 사용자 트래픽 · smoke / kube-probe 제외",
+      "title": "멀티클라우드 · 배포 대상 상태",
       "collapsed": false,
       "gridPos": {
         "x": 0,
@@ -27,12 +28,451 @@
     },
     {
       "id": 2,
+      "type": "stat",
+      "title": "배포 대상 켜짐 · 꺼짐",
+      "description": "배포 대상(target · cluster)마다 앱 파드 지표가 지금 수집되는 비율입니다. 최근 24시간 안에 보였다가 끊긴 대상은 꺼짐으로 남고, 24시간 넘게 끊긴 대상은 보이지 않습니다. GitHub runner 상태와 배포 설정 오류는 여기에 나오지 않습니다.",
+      "gridPos": {
+        "x": 0,
+        "y": 1,
+        "w": 24,
+        "h": 4
+      },
+      "datasource": {
+        "type": "datasource",
+        "uid": "-- Mixed --"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "(sum by (target,cluster) (up{target=~\"$${target:regex}\",environment=~\"$${environment:regex}\",cluster=~\"$cluster\",service=~\"$service\",job=\"application\"}) / count by (target,cluster) (up{target=~\"$${target:regex}\",environment=~\"$${environment:regex}\",cluster=~\"$cluster\",service=~\"$service\",job=\"application\"})) or (max by (target,cluster) (max_over_time(up{target=~\"$${target:regex}\",environment=~\"$${environment:regex}\",cluster=~\"$cluster\",service=~\"$service\",job=\"application\"}[24h])) * 0)",
+          "legendFormat": "{{target}} · {{cluster}}",
+          "refId": "A"
+        },
+        {
+          "datasource": {
+            "type": "stackdriver",
+            "uid": "cloud-monitoring"
+          },
+          "queryType": "promQL",
+          "hide": ${gcp_hidden},
+          "timeSeriesList": {},
+          "promQLQuery": {
+            "projectName": "${gcp_project}",
+            "expr": "(sum by (target,cluster) (up{target=~\"$${target:regex}\",environment=~\"$${environment:regex}\",cluster=~\"$cluster\",service=~\"$service\",job=\"application\"}) / count by (target,cluster) (up{target=~\"$${target:regex}\",environment=~\"$${environment:regex}\",cluster=~\"$cluster\",service=~\"$service\",job=\"application\"})) or (max by (target,cluster) (max_over_time(up{target=~\"$${target:regex}\",environment=~\"$${environment:regex}\",cluster=~\"$cluster\",service=~\"$service\",job=\"application\"}[24h])) * 0)",
+            "step": "30s"
+          },
+          "refId": "B"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "noValue": "데이터 없음",
+          "custom": {
+            "spanNulls": false
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 0.01
+              },
+              {
+                "color": "green",
+                "value": 0.999
+              }
+            ]
+          },
+          "mappings": [
+            {
+              "type": "value",
+              "options": {
+                "0": {
+                  "text": "꺼짐",
+                  "index": 0
+                }
+              }
+            },
+            {
+              "type": "range",
+              "options": {
+                "from": 0.01,
+                "to": 0.999,
+                "result": {
+                  "text": "일부",
+                  "index": 1
+                }
+              }
+            },
+            {
+              "type": "range",
+              "options": {
+                "from": 0.999,
+                "to": 1,
+                "result": {
+                  "text": "켜짐",
+                  "index": 2
+                }
+              }
+            }
+          ]
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "value_and_name",
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "vertical"
+      }
+    },
+    {
+      "id": 3,
+      "type": "stat",
+      "title": "대상별 요청 / 초",
+      "description": "배포 대상(target · cluster)마다 최근 5분 완료 요청. 선택한 환경 · 서비스를 합산합니다.",
+      "gridPos": {
+        "x": 0,
+        "y": 5,
+        "w": 8,
+        "h": 6
+      },
+      "datasource": {
+        "type": "datasource",
+        "uid": "-- Mixed --"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "sum by (target,cluster) (rate(app_http_response_count_total{target=~\"$${target:regex}\",environment=~\"$${environment:regex}\",cluster=~\"$cluster\",service=~\"$service\"}[5m]))",
+          "legendFormat": "{{target}} · {{cluster}}",
+          "refId": "A"
+        },
+        {
+          "datasource": {
+            "type": "stackdriver",
+            "uid": "cloud-monitoring"
+          },
+          "queryType": "promQL",
+          "hide": ${gcp_hidden},
+          "timeSeriesList": {},
+          "promQLQuery": {
+            "projectName": "${gcp_project}",
+            "expr": "sum by (target,cluster) (rate(app_http_response_count_total{target=~\"$${target:regex}\",environment=~\"$${environment:regex}\",cluster=~\"$cluster\",service=~\"$service\"}[5m]))",
+            "step": "30s"
+          },
+          "refId": "B"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "reqps",
+          "noValue": "데이터 없음",
+          "custom": {
+            "spanNulls": false
+          },
+          "decimals": 1,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "blue",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "value_and_name",
+        "colorMode": "background",
+        "graphMode": "area",
+        "justifyMode": "auto",
+        "orientation": "auto"
+      }
+    },
+    {
+      "id": 4,
+      "type": "stat",
+      "title": "대상별 HTTP 5xx 비율",
+      "description": "5xx / 전체 요청. 1% 이상 주황, 5% 이상 빨강. 요청이 없으면 데이터 없음.",
+      "gridPos": {
+        "x": 8,
+        "y": 5,
+        "w": 8,
+        "h": 6
+      },
+      "datasource": {
+        "type": "datasource",
+        "uid": "-- Mixed --"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "100 * (sum by (target,cluster) (rate(app_http_response_count_total{target=~\"$${target:regex}\",environment=~\"$${environment:regex}\",cluster=~\"$cluster\",service=~\"$service\",status=~\"5..\"}[5m])) or (sum by (target,cluster) (rate(app_http_response_count_total{target=~\"$${target:regex}\",environment=~\"$${environment:regex}\",cluster=~\"$cluster\",service=~\"$service\"}[5m])) * 0)) / (sum by (target,cluster) (rate(app_http_response_count_total{target=~\"$${target:regex}\",environment=~\"$${environment:regex}\",cluster=~\"$cluster\",service=~\"$service\"}[5m])) > 0)",
+          "legendFormat": "{{target}} · {{cluster}}",
+          "refId": "A"
+        },
+        {
+          "datasource": {
+            "type": "stackdriver",
+            "uid": "cloud-monitoring"
+          },
+          "queryType": "promQL",
+          "hide": ${gcp_hidden},
+          "timeSeriesList": {},
+          "promQLQuery": {
+            "projectName": "${gcp_project}",
+            "expr": "100 * (sum by (target,cluster) (rate(app_http_response_count_total{target=~\"$${target:regex}\",environment=~\"$${environment:regex}\",cluster=~\"$cluster\",service=~\"$service\",status=~\"5..\"}[5m])) or (sum by (target,cluster) (rate(app_http_response_count_total{target=~\"$${target:regex}\",environment=~\"$${environment:regex}\",cluster=~\"$cluster\",service=~\"$service\"}[5m])) * 0)) / (sum by (target,cluster) (rate(app_http_response_count_total{target=~\"$${target:regex}\",environment=~\"$${environment:regex}\",cluster=~\"$cluster\",service=~\"$service\"}[5m])) > 0)",
+            "step": "30s"
+          },
+          "refId": "B"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "noValue": "데이터 없음",
+          "custom": {
+            "spanNulls": false
+          },
+          "decimals": 1,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 1
+              },
+              {
+                "color": "red",
+                "value": 5
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "value_and_name",
+        "colorMode": "background",
+        "graphMode": "area",
+        "justifyMode": "auto",
+        "orientation": "auto"
+      }
+    },
+    {
+      "id": 5,
+      "type": "stat",
+      "title": "대상별 응답시간 p95",
+      "description": "실제 요청 histogram의 추정 p95. 500ms 이상 주황, 1초 이상 빨강.",
+      "gridPos": {
+        "x": 16,
+        "y": 5,
+        "w": 8,
+        "h": 6
+      },
+      "datasource": {
+        "type": "datasource",
+        "uid": "-- Mixed --"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "histogram_quantile(0.95, sum by (le,target,cluster) (rate(app_http_response_time_seconds_hist_bucket{target=~\"$${target:regex}\",environment=~\"$${environment:regex}\",cluster=~\"$cluster\",service=~\"$service\"}[5m]))) * 1000",
+          "legendFormat": "{{target}} · {{cluster}}",
+          "refId": "A"
+        },
+        {
+          "datasource": {
+            "type": "stackdriver",
+            "uid": "cloud-monitoring"
+          },
+          "queryType": "promQL",
+          "hide": ${gcp_hidden},
+          "timeSeriesList": {},
+          "promQLQuery": {
+            "projectName": "${gcp_project}",
+            "expr": "histogram_quantile(0.95, sum by (le,target,cluster) (rate(app_http_response_time_seconds_hist_bucket{target=~\"$${target:regex}\",environment=~\"$${environment:regex}\",cluster=~\"$cluster\",service=~\"$service\"}[5m]))) * 1000",
+            "step": "30s"
+          },
+          "refId": "B"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ms",
+          "noValue": "데이터 없음",
+          "custom": {
+            "spanNulls": false
+          },
+          "decimals": 1,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 500
+              },
+              {
+                "color": "red",
+                "value": 1000
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "value_and_name",
+        "colorMode": "background",
+        "graphMode": "area",
+        "justifyMode": "auto",
+        "orientation": "auto"
+      }
+    },
+    {
+      "id": 6,
+      "type": "table",
+      "title": "대상별 마지막 배포 · 같은 커밋인지 확인",
+      "description": "대상 · 환경 · 서비스마다 마지막 AI 배포 검사 기록입니다. sha가 같으면 여러 대상에 같은 커밋이 배포됐습니다. 판단 결과가 실제 승격을 뜻하지는 않습니다.",
+      "gridPos": {
+        "x": 0,
+        "y": 11,
+        "w": 24,
+        "h": 8
+      },
+      "datasource": {
+        "type": "datasource",
+        "uid": "-- Mixed --"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "cloudwatch",
+            "uid": "cloudwatch"
+          },
+          "queryMode": "Logs",
+          "region": "default",
+          "logGroupNames": [
+            "${evidence_log_group}"
+          ],
+          "expression": "filter target like /^$${target:regex}$/ and environment like /^$${environment:regex}$/ and service like /$service/ and cluster like /$cluster/ | stats latest(@timestamp) as last_deploy, latest(sha) as sha, latest(decision) as decision, latest(metrics.error_rate) as error_rate, latest(metrics.p95_ms) as p95_ms, latest(run_url) as run_url by target, cluster, environment, service | sort target, cluster, environment, service",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "noValue": "데이터 없음",
+          "custom": {
+            "spanNulls": false
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "run_url"
+            },
+            "properties": [
+              {
+                "id": "links",
+                "value": [
+                  {
+                    "title": "Actions 실행",
+                    "url": "$${__value.raw}",
+                    "targetBlank": true
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "showHeader": true,
+        "cellHeight": "sm",
+        "footer": {
+          "show": false
+        }
+      }
+    },
+    {
+      "id": 7,
+      "type": "row",
+      "title": "실제 사용자 트래픽 · smoke / kube-probe 제외",
+      "collapsed": false,
+      "gridPos": {
+        "x": 0,
+        "y": 19,
+        "w": 24,
+        "h": 1
+      }
+    },
+    {
+      "id": 8,
       "type": "timeseries",
       "title": "요청 / 초",
       "description": "서비스별 완료 요청. FE와 BE의 값을 합산하지 않습니다.",
       "gridPos": {
         "x": 0,
-        "y": 1,
+        "y": 20,
         "w": 8,
         "h": 8
       },
@@ -87,13 +527,13 @@
       }
     },
     {
-      "id": 3,
+      "id": 9,
       "type": "timeseries",
       "title": "HTTP 5xx 비율",
       "description": "5xx / 전체 요청. 요청이 없으면 데이터 없음.",
       "gridPos": {
         "x": 8,
-        "y": 1,
+        "y": 20,
         "w": 8,
         "h": 8
       },
@@ -148,13 +588,13 @@
       }
     },
     {
-      "id": 4,
+      "id": 10,
       "type": "timeseries",
       "title": "응답시간 p95",
       "description": "실제 요청 histogram의 추정 p95. AI smoke의 nearest-rank와 구분합니다.",
       "gridPos": {
         "x": 16,
-        "y": 1,
+        "y": 20,
         "w": 8,
         "h": 8
       },
@@ -209,25 +649,25 @@
       }
     },
     {
-      "id": 5,
+      "id": 11,
       "type": "row",
       "title": "AWS · 온프레미스 리소스",
       "collapsed": false,
       "gridPos": {
         "x": 0,
-        "y": 9,
+        "y": 28,
         "w": 24,
         "h": 1
       }
     },
     {
-      "id": 6,
+      "id": 12,
       "type": "timeseries",
       "title": "CPU 사용량",
       "description": "",
       "gridPos": {
         "x": 0,
-        "y": 10,
+        "y": 29,
         "w": 8,
         "h": 8
       },
@@ -267,13 +707,13 @@
       }
     },
     {
-      "id": 7,
+      "id": 13,
       "type": "timeseries",
       "title": "메모리 사용량",
       "description": "",
       "gridPos": {
         "x": 8,
-        "y": 10,
+        "y": 29,
         "w": 8,
         "h": 8
       },
@@ -313,13 +753,13 @@
       }
     },
     {
-      "id": 8,
+      "id": 14,
       "type": "timeseries",
       "title": "컨테이너 재시작 · 최근 5분",
       "description": "",
       "gridPos": {
         "x": 16,
-        "y": 10,
+        "y": 29,
         "w": 8,
         "h": 8
       },
@@ -359,13 +799,13 @@
       }
     },
     {
-      "id": 9,
+      "id": 15,
       "type": "timeseries",
       "title": "수집 연결 상태",
       "description": "1=수집 성공, 0=수집 실패. 원격 수집기가 끊기면 데이터가 비게 됩니다.",
       "gridPos": {
         "x": 0,
-        "y": 18,
+        "y": 37,
         "w": 12,
         "h": 8
       },
@@ -405,13 +845,13 @@
       }
     },
     {
-      "id": 10,
+      "id": 16,
       "type": "timeseries",
       "title": "Ready 파드",
       "description": "",
       "gridPos": {
         "x": 12,
-        "y": 18,
+        "y": 37,
         "w": 12,
         "h": 8
       },
@@ -451,25 +891,25 @@
       }
     },
     {
-      "id": 11,
+      "id": 17,
       "type": "row",
       "title": "벤더 원본 지표 · CloudWatch / Cloud Monitoring",
       "collapsed": false,
       "gridPos": {
         "x": 0,
-        "y": 26,
+        "y": 45,
         "w": 24,
         "h": 1
       }
     },
     {
-      "id": 12,
+      "id": 18,
       "type": "timeseries",
       "title": "AWS CPU · Container Insights",
       "description": "AWS 원본 클러스터 지표입니다. 위의 Prometheus 서비스 지표와 별도로 확인합니다.",
       "gridPos": {
         "x": 0,
-        "y": 27,
+        "y": 46,
         "w": 12,
         "h": 8
       },
@@ -512,13 +952,13 @@
       }
     },
     {
-      "id": 13,
+      "id": 19,
       "type": "timeseries",
       "title": "AWS 메모리 · Container Insights",
       "description": "AWS 원본 클러스터 지표입니다. 위의 Prometheus 서비스 지표와 별도로 확인합니다.",
       "gridPos": {
         "x": 12,
-        "y": 27,
+        "y": 46,
         "w": 12,
         "h": 8
       },
@@ -561,13 +1001,13 @@
       }
     },
     {
-      "id": 14,
+      "id": 20,
       "type": "timeseries",
       "title": "GCP 컨테이너 CPU",
       "description": "",
       "gridPos": {
         "x": 0,
-        "y": 35,
+        "y": 54,
         "w": 12,
         "h": 8
       },
@@ -613,13 +1053,13 @@
       }
     },
     {
-      "id": 15,
+      "id": 21,
       "type": "timeseries",
       "title": "GCP 컨테이너 메모리",
       "description": "",
       "gridPos": {
         "x": 12,
-        "y": 35,
+        "y": 54,
         "w": 12,
         "h": 8
       },
@@ -665,25 +1105,25 @@
       }
     },
     {
-      "id": 16,
+      "id": 22,
       "type": "row",
       "title": "AI 배포 검사 · 실행별 원본 근거",
       "collapsed": false,
       "gridPos": {
         "x": 0,
-        "y": 43,
+        "y": 62,
         "w": 24,
         "h": 1
       }
     },
     {
-      "id": 17,
+      "id": 23,
       "type": "table",
       "title": "AI에 전달한 smoke 결과와 판단",
       "description": "관찰 창별 원본값입니다. smoke 실패는 기대 응답 불일치(연결 실패 포함), p95는 nearest-rank입니다. 판단 결과가 실제 승격을 뜻하지는 않습니다. 실행 링크에서 실행 결과를 확인하세요.",
       "gridPos": {
         "x": 0,
-        "y": 44,
+        "y": 63,
         "w": 24,
         "h": 8
       },
