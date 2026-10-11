@@ -48,6 +48,42 @@ if render "${auth[@]}" --set ingress.enabled=true --set ingress.group=g --show-o
   echo 'Active Ingress targets preview' >&2; exit 1
 fi
 
+# GKE: preview-only TLS and static IP; the active Ingress keeps its own address and no certificate.
+gke=("${auth[@]}" --set ingress.enabled=true --set ingress.className=
+  --set-string 'ingress.annotations.kubernetes\.io/ingress\.class=gce'
+  --set-string 'ingress.annotations.kubernetes\.io/ingress\.global-static-ip-name=active-ip')
+out="$(render "${gke[@]}" --set previewAuth.ingress.managedCertificate=true \
+  --set-string 'previewAuth.ingress.annotations.kubernetes\.io/ingress\.global-static-ip-name=green-ip' \
+  --set-string 'previewAuth.ingress.annotations.kubernetes\.io/ingress\.allow-http=false' \
+  --show-only templates/preview-auth.yaml)"
+# Annotation values are templates, so one target file can name a per-namespace address.
+out2="$(render "${gke[@]}" --namespace test \
+  --set-string 'previewAuth.ingress.annotations.kubernetes\.io/ingress\.global-static-ip-name=green-{{ .Release.Namespace }}' \
+  --show-only templates/preview-auth.yaml)"
+printf '%s\n' "$out2" | grep -q 'kubernetes.io/ingress.global-static-ip-name: green-test'
+printf '%s\n' "$out" | grep -q '^kind: ManagedCertificate$'
+printf '%s\n' "$out" | grep -A2 'domains:' | grep -q '"green.example.test"'
+printf '%s\n' "$out" | grep -q 'networking.gke.io/managed-certificates: auth-preview-auth'
+printf '%s\n' "$out" | grep -q 'kubernetes.io/ingress.global-static-ip-name: green-ip'
+printf '%s\n' "$out" | grep -q 'kubernetes.io/ingress.class: gce'
+printf '%s\n' "$out" | grep -q 'kubernetes.io/ingress.allow-http: "false"'
+active="$(render "${gke[@]}" --set previewAuth.ingress.managedCertificate=true \
+  --set-string 'previewAuth.ingress.annotations.kubernetes\.io/ingress\.global-static-ip-name=green-ip' \
+  --show-only templates/ingress.yaml)"
+printf '%s\n' "$active" | grep -q 'kubernetes.io/ingress.global-static-ip-name: active-ip'
+if printf '%s\n' "$active" | grep -Eq 'managed-certificates|green-ip|allow-http|tls:'; then
+  echo 'preview Ingress settings leaked into the active Ingress' >&2; exit 1
+fi
+# Sharing the active static IP, or a ManagedCertificate on a non-GKE Ingress, fails.
+fails "${gke[@]}"
+fails "${auth[@]}" --set ingress.enabled=true --set ingress.group=g --set previewAuth.ingress.managedCertificate=true
+# A pre-made TLS Secret goes to spec.tls on the green host only.
+out="$(render "${auth[@]}" --set ingress.enabled=true --set ingress.className=nginx \
+  --set previewAuth.ingress.tlsSecretName=green-tls --show-only templates/preview-auth.yaml)"
+printf '%s\n' "$out" | grep -A4 '^  tls:' | grep -q 'secretName: green-tls'
+printf '%s\n' "$out" | grep -A4 '^  tls:' | grep -q '"green.example.test"'
+test "$(printf '%s\n' "$out" | grep -c '^kind: ManagedCertificate$')" = 0
+
 # onprem (no Ingress): proxy and Service only, the tunnel targets <release>-preview-auth.
 out="$(render "${auth[@]}" --show-only templates/preview-auth.yaml)"
 test "$(printf '%s\n' "$out" | grep -c '^kind: Ingress$')" = 0
