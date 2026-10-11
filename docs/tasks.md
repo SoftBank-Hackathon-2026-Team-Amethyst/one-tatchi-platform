@@ -883,7 +883,7 @@ AWS/GCP/onprem에서 승격 전 공개 preview 경로 없음. 인증된 pipeline
 - [ ] onprem 대상은 runner가 꺼져 있으면 `targets` 단계에서 실패로 알린다(`scripts/onprem/target.py` 재사용). 대기 상태로 prod 전체를 붙잡지 않는다
 - [x] yolo 리포트 · 자동 머지 PR이 대상 수만큼 생기지 않게 기준 대상 하나에만 `yolo-auto-merge`를 켠다
 - [ ] Slack 승인 버튼(`<run_id>@prod`) 한 번으로 모든 대상의 prod 승인이 처리되는지 확인. 안 되면 slack-bot이 같은 실행의 대기 중인 승인을 모두 처리하게 고친다
-- [ ] 문서: `deploy-provision` 스킬 · `references/artifacts.md` · `docs/gcp-deploy.md`의 `DEPLOY_TARGET` 설명, ADR(전부 통과해야 prod로 가는 이유)
+- [x] 문서: `deploy-provision` 스킬 · `references/artifacts.md` · `docs/gcp-deploy.md`의 `DEPLOY_TARGET` 설명, ADR(전부 통과해야 prod로 가는 이유)
 - [ ] demo-app 적용: `DEPLOY_TARGETS=aws,gcp`로 확인한 뒤 onprem 추가
 
 **완료 기준** demo-app main push 한 번으로 aws · gcp · onprem test가 병렬로 돌고, Slack 승인 한 번 뒤 세 대상 prod에 같은 이미지 digest가 올라간다. 한 대상의 test를 실패시키면 세 대상 모두 prod로 가지 않는다.
